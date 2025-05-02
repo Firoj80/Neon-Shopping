@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,11 +35,12 @@ export const BudgetPanel: React.FC = () => {
   const { state, dispatch, formatCurrency, isLoading } = useAppContext();
   const { budget } = state;
   const [isEditing, setIsEditing] = useState(false);
-  // Removed local currentDate state, rely on context/logic inside useEffect
+  // Moved useState hooks to the top level, before any conditional returns
+  const [budgetDateLabel, setBudgetDateLabel] = useState('Not Set');
+  const [todayFormatted, setTodayFormatted] = useState('');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<BudgetFormData>({
       resolver: zodResolver(budgetSchema),
-      // Initial default value, will be updated by useEffect
       defaultValues: {
           limit: 0,
       }
@@ -48,34 +48,15 @@ export const BudgetPanel: React.FC = () => {
 
   // Update form default value when budget limit changes from context *or* when dialog opens
   useEffect(() => {
-    // Only reset form when dialog opens or budget limit changes *after* initial load
     if (!isLoading && isEditing) {
         reset({ limit: budget.limit || 0 });
     } else if (!isLoading && !isEditing) {
-         // Keep form potentially synced if closed and limit changes externally
          reset({ limit: budget.limit || 0 });
     }
-  }, [budget.limit, reset, isLoading, isEditing]); // Depend on isEditing to reset when dialog opens
+  }, [budget.limit, reset, isLoading, isEditing]);
 
 
-  const spentPercentage = budget.limit > 0 ? Math.min((budget.spent / budget.limit) * 100, 100) : 0;
-  const remaining = budget.limit - budget.spent;
-  const isOverBudget = remaining < 0;
-
-
-   const handleSaveBudget = (data: BudgetFormData) => {
-      // Get today's date string when saving
-      const todayString = format(new Date(), 'yyyy-MM-dd');
-      dispatch({ type: 'SET_BUDGET_LIMIT', payload: { limit: data.limit, date: todayString } });
-      setIsEditing(false); // Close the dialog
-   };
-
-  if (isLoading) {
-      return <BudgetPanelSkeleton />
-  }
-
-   // Format date for display, ensuring it's done client-side
-   const [budgetDateLabel, setBudgetDateLabel] = useState('Not Set');
+  // Format date for display, ensuring it's done client-side
    useEffect(() => {
        if (budget.lastSetDate) {
            try {
@@ -90,12 +71,29 @@ export const BudgetPanel: React.FC = () => {
    }, [budget.lastSetDate]);
 
     // Format today's date for dialog description
-    const [todayFormatted, setTodayFormatted] = useState('');
     useEffect(() => {
         setTodayFormatted(format(new Date(), 'MMM d, yyyy'));
     }, []);
 
+
+  if (isLoading) {
+      return <BudgetPanelSkeleton />
+  }
+
+  // Calculations moved after the isLoading check
+  const spentPercentage = budget.limit > 0 ? Math.min((budget.spent / budget.limit) * 100, 100) : 0;
+  const remaining = budget.limit - budget.spent;
+  const isOverBudget = remaining < 0;
+
+   const handleSaveBudget = (data: BudgetFormData) => {
+      const todayString = format(new Date(), 'yyyy-MM-dd');
+      dispatch({ type: 'SET_BUDGET_LIMIT', payload: { limit: data.limit, date: todayString } });
+      setIsEditing(false); // Close the dialog
+   };
+
+
   return (
+    // Card is full width by default due to parent flex/grid layout
     <Card className="w-full bg-card border-primary/30 shadow-neon mb-4 sm:mb-6">
        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 sm:pb-3 sm:pt-4 sm:px-6">
         <div className="flex items-center gap-2">
@@ -242,5 +240,3 @@ const BudgetPanelSkeleton: React.FC = () => {
     </Card>
   );
 };
-
-    
