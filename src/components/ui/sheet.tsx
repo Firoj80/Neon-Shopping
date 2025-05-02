@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -57,13 +56,15 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {
         // Add overlayClassName prop
         overlayClassName?: string;
+        // Optional accessible title override
+        accessibleTitle?: string;
     }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
-// Destructure overlayClassName
->(({ side = "right", className, children, overlayClassName, ...props }, ref) => (
+// Destructure overlayClassName and accessibleTitle
+>(({ side = "right", className, children, overlayClassName, accessibleTitle = "Sheet Content", ...props }, ref) => (
   <SheetPortal>
     {/* Pass overlayClassName to SheetOverlay */}
     <SheetOverlay className={overlayClassName}/>
@@ -72,6 +73,14 @@ const SheetContent = React.forwardRef<
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
+       {/* Visually Hidden Title for Accessibility */}
+       <SheetPrimitive.Title className="sr-only">
+           {accessibleTitle}
+       </SheetPrimitive.Title>
+       {/* Optional Description (if needed, add similarly) */}
+       {/* <SheetPrimitive.Description className="sr-only">
+           Provide a description here if necessary.
+       </SheetPrimitive.Description> */}
       {children}
       <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
         <X className="h-4 w-4" />
@@ -110,12 +119,14 @@ const SheetFooter = ({
 )
 SheetFooter.displayName = "SheetFooter"
 
+// SheetTitle and SheetDescription are for visible titles/descriptions within the sheet content
 const SheetTitle = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
+    // Don't apply sr-only here, this is for visible titles
     className={cn("text-lg font-semibold text-foreground", className)}
     {...props}
   />
@@ -128,6 +139,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
+     // Don't apply sr-only here, this is for visible descriptions
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
@@ -143,6 +155,6 @@ export {
   SheetContent,
   SheetHeader,
   SheetFooter,
-  SheetTitle,
-  SheetDescription,
+  SheetTitle, // Export visible title
+  SheetDescription, // Export visible description
 }
