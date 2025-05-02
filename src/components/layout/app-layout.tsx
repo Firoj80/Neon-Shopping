@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   LayoutGrid,
@@ -25,20 +26,53 @@ import {
   FileText,
   Star,
   Boxes,
-  ShoppingBasket, // Changed from Wallet
+  ShoppingBasket,
   Menu,
   X,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // Import Framer Motion
 
 // Consistent App Name
 const APP_NAME = "Neon Shopping List";
 
+// New Mobile Header component that uses the hook
+const MobileHeader = () => {
+  const { isMobile, openMobile, toggleSidebar } = useSidebar(); // Hook is used here, inside the provider context
+
+  if (!isMobile) return null; // Only render on mobile
+
+  return (
+    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+      <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+        <ShoppingBasket className="w-6 h-6" />
+        <span className="font-bold">{APP_NAME}</span>
+      </Link>
+      {/* Hamburger Menu Trigger */}
+      <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+         <AnimatePresence initial={false} mode="wait">
+          <motion.div
+            key={openMobile ? "x" : "menu"}
+            initial={{ rotate: openMobile ? 90 : -90, opacity: 0 }}
+            animate={{ rotate: 0, opacity: 1 }}
+            exit={{ rotate: openMobile ? -90 : 90, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {openMobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </motion.div>
+        </AnimatePresence>
+        <span className="sr-only">Toggle Sidebar</span>
+      </Button>
+    </header>
+  );
+};
+
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // NOTE: useSidebar hook is NOT called here anymore
 
   const menuItems = [
     { href: '/list', label: 'Shopping List', icon: LayoutGrid },
@@ -56,12 +90,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
+    // SidebarProvider wraps everything that needs the sidebar context
     <SidebarProvider>
        {/* Desktop Sidebar - Hidden on small screens */}
        <Sidebar className="hidden md:block">
         <SidebarHeader className="p-4 border-b border-border/30">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-            <ShoppingBasket className="w-6 h-6" /> {/* Updated Icon */}
+            <ShoppingBasket className="w-6 h-6" />
             <span>{APP_NAME}</span> {/* Use constant */}
           </Link>
         </SidebarHeader>
@@ -112,21 +147,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <SidebarInset className="flex flex-col min-h-screen">
-         {/* Mobile Header - Only shown on small screens */}
-        <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
-            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-                <ShoppingBasket className="w-6 h-6" /> {/* Updated Icon */}
-                <span className="font-bold">{APP_NAME}</span> {/* Use constant */}
-            </Link>
-            {/* Hamburger Menu Trigger */}
-            <SidebarTrigger asChild>
-                 <Button variant="ghost" size="icon" className="md:hidden">
-                    {/* Pass icon as children to allow Framer Motion to handle */}
-                    {/* <Menu className="h-5 w-5" /> */}
-                    {/* Animated icon logic is now handled within SidebarTrigger */}
-                 </Button>
-            </SidebarTrigger>
-        </header>
+         {/* Mobile Header is now rendered inside the provider context */}
+         <MobileHeader />
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
@@ -138,6 +160,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             AdMob Banner Placeholder
         </footer>
       </SidebarInset>
-    </SidebarProvider>
+    </SidebarProvider> // Provider ends here
   );
 }

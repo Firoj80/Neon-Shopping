@@ -4,8 +4,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { Menu, X } from "lucide-react" // Use Menu icon for consistency
-import { motion, AnimatePresence } from "framer-motion" // Import Framer Motion
+import { PanelLeft } from "lucide-react" // Only need PanelLeft here now
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -270,12 +269,12 @@ const Sidebar = React.forwardRef<
 )
 Sidebar.displayName = "Sidebar"
 
-// Updated SidebarTrigger to handle 'asChild' correctly and add animation
+// Simplified SidebarTrigger - Icon rendering and animation are handled externally
 const SidebarTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button> & { asChild?: boolean }
 >(({ className, onClick, asChild = false, children, ...props }, ref) => {
-  const { toggleSidebar, openMobile, isMobile } = useSidebar(); // Get openMobile state
+  const { toggleSidebar } = useSidebar(); // Only need toggleSidebar now
   const Comp = asChild ? Slot : Button;
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -283,12 +282,7 @@ const SidebarTrigger = React.forwardRef<
     toggleSidebar();
   };
 
-   const variants = {
-    open: { rotate: 90 }, // Rotate X icon slightly if desired
-    closed: { rotate: 0 },
-   };
-
-  // If asChild is true, render the child component directly.
+   // If asChild is true, render the child component directly.
    if (asChild) {
      return (
        <Slot
@@ -298,41 +292,30 @@ const SidebarTrigger = React.forwardRef<
          className={cn(className)}
          {...props} // Pass down props like variant, size
        >
-          {/* Ensure only a single child is passed when asChild is true */}
+         {/* Children are passed directly */}
          {children}
        </Slot>
      );
    }
 
-
+  // If not asChild, render a default Button (less common now)
   return (
     <Comp
       ref={ref}
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-8 w-8 md:h-7 md:w-7", className)} // Slightly larger tap target on mobile
+      className={cn("h-8 w-8 md:h-7 md:w-7", className)} // Consistent sizing
       onClick={handleClick}
       {...props}
     >
-        {/* Use AnimatePresence for smooth icon transition */}
-         <AnimatePresence initial={false} mode="wait">
-           <motion.div
-            key={isMobile && openMobile ? 'close' : 'open'} // Change key based on state
-            initial={{ rotate: isMobile && openMobile ? -90 : 0, opacity: 0 }}
-            animate={{ rotate: 0, opacity: 1 }}
-            exit={{ rotate: isMobile && openMobile ? 90 : -90, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-             {/* Conditionally render Menu (☰) or X */}
-             {isMobile && openMobile ? (
-                <X className="h-5 w-5" />
-             ) : (
-                <Menu className="h-5 w-5" /> // Use Menu icon here
-             )}
-           </motion.div>
-         </AnimatePresence>
-      <span className="sr-only">Toggle Sidebar</span>
+        {/* Default icon if no children provided and not asChild */}
+        {children || (
+            <>
+                <PanelLeft className="h-5 w-5" />
+                <span className="sr-only">Toggle Sidebar</span>
+            </>
+        )}
     </Comp>
   );
 });
@@ -817,4 +800,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
