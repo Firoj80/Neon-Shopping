@@ -3,7 +3,6 @@ import React from 'react';
 import Link from 'next/link';
 import {
   LayoutGrid,
-  BarChart3,
   HelpCircle,
   Mail,
   ShieldCheck,
@@ -11,15 +10,15 @@ import {
   Star,
   ShoppingBag, // Using ShoppingBag now
   Menu,
-  X,
-  History,
-  DollarSign,
+  DollarSign // Currency
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
+import { usePathname, useRouter } from 'next/navigation'; // Use useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import { useSidebar } from '@/components/ui/sidebar';
+import { showInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
 
 const AdComponent = dynamic(() => import('@/components/admob/ad-component'), {
   ssr: false, // Ensure this component is only loaded on the client-side
@@ -34,7 +33,7 @@ const MobileHeader = () => {
   if (!isMobile) return null;
 
   return (
-    
+
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Hamburger Menu Trigger on the left */}
       <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
@@ -55,13 +54,13 @@ const MobileHeader = () => {
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
         <ShoppingBag className="w-6 h-6" /> {/* Updated Icon */}
-        <span className="font-bold">{APP_NAME}</span>
+        <span>Neon Shopping List</span>
       </Link>
 
       {/* Placeholder to balance header */}
       <div className="w-8"></div> {/* Adjust width if needed */}
     </header>
-    
+
   );
 };
 
@@ -75,10 +74,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/list', label: 'Shopping List', icon: LayoutGrid },
     { href: '/stats', label: 'Dashboard', icon: BarChart3, showAd: false }, // Mark for interstitial ad
     { href: '/history', label: 'History', icon: History, showAd: false }, // Mark for interstitial ad
+     { href: '/currency', label: 'Currency', icon: DollarSign }
   ];
 
   const helpMenuItems = [
-    { href: '/currency', label: 'Currency', icon: DollarSign },
+
     { href: '/about', label: 'About Us', icon: HelpCircle },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: ShieldCheck },
@@ -91,6 +91,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
    const handleLinkClick = async (item: { href: string, showAd?: boolean }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
        // Close mobile sidebar if open
        setOpenMobile(false);
+        if (item.href === '/stats' || item.href === '/history' || item.href === '/currency') {
+          await showInterstitialAd();
+        }
        router.push(item.href);
    };
 
@@ -171,4 +174,3 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </>
   );
 }
-
