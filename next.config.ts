@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -17,10 +18,10 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    // unoptimized: true, // Removed for non-static export
+    // unoptimized: true, // Use this if you plan to serve statically without Next.js image optimization
   },
   // Ensure static export is configured for Capacitor
-  // output: 'export', // Removed as Capacitor is removed
+  output: 'export',
   // Set trailingSlash to true if your static server requires it (optional)
   // trailingSlash: true,
 };

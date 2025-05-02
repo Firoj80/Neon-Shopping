@@ -6,20 +6,14 @@ const config: CapacitorConfig = {
   appName: 'Neon Shopping List',
   webDir: 'out', // Ensure this matches your Next.js export directory
   bundledWebRuntime: false,
-  // Add AdMob plugin configuration
+  // Remove AdMob config for now to avoid potential issues
   plugins: {
-    AdMob: {
-      appId: {
-        // Replace with your actual AdMob App IDs
-        // It's strongly recommended to use environment variables for these
-        android: 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy', // TODO: Replace with actual ID
-        // ios: 'ca-app-pub-xxxxxxxxxxxxxxxx~zzzzzzzzzz' // Add iOS ID if needed
-      },
-       // Optional: Configure other global settings if needed
-       // sameAppKey: true, // Example setting
-       // testingDevices: ['YOUR_TEST_DEVICE_ID'], // Add your test device ID here
-       initializeForTesting: true, // Use test ads during development
-    },
+    // AdMob: { // Removed AdMob plugin config
+    //   appId: {
+    //     android: 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy', // TODO: Replace with actual ID
+    //   },
+    //    initializeForTesting: true, // Use test ads during development
+    // },
   },
    // Server configuration for local development (optional but helpful)
    server: {
@@ -33,7 +27,7 @@ const config: CapacitorConfig = {
     // permissions: [
     //   {
     //     name: 'android.permission.INTERNET',
-    //     description: 'Required for network access (AdMob)',
+    //     description: 'Required for network access',
     //   },
     // ],
   },
