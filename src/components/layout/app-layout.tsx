@@ -14,7 +14,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   useSidebar,
-} from '@/components/ui/sidebar';
+} from '@/components/ui/sidebar'; // Adjusted import path
 import {
   LayoutGrid,
   BarChart3,
@@ -24,7 +24,7 @@ import {
   FileText,
   Star,
   Boxes,
-  Wallet, // Use Wallet for app icon
+  ShoppingBag, // Changed Icon
   Menu,
   X,
   History,
@@ -34,6 +34,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+// import { useAdMob } from '@/hooks/useAdmob'; // Temporarily commented out
 
 const APP_NAME = "Neon Shopping List";
 
@@ -44,9 +45,9 @@ const MobileHeader = () => {
   if (!isMobile) return null;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Hamburger Menu Trigger on the left */}
-      <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2">
+      <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
         <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={openMobile ? "x" : "menu"}
@@ -63,12 +64,12 @@ const MobileHeader = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <Wallet className="w-6 h-6" /> {/* Updated Icon */}
+        <ShoppingBag className="w-6 h-6" /> {/* Updated Icon */}
         <span className="font-bold">{APP_NAME}</span>
       </Link>
 
-      {/* Placeholder for balance or actions */}
-      <div className="w-8"></div> {/* Keep consistent width */}
+      {/* Placeholder to balance header */}
+      <div className="w-8"></div> {/* Adjust width if needed */}
     </header>
   );
 };
@@ -76,6 +77,7 @@ const MobileHeader = () => {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // const { showInterstitialAd } = useAdMob(); // Temporarily commented out
 
   const mainMenuItems = [
     { href: '/list', label: 'Shopping List', icon: LayoutGrid },
@@ -93,24 +95,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/more-apps', label: 'More Apps', icon: Boxes },
   ];
 
+  const handleLinkClick = (href: string) => {
+    // Temporarily disable ad showing on these routes for debugging
+    // const adRoutes = ['/stats', '/history', '/currency'];
+    // if (adRoutes.includes(href)) {
+    //   showInterstitialAd();
+    // }
+  };
+
   return (
     <SidebarProvider>
       {/* Desktop Sidebar */}
       <Sidebar className="hidden md:flex md:flex-col"> {/* Ensure sidebar uses flex */}
-        <SidebarHeader className="p-4 border-b border-border/30 shrink-0">
+        <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-            <Wallet className="w-6 h-6" /> {/* Updated Icon */}
+            <ShoppingBag className="w-6 h-6" /> {/* Updated Icon */}
             <span>{APP_NAME}</span> {/* Ensure this name is consistent */}
           </Link>
         </SidebarHeader>
-        <SidebarContent className="p-2 flex-grow"> {/* Allow content to grow */}
-          <SidebarMenu>
+        <SidebarContent className="p-2 flex-grow flex flex-col"> {/* Allow content to grow */}
+          <SidebarMenu className="flex-grow">
             {mainMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
                   isActive={pathname === item.href}
                   tooltip={item.label}
+                  onClick={() => handleLinkClick(item.href)}
                 >
                   <Link href={item.href}>
                     <item.icon />
@@ -120,29 +131,31 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
+           {/* Help Menu Items */}
+           <div className="p-2 shrink-0 border-t border-sidebar-border mt-auto"> {/* Use mt-auto for footer */}
+             <SidebarMenu>
+                {helpMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.href}
+                      tooltip={item.label}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleLinkClick(item.href)} // Optional: show ads for these too
+                    >
+                      <Link href={item.href}>
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+           </div>
         </SidebarContent>
-         {/* Help Menu Items */}
-         <div className="p-2 shrink-0 border-t border-border/30">
-           <SidebarMenu>
-              {helpMenuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-         </div>
-        <SidebarFooter className="p-2 border-t border-border/30 shrink-0">
+
+        <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
@@ -154,6 +167,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Content */}
         {/* Add padding-bottom to account for fixed footer height */}
+        {/* Ensure content area is the main scrollable part */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(4rem+1rem)] md:pb-[calc(4rem+1.5rem)] lg:pb-[calc(4rem+2rem)]">
           {children}
         </main>

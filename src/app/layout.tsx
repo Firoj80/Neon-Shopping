@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
+// import { AdInitializer } from '@/components/ads/ad-initializer'; // Temporarily commented out
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -26,10 +27,11 @@ export default function RootLayout({
       <body
         className={cn(
           geistMono.variable,
-          'font-mono antialiased min-h-screen flex flex-col',
+          'font-mono antialiased min-h-screen flex flex-col bg-background', // Ensure background covers full height
         )}
       >
         <Providers>
+           {/* <AdInitializer /> */} {/* Temporarily commented out */}
           <AppLayout>
              {children}
           </AppLayout>
