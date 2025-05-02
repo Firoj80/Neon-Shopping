@@ -26,7 +26,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { showInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
 
 
-const AdComponent = dynamic(() => import('../admob/ad-component'), { // Corrected import path
+const AdComponent = dynamic(() => import('@/components/admob/ad-component'), { // Corrected import path
   ssr: false, // Ensure this component is only loaded on the client-side
 });
 
@@ -180,4 +180,3 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </>
   );
 }
-
