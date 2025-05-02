@@ -7,7 +7,7 @@ import { useAppContext } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Edit2, Wallet, Coins, Info } from 'lucide-react'; // Removed TrendingUp, added Info
+import { Edit2, Wallet, Coins, Info } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,15 +16,15 @@ import {
   DialogFooter,
   DialogClose,
   DialogTrigger,
-  DialogDescription, // Added DialogDescription
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns'; // Import date-fns for date formatting
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Added Tooltip
+import { format } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const budgetSchema = z.object({
     limit: z.number().min(0, "Budget limit cannot be negative"),
@@ -36,36 +36,24 @@ export const BudgetPanel: React.FC = () => {
   const { state, dispatch, formatCurrency, isLoading } = useAppContext();
   const { budget } = state;
   const [isEditing, setIsEditing] = useState(false);
-  const [currentDate, setCurrentDate] = useState<string>(''); // State to hold formatted current date
-
-  // Update currentDate when component mounts and potentially if date changes (though unlikely needed frequently here)
-    useEffect(() => {
-        setCurrentDate(format(new Date(), 'yyyy-MM-dd'));
-    }, []);
-
-  // Reset budget if the date changes (user opens app on a new day)
-    useEffect(() => {
-        const today = format(new Date(), 'yyyy-MM-dd');
-        if (!isLoading && budget.lastSetDate && budget.lastSetDate !== today) {
-            // Reset budget limit and spent for the new day, keep spent calculation logic
-            dispatch({ type: 'RESET_DAILY_BUDGET' });
-            // Optionally notify user:
-            // toast({ title: "New Day!", description: "Your daily budget has been reset." });
-        }
-    }, [isLoading, budget.lastSetDate, dispatch]);
-
+  // Removed local currentDate state, rely on context/logic inside useEffect
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<BudgetFormData>({
       resolver: zodResolver(budgetSchema),
+      // Initial default value, will be updated by useEffect
       defaultValues: {
-          limit: 0, // Initialized below
+          limit: 0,
       }
   });
 
+  // Update form default value when budget limit changes from context *or* when dialog opens
   useEffect(() => {
-    // Update form default value when budget limit changes from context *or* when dialog opens
-    if (!isLoading) {
+    // Only reset form when dialog opens or budget limit changes *after* initial load
+    if (!isLoading && isEditing) {
         reset({ limit: budget.limit || 0 });
+    } else if (!isLoading && !isEditing) {
+         // Keep form potentially synced if closed and limit changes externally
+         reset({ limit: budget.limit || 0 });
     }
   }, [budget.limit, reset, isLoading, isEditing]); // Depend on isEditing to reset when dialog opens
 
@@ -76,8 +64,9 @@ export const BudgetPanel: React.FC = () => {
 
 
    const handleSaveBudget = (data: BudgetFormData) => {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      dispatch({ type: 'SET_BUDGET_LIMIT', payload: { limit: data.limit, date: today } });
+      // Get today's date string when saving
+      const todayString = format(new Date(), 'yyyy-MM-dd');
+      dispatch({ type: 'SET_BUDGET_LIMIT', payload: { limit: data.limit, date: todayString } });
       setIsEditing(false); // Close the dialog
    };
 
@@ -85,7 +74,26 @@ export const BudgetPanel: React.FC = () => {
       return <BudgetPanelSkeleton />
   }
 
-  const budgetDateLabel = budget.lastSetDate ? format(new Date(budget.lastSetDate + 'T00:00:00'), 'MMM d, yyyy') : 'Not Set'; // Handle potential null date
+   // Format date for display, ensuring it's done client-side
+   const [budgetDateLabel, setBudgetDateLabel] = useState('Not Set');
+   useEffect(() => {
+       if (budget.lastSetDate) {
+           try {
+             setBudgetDateLabel(format(new Date(budget.lastSetDate + 'T00:00:00'), 'MMM d, yyyy'));
+           } catch (e) {
+             console.error("Error formatting budget date:", e);
+             setBudgetDateLabel('Invalid Date');
+           }
+       } else {
+           setBudgetDateLabel('Not Set');
+       }
+   }, [budget.lastSetDate]);
+
+    // Format today's date for dialog description
+    const [todayFormatted, setTodayFormatted] = useState('');
+    useEffect(() => {
+        setTodayFormatted(format(new Date(), 'MMM d, yyyy'));
+    }, []);
 
   return (
     <Card className="w-full bg-card border-primary/30 shadow-neon mb-4 sm:mb-6">
@@ -93,12 +101,15 @@ export const BudgetPanel: React.FC = () => {
         <div className="flex items-center gap-2">
              <Wallet className="h-5 w-5 text-primary" />
              <CardTitle className="text-base sm:text-lg font-semibold text-primary">
-                 Daily Budget {/* Changed Title */}
+                 Daily Budget
              </CardTitle>
              <TooltipProvider>
                 <Tooltip delayDuration={100}>
                     <TooltipTrigger asChild>
-                        <span className="text-xs text-muted-foreground ml-1">({budgetDateLabel})</span>
+                         {/* Ensure span exists even if budgetDateLabel is loading */}
+                         <span className="text-xs text-muted-foreground ml-1 min-h-[1rem]">
+                            ({budgetDateLabel})
+                        </span>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs bg-popover text-popover-foreground border-primary/30">
                         Budget set for {budgetDateLabel}. Resets daily.
@@ -118,7 +129,8 @@ export const BudgetPanel: React.FC = () => {
             <DialogHeader>
               <DialogTitle className="text-primary">Set Daily Budget Limit</DialogTitle>
               <DialogDescription className="text-muted-foreground text-sm pt-1">
-                 This budget will apply for today ({format(new Date(), 'MMM d, yyyy')}) and resets automatically each day.
+                 {/* Use state for formatted date */}
+                 This budget will apply for today ({todayFormatted}) and resets automatically each day.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit(handleSaveBudget)}>
@@ -155,6 +167,7 @@ export const BudgetPanel: React.FC = () => {
        <CardContent className="space-y-3 sm:space-y-4 px-4 pb-4 sm:px-6 sm:pb-5">
          <div className="space-y-1">
              <div className="flex justify-between items-center text-xs sm:text-sm text-muted-foreground">
+                 {/* Format currency values */}
                  <span>Spent Today: {formatCurrency(budget.spent)}</span>
                  <span>Daily Limit: {formatCurrency(budget.limit)}</span>
              </div>
@@ -182,11 +195,13 @@ export const BudgetPanel: React.FC = () => {
                 </span>
             </div>
              <div className={`text-base sm:text-xl font-bold ${isOverBudget ? 'text-destructive' : 'text-green-400'}`}>
+                {/* Format remaining currency */}
                 {formatCurrency(remaining)}
             </div>
          </div>
          {isOverBudget && (
             <p className="text-xs text-destructive/80 text-right">
+                 {/* Format over budget amount */}
                 Over daily budget by {formatCurrency(Math.abs(remaining))}
             </p>
          )}
@@ -227,3 +242,5 @@ const BudgetPanelSkeleton: React.FC = () => {
     </Card>
   );
 };
+
+    

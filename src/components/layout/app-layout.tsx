@@ -24,7 +24,7 @@ import {
   FileText,
   Star,
   Boxes,
-  ShoppingBag,
+  ShoppingBag, // Using ShoppingBag now
   Menu,
   X,
   History,
@@ -34,7 +34,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { useAdMob } from '@/hooks/useAdmob'; // Removed AdMob hook
+// Removed AdInitializer import
 
 const APP_NAME = "Neon Shopping List";
 
@@ -77,13 +77,13 @@ const MobileHeader = () => {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  // const { showInterstitialAd } = useAdMob(); // Removed AdMob hook
+  // Removed direct useAdMob hook
 
   const mainMenuItems = [
     { href: '/list', label: 'Shopping List', icon: LayoutGrid },
-    { href: '/stats', label: 'Dashboard', icon: BarChart3 },
-    { href: '/history', label: 'History', icon: History },
-    { href: '/currency', label: 'Currency', icon: DollarSign },
+    { href: '/stats', label: 'Dashboard', icon: BarChart3, showAd: false }, // Mark for interstitial ad - Disabled
+    { href: '/history', label: 'History', icon: History, showAd: false }, // Mark for interstitial ad - Disabled
+    { href: '/currency', label: 'Currency', icon: DollarSign, showAd: false }, // Mark for interstitial ad - Disabled
   ];
 
   const helpMenuItems = [
@@ -95,16 +95,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/more-apps', label: 'More Apps', icon: Boxes },
   ];
 
-  const handleLinkClick = (href: string) => {
-    // Removed interstitial ad calls
-    // const adRoutes = ['/stats', '/history', '/currency'];
-    // if (adRoutes.includes(href)) {
-    //   showInterstitialAd();
-    // }
-  };
+   // Function to handle link clicks and potentially show ads
+   const handleLinkClick = (item: { href: string, showAd?: boolean }) => {
+       // Close mobile sidebar if open
+       // This part needs access to `setOpenMobile` from context,
+       // which isn't directly available here without prop drilling or context import.
+       // For simplicity, we'll rely on Sheet's default close-on-navigate behavior if applicable,
+       // or the user manually closing it.
+
+       // Show interstitial ad if marked and ad function is available
+       // if (item.showAd) {
+       //     showInterstitialAd(); // Call the imported function - AdMob removed
+       // }
+   };
+
 
   return (
     <SidebarProvider>
+       {/* Ad Initializer Component Removed - No AdMob */}
+
       {/* Desktop Sidebar */}
       <Sidebar className="hidden md:flex md:flex-col"> {/* Ensure sidebar uses flex */}
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
@@ -121,7 +130,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   asChild
                   isActive={pathname === item.href}
                   tooltip={item.label}
-                  onClick={() => handleLinkClick(item.href)}
+                   // Call handleLinkClick on button interaction
+                   onClick={() => handleLinkClick(item)}
                 >
                   <Link href={item.href}>
                     <item.icon />
@@ -142,7 +152,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       tooltip={item.label}
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleLinkClick(item.href)} // Removed ad logic here too
+                       // Call handleLinkClick on button interaction
+                       onClick={() => handleLinkClick(item)}
                     >
                       <Link href={item.href}>
                         <item.icon />
@@ -161,22 +172,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       {/* Main Content Area */}
+       {/* The AdMob banner was removed */}
       <SidebarInset className="flex flex-col min-h-screen overflow-x-hidden">
         {/* Mobile Header */}
         <MobileHeader />
 
         {/* Content */}
-        {/* Removed padding-bottom related to fixed footer */}
+         {/* No extra padding needed at the bottom for banner */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
         </main>
-
-        {/* Ad Banner Placeholder - Removed */}
-        {/*
-        <footer className="fixed bottom-0 left-0 right-0 z-20 h-16 bg-card border-t border-border/30 flex items-center justify-center text-muted-foreground text-sm md:ml-[var(--sidebar-width)] peer-data-[state=collapsed]:md:ml-[var(--sidebar-width-icon)] peer-data-[collapsible=offcanvas]:md:ml-0 peer-data-[variant=inset]:md:left-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:right-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:bottom-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:rounded-b-xl transition-[margin-left,left,right,bottom] duration-200 ease-linear">
-           AdMob Banner Placeholder
-         </footer>
-        */}
 
       </SidebarInset>
     </SidebarProvider>

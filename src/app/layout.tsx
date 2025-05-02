@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist_Mono } from 'next/font/google'; // Using Mono for a more cyberpunk feel
 import './globals.css';
@@ -5,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
-// import { AdInitializer } from '@/components/ads/ad-initializer'; // Removed AdInitializer
+// Removed AdInitializer import from here
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -31,7 +32,7 @@ export default function RootLayout({
         )}
       >
         <Providers>
-           {/* <AdInitializer /> */} {/* Removed AdInitializer */}
+           {/* Removed AdInitializer component from here */}
           <AppLayout>
              {children}
           </AppLayout>
@@ -41,3 +42,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    
