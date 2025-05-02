@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
-// Removed AdInitializer import from here
+import ClientOnly from '@/components/client-only'; // Import ClientOnly wrapper
+import { SidebarProvider } from '@/components/ui/sidebar';
+
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -32,15 +34,17 @@ export default function RootLayout({
         )}
       >
         <Providers>
-           {/* Removed AdInitializer component from here */}
-          <AppLayout>
+           {/* Ad Initializer Component needs to run client-side */}
+            <ClientOnly>
+            </ClientOnly>
+            <SidebarProvider>
+             <AppLayout>
              {children}
-          </AppLayout>
+            </AppLayout>
+            </SidebarProvider>
           <Toaster />
         </Providers>
       </body>
     </html>
   );
 }
-
-    

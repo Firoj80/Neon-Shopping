@@ -5,6 +5,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Removed ReactQueryDevtools import
 import { AppProvider } from '@/context/app-context'; // Assuming context is created here
+// Removed SidebarProvider import
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,12 +17,12 @@ const queryClient = new QueryClient({
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Removed isClient state as it was only used for Devtools
-
-  // No longer need useEffect for Devtools initialization
+  // Removed SidebarProvider wrapping
 
   return (
     <QueryClientProvider client={queryClient}>
         <AppProvider>
+            {/* Removed SidebarProvider wrap */}
             {children}
             {/* Removed ReactQueryDevtools rendering logic */}
             {/* {isClient && <ReactQueryDevtools initialIsOpen={false} />} */}
@@ -29,4 +30,3 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </QueryClientProvider>
   );
 }
-
