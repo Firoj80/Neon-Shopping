@@ -34,6 +34,9 @@ import { Button } from '../ui/button';
 import { cn } from '@/lib/utils'; // Import cn for conditional classes
 import { motion, AnimatePresence } from 'framer-motion'; // Keep framer-motion imports
 
+// Consistent App Name
+const APP_NAME = "Neon Shopping List";
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
@@ -59,7 +62,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarHeader className="p-4 border-b border-border/30">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
             <Wallet className="w-6 h-6" />
-            <span>Neon Shopping List</span> {/* Ensure this name is consistent */}
+            <span>{APP_NAME}</span> {/* Use constant */}
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col"> {/* Use flex-col */}
@@ -113,14 +116,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
             <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
                 <Wallet className="w-6 h-6" />
-                 {/* Ensure this name is consistent */}
-                <span className="font-bold">Neon Shopping List</span>
+                <span className="font-bold">{APP_NAME}</span> {/* Use constant */}
             </Link>
             {/* Hamburger Menu Trigger */}
-             {/* Use Menu icon from lucide-react */}
             <SidebarTrigger asChild>
                  <Button variant="ghost" size="icon" className="md:hidden">
-                    {/* The animated icon logic is now handled within SidebarTrigger itself */}
+                    {/* Animated icon logic is handled within SidebarTrigger */}
                  </Button>
             </SidebarTrigger>
         </header>
