@@ -1,3 +1,4 @@
+
 "use client";
 import React from 'react';
 import Link from 'next/link';
@@ -8,25 +9,26 @@ import {
   ShieldCheck,
   FileText,
   Star,
-  ShoppingBag,
   Menu,
   DollarSign,
   X,
   History,
   BarChart3,
-  WalletCards,
+  WalletCards, // More relevant icon for budget/shopping
+  ShoppingCart, // Keep for list
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
 import { showInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
 import dynamic from 'next/dynamic';
 
 
 // Dynamically import AdComponent only on the client-side
-const AdComponent = dynamic(() => import('@/components/admob/ad-component').then(mod => mod.AdComponent), { // Corrected import path
+// Explicitly select the default export to fix the "Element type is invalid" error
+const AdComponent = dynamic(() => import('@/components/admob/ad-component').then(mod => mod.default), {
   ssr: false, // Ensure this component is only loaded on the client-side
 });
 
@@ -59,7 +61,7 @@ const MobileHeader = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <ShoppingBag className="w-6 h-6" />
+        <WalletCards className="w-6 h-6" /> {/* Changed icon */}
         <span>{APP_NAME}</span> {/* Use APP_NAME */}
       </Link>
 
@@ -72,18 +74,17 @@ const MobileHeader = () => {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
+  const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
   const router = useRouter(); // Use router for navigation after ad
 
   const mainMenuItems = [
-    { href: '/list', label: 'Shopping List', icon: ShoppingBag }, // Use ShoppingBag
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart }, // Use ShoppingCart
     { href: '/stats', label: 'Dashboard', icon: BarChart3, showAd: true }, // Mark for interstitial ad
     { href: '/history', label: 'History', icon: History, showAd: true }, // Mark for interstitial ad
-     { href: '/currency', label: 'Currency', icon: DollarSign, showAd: true } // Mark for interstitial ad
+    { href: '/currency', label: 'Currency', icon: DollarSign, showAd: true } // Mark for interstitial ad
   ];
 
   const helpMenuItems = [
-
     { href: '/about', label: 'About Us', icon: HelpCircle },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: ShieldCheck },
@@ -103,15 +104,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         if (item.showAd) {
           try {
+              // Attempt to show the *prepared* ad
               await showInterstitialAd();
               // Wait a short moment after ad potentially closes before navigating
-              // This is optional, adjust timing if needed
               setTimeout(() => {
                  router.push(item.href);
-              }, 100); // 100ms delay
+              }, 150); // Slightly increased delay
           } catch (error) {
               console.error("Error showing interstitial or navigating:", error);
-              router.push(item.href); // Navigate even if ad fails
+              // Navigate anyway if showing ad failed
+              router.push(item.href);
           }
         } else {
            router.push(item.href); // Navigate directly if no ad
@@ -121,14 +123,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
-       {/* AdMob Banner Placement */}
+       {/* AdMob Banner Placement - Rendered client-side only */}
        <AdComponent />
 
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
          <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-             <ShoppingBag className="w-6 h-6" /> {/* Changed icon */}
+             <WalletCards className="w-6 h-6" /> {/* Changed icon */}
              <span>{APP_NAME}</span>
            </Link>
          </SidebarHeader>
@@ -183,7 +185,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
          <MobileHeader />
 
          {/* Content - Add padding bottom to avoid overlap with fixed banner */}
-         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[70px]"> {/* Increased padding bottom */}
+         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[70px] md:pb-8"> {/* Adjusted padding bottom for mobile */}
            {children}
          </main>
 
