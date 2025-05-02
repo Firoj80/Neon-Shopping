@@ -26,11 +26,13 @@ import {
   Star,
   Boxes,
   Wallet,
-  Menu, // Keep using Menu icon for trigger
+  Menu,
+  X, // Keep X for the close animation
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils'; // Import cn for conditional classes
+import { motion, AnimatePresence } from 'framer-motion'; // Keep framer-motion imports
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -57,7 +59,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarHeader className="p-4 border-b border-border/30">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
             <Wallet className="w-6 h-6" />
-            <span>Neon Shopping List</span> {/* Updated App Name */}
+            <span>Neon Shopping List</span> {/* Ensure this name is consistent */}
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col"> {/* Use flex-col */}
@@ -111,16 +113,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
             <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
                 <Wallet className="w-6 h-6" />
-                <span className="font-bold">Neon Shopping List</span> {/* Updated App Name */}
+                 {/* Ensure this name is consistent */}
+                <span className="font-bold">Neon Shopping List</span>
             </Link>
             {/* Hamburger Menu Trigger */}
-             {/* Pass the Button as the single child to SidebarTrigger when using asChild */}
-             <SidebarTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Menu className="h-5 w-5" /> {/* Icon is inside the button */}
-                    {/* The sr-only text is implicitly handled by the Button's accessible name/label defined within SidebarTrigger */}
-                </Button>
-             </SidebarTrigger>
+            <SidebarTrigger>
+                {/* The Button and icons are now handled inside SidebarTrigger */}
+            </SidebarTrigger>
         </header>
 
         {/* Content */}
