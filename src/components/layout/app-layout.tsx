@@ -1,19 +1,6 @@
 "use client";
-
 import React from 'react';
 import Link from 'next/link';
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarInset,
-  useSidebar,
-} from '@/components/ui/sidebar';
 import {
   LayoutGrid,
   BarChart3,
@@ -34,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
-const AdComponent = dynamic(() => import('../admob/ad-component'), {
+const AdComponent = dynamic(() => import('@/components/admob/ad-component'), {
   ssr: false, // Ensure this component is only loaded on the client-side
 });
 
@@ -88,10 +75,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/list', label: 'Shopping List', icon: LayoutGrid },
     { href: '/stats', label: 'Dashboard', icon: BarChart3, showAd: false }, // Mark for interstitial ad
     { href: '/history', label: 'History', icon: History, showAd: false }, // Mark for interstitial ad
-    { href: '/currency', label: 'Currency', icon: DollarSign, showAd: false }, // Mark for interstitial ad
   ];
 
   const helpMenuItems = [
+    { href: '/currency', label: 'Currency', icon: DollarSign },
     { href: '/about', label: 'About Us', icon: HelpCircle },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: ShieldCheck },
@@ -184,3 +171,4 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </>
   );
 }
+
