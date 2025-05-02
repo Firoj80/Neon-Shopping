@@ -3,22 +3,17 @@
 
 import { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { AdMob, AdOptions, AdLoadInfo, BannerAdOptions, BannerAdSize, BannerAdPosition, InterstitialAdOptions } from '@capacitor-community/admob';
 
-// Use dynamic import for the AdMob plugin to avoid SSR issues
-// We assume the plugin installs a global AdMob object when running in Capacitor
-declare global {
-    interface Window {
-        AdMob?: any; // Use 'any' for simplicity, replace with actual plugin type if available
-    }
-}
-
-// AdMob configuration (Replace with your actual IDs)
+// AdMob configuration (Replace with your actual IDs - Use environment variables ideally)
 const ADMOB_APP_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy'; // Replace with your Android App ID
 const BANNER_AD_UNIT_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz'; // Replace with your Android Banner ID
 const INTERSTITIAL_AD_UNIT_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx/wwwwwwwwww'; // Replace with your Android Interstitial ID
 
+let isAdMobInitialized = false; // Prevent multiple initializations
+let isInterstitialPrepared = false; // Track if interstitial is ready
+
 export function AdInitializer() {
-  const [isAdMobInitialized, setIsAdMobInitialized] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   // Ensure code runs only on the client after hydration
@@ -26,107 +21,112 @@ export function AdInitializer() {
     setIsClient(true);
   }, []);
 
-
   useEffect(() => {
-    // Only proceed if on client and AdMob plugin seems available
-    if (!isClient || typeof window === 'undefined' || typeof window.AdMob === 'undefined') {
-      if (isClient && Capacitor.isNativePlatform()) {
-        // Log if native but AdMob plugin is missing (potential build issue)
-        console.warn("AdMob plugin not found. Ensure it's installed and synced correctly in Capacitor.");
+    // Only proceed if on client and on a native platform
+    if (!isClient || !Capacitor.isNativePlatform()) {
+      if (isClient && !Capacitor.isNativePlatform()) {
+        // console.log("Not on native platform, skipping AdMob.");
       }
-      return;
-    }
-
-    // Check if running on a native platform (Android/iOS)
-    if (!Capacitor.isNativePlatform()) {
-       console.log("Not running on native platform, skipping AdMob initialization.");
       return;
     }
 
     const initialize = async () => {
+      if (isAdMobInitialized) return; // Don't initialize multiple times
+
       try {
         console.log("Attempting AdMob initialization...");
-         // Use optional chaining just in case
-        await window.AdMob?.initialize({
-            appId: ADMOB_APP_ID_ANDROID, // Use the appropriate App ID for the platform
-            // Publisher ID is often not needed for initialization with newer plugins
+        // Initialize AdMob
+        await AdMob.initialize({
+          // requestTrackingAuthorization: true, // Optional: Request tracking authorization (iOS)
+          // testingDevices: ['YOUR_TEST_DEVICE_ID'], // Add test device IDs during development
+          initializeForTesting: process.env.NODE_ENV !== 'production', // Use test ads in development
         });
+        isAdMobInitialized = true;
         console.log('AdMob initialized successfully.');
 
         // Show Banner Ad
-        await window.AdMob?.showBanner({
+        const bannerOptions: BannerAdOptions = {
           adId: BANNER_AD_UNIT_ID_ANDROID,
-          position: window.AdMob?.AD_POSITION.BOTTOM_CENTER,
-          // isTesting: process.env.NODE_ENV !== 'production', // Use test ads during development
-          isTesting: true, // Force test ads for now
-          npa: "DISABLED", // Adjust Non-Personalized Ads setting as needed
-        });
+          adSize: BannerAdSize.ADAPTIVE_BANNER,
+          position: BannerAdPosition.BOTTOM_CENTER,
+          margin: 0,
+          isTesting: process.env.NODE_ENV !== 'production',
+          // npa: true, // Optional: Non-personalized ads
+        };
+        await AdMob.showBanner(bannerOptions);
         console.log('Banner Ad requested.');
 
-        // Prepare Interstitial Ad (Load it but don't show yet)
-        await window.AdMob?.prepareInterstitial({
-          adId: INTERSTITIAL_AD_UNIT_ID_ANDROID,
-           // isTesting: process.env.NODE_ENV !== 'production',
-           isTesting: true, // Force test ads
-          autoShow: false,
-        });
-        console.log('Interstitial Ad prepared.');
-
-        setIsAdMobInitialized(true); // Mark as initialized
+        // Prepare Interstitial Ad
+        await prepareInterstitialAd(); // Call the preparation function
 
       } catch (error) {
-        console.error('Error initializing AdMob or showing ads:', error);
-        setIsAdMobInitialized(false); // Ensure state reflects failure
+        console.error('Error initializing AdMob or handling ads:', error);
+        isAdMobInitialized = false; // Reset flag on error
       }
     };
 
-    // Only initialize once
-    if (!isAdMobInitialized) {
-      initialize();
-    }
+    initialize();
 
-    // No cleanup needed usually for AdMob initialize/showBanner
-    // If the plugin provided destroy methods, you could add them here.
+    // Cleanup function (optional, AdMob doesn't usually require explicit cleanup)
+    // return () => {
+    //   AdMob.hideBanner(); // Example cleanup if needed
+    // };
 
-  }, [isClient, isAdMobInitialized]); // Rerun if isClient changes or if initialization fails and needs retry
+  }, [isClient]); // Rerun if isClient changes
 
   // This component doesn't render anything visible itself
   return null;
 }
 
-// Function to show interstitial ad (exported for use elsewhere)
-export const showInterstitialAd = async () => {
-    // Check platform and if AdMob plugin exists
-    if (typeof window !== 'undefined' && typeof window.AdMob !== 'undefined' && Capacitor.isNativePlatform()) {
-        try {
-             console.log("Attempting to show Interstitial Ad...");
-            // Prepare might be needed again if not loaded, but usually prepare once is enough
-            // await window.AdMob?.prepareInterstitial({ adId: INTERSTITIAL_AD_UNIT_ID_ANDROID, isTesting: true, autoShow: false });
-            await window.AdMob?.showInterstitial();
-            console.log("Interstitial Ad shown (or attempted).");
-            // Reload/prepare the next interstitial after showing one
-            await window.AdMob?.prepareInterstitial({
-                adId: INTERSTITIAL_AD_UNIT_ID_ANDROID,
-                isTesting: true,
-                autoShow: false,
-            });
-             console.log("Next Interstitial Ad prepared.");
-        } catch (error) {
-            console.error("Error showing Interstitial Ad:", error);
-             // Attempt to prepare next one even if showing failed
-             try {
-                await window.AdMob?.prepareInterstitial({
-                    adId: INTERSTITIAL_AD_UNIT_ID_ANDROID,
-                    isTesting: true,
-                    autoShow: false,
-                });
-                console.log("Next Interstitial Ad prepared after error.");
-             } catch (prepareError) {
-                 console.error("Error preparing next Interstitial Ad after previous error:", prepareError);
-             }
-        }
-    } else {
-        console.log("Interstitial Ad not shown: Not on native platform or AdMob not available.");
-    }
+// Function to prepare the interstitial ad (exported for use elsewhere)
+export const prepareInterstitialAd = async () => {
+  // Check platform and if AdMob plugin is initialized
+  if (!isAdMobInitialized || !Capacitor.isNativePlatform()) {
+    console.log("AdMob not initialized or not on native platform. Cannot prepare interstitial.");
+    return;
+  }
+
+  if (isInterstitialPrepared) {
+    // console.log("Interstitial already prepared.");
+    return; // Don't prepare again if already ready
+  }
+
+  try {
+    const options: InterstitialAdOptions = {
+      adId: INTERSTITIAL_AD_UNIT_ID_ANDROID,
+      isTesting: process.env.NODE_ENV !== 'production',
+      // npa: true,
+    };
+    console.log("Preparing Interstitial Ad...");
+    await AdMob.prepareInterstitial(options);
+    isInterstitialPrepared = true;
+    console.log('Interstitial Ad prepared successfully.');
+  } catch (error) {
+    console.error('Error preparing Interstitial Ad:', error);
+    isInterstitialPrepared = false; // Reset flag on error
+  }
 };
 
+// Function to show the prepared interstitial ad (exported for use elsewhere)
+export const showInterstitialAd = async () => {
+    // Check platform and if AdMob is initialized and interstitial is ready
+  if (!isAdMobInitialized || !isInterstitialPrepared || !Capacitor.isNativePlatform()) {
+    console.log("Cannot show Interstitial Ad: AdMob not initialized, ad not prepared, or not on native platform.");
+    return;
+  }
+
+  try {
+    console.log("Attempting to show Interstitial Ad...");
+    await AdMob.showInterstitial();
+    console.log("Interstitial Ad shown successfully.");
+    // Reset prepared state and prepare the next one
+    isInterstitialPrepared = false;
+    await prepareInterstitialAd(); // Prepare the next one immediately
+
+  } catch (error) {
+    console.error("Error showing Interstitial Ad:", error);
+    isInterstitialPrepared = false; // Reset flag on error
+     // Attempt to prepare next one even if showing failed
+     await prepareInterstitialAd();
+  }
+};

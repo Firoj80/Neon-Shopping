@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
-import ClientOnly from '@/components/client-only'; // Import ClientOnly wrapper
+// Removed ClientOnly import as AdComponent handles client-side loading
 import { SidebarProvider } from '@/components/ui/sidebar';
 
 
@@ -34,9 +34,7 @@ export default function RootLayout({
         )}
       >
         <Providers>
-           {/* Ad Initializer Component needs to run client-side */}
-            <ClientOnly>
-            </ClientOnly>
+           {/* AdInitializer is rendered via AdComponent which is dynamically imported client-side */}
             <SidebarProvider>
              <AppLayout>
              {children}

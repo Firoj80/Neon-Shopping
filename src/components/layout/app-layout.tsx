@@ -9,9 +9,9 @@ import {
   ShieldCheck,
   FileText,
   Star,
-  Menu,
+  Menu, // Keep Menu icon
   DollarSign,
-  X,
+  X, // Keep X icon
   History,
   BarChart3,
   WalletCards, // More relevant icon for budget/shopping
@@ -22,13 +22,12 @@ import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
-import { showInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
+import { showInterstitialAd } from '@/components/admob/ad-initializer'; // Import the AdMob function
 import dynamic from 'next/dynamic';
 
 
 // Dynamically import AdComponent only on the client-side
-// Explicitly select the default export to fix the "Element type is invalid" error
-const AdComponent = dynamic(() => import('@/components/admob/ad-component').then(mod => mod.default), {
+const AdComponent = dynamic(() => import('@/components/admob/ad-component'), { // Corrected import path
   ssr: false, // Ensure this component is only loaded on the client-side
 });
 
@@ -78,7 +77,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter(); // Use router for navigation after ad
 
   const mainMenuItems = [
-    { href: '/list', label: 'Shopping List', icon: ShoppingCart }, // Use ShoppingCart
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: BarChart3, showAd: true }, // Mark for interstitial ad
     { href: '/history', label: 'History', icon: History, showAd: true }, // Mark for interstitial ad
     { href: '/currency', label: 'Currency', icon: DollarSign, showAd: true } // Mark for interstitial ad
@@ -107,9 +106,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               // Attempt to show the *prepared* ad
               await showInterstitialAd();
               // Wait a short moment after ad potentially closes before navigating
+              // Adjust delay as needed, ensure it's long enough for ad flow but not annoying
               setTimeout(() => {
                  router.push(item.href);
-              }, 150); // Slightly increased delay
+              }, 150); // Delay might need adjustment based on ad behavior
           } catch (error) {
               console.error("Error showing interstitial or navigating:", error);
               // Navigate anyway if showing ad failed
@@ -123,7 +123,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
-       {/* AdMob Banner Placement - Rendered client-side only */}
+       {/* AdMob Banner Placement */}
+       {/* AdComponent renders AdInitializer which handles the banner */}
        <AdComponent />
 
        {/* Desktop Sidebar */}
@@ -185,7 +186,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
          <MobileHeader />
 
          {/* Content - Add padding bottom to avoid overlap with fixed banner */}
-         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[70px] md:pb-8"> {/* Adjusted padding bottom for mobile */}
+         {/* Adjust pb value if banner height differs or causes overlap */}
+         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[60px] sm:pb-[70px] md:pb-8">
            {children}
          </main>
 
