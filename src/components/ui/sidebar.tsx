@@ -4,7 +4,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, X } from "lucide-react" // Import X icon
+import { Menu, X } from "lucide-react" // Use Menu icon for consistency
 import { motion, AnimatePresence } from "framer-motion" // Import Framer Motion
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -288,6 +288,24 @@ const SidebarTrigger = React.forwardRef<
     closed: { rotate: 0 },
    };
 
+  // If asChild is true, render the child component directly.
+   if (asChild) {
+    // Ensure only a single child is passed when asChild is true
+    const child = React.Children.only(children);
+     return (
+       <Slot
+         ref={ref}
+         data-sidebar="trigger"
+         onClick={handleClick}
+         className={cn(className)}
+         {...props} // Pass down props like variant, size
+       >
+         {child}
+       </Slot>
+     );
+   }
+
+
   return (
     <Comp
       ref={ref}
@@ -298,10 +316,7 @@ const SidebarTrigger = React.forwardRef<
       onClick={handleClick}
       {...props}
     >
-      {asChild ? (
-        children
-      ) : (
-         // Use AnimatePresence for smooth icon transition
+        {/* Use AnimatePresence for smooth icon transition */}
          <AnimatePresence initial={false} mode="wait">
            <motion.div
             key={isMobile && openMobile ? 'close' : 'open'} // Change key based on state
@@ -310,15 +325,14 @@ const SidebarTrigger = React.forwardRef<
             exit={{ rotate: isMobile && openMobile ? 90 : -90, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-             {/* Conditionally render PanelLeft (☰) or X */}
+             {/* Conditionally render Menu (☰) or X */}
              {isMobile && openMobile ? (
                 <X className="h-5 w-5" />
              ) : (
-                <PanelLeft className="h-5 w-5" />
+                <Menu className="h-5 w-5" /> // Use Menu icon here
              )}
            </motion.div>
          </AnimatePresence>
-        )}
       <span className="sr-only">Toggle Sidebar</span>
     </Comp>
   );
