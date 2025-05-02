@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -20,13 +21,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel
 } from '@/components/ui/select';
 import type { ShoppingListItem } from '@/context/app-context';
-
-const categories = [
-  "Grocery", "Electronics", "Home", "Beauty", "Health",
-  "Fitness", "Sports", "Clothing", "Books", "Gifts", "Other"
-];
+import { itemCategories } from '@/config/categories'; // Import categories from config
 
 const formSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -154,17 +153,20 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                          >
                         <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
-                        <SelectContent className="bg-card border-primary/80 text-neonText">
-                        {categories.map((category) => (
-                            <SelectItem
-                             key={category}
-                             value={category}
-                             className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary"
-                             >
-                            {category}
-                            </SelectItem>
-                        ))}
-                        </SelectContent>
+                         <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto">
+                             <SelectGroup>
+                                <SelectLabel className="text-muted-foreground/80">Categories</SelectLabel>
+                                {itemCategories.map((category) => (
+                                    <SelectItem
+                                        key={category}
+                                        value={category}
+                                        className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary"
+                                    >
+                                        {category}
+                                    </SelectItem>
+                                ))}
+                             </SelectGroup>
+                         </SelectContent>
                     </Select>
                 )}
             />

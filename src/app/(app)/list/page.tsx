@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading } = useAppContext();
@@ -93,37 +95,49 @@ export default function ShoppingListPage() {
 
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,4rem)-2rem)] relative"> {/* Adjust height based on header/footer */}
         <BudgetPanel />
 
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-secondary">Your Items</h2>
-            <Button onClick={handleAddItemClick} size="sm" className="shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-            </Button>
+            {/* Button is moved below */}
         </div>
 
-        {isLoading ? (
-             <div className="flex flex-col gap-2 flex-grow">
-                {renderSkeletons()}
-             </div>
-        ) : state.shoppingList.length === 0 ? (
-             <div className="flex-grow flex items-center justify-center">
-                <p className="text-muted-foreground text-center py-10">Your shopping list is empty. Add some items!</p>
-            </div>
-        ) : (
-            // Use flex column for list view
-            <div className="flex flex-col gap-2 flex-grow">
-            {state.shoppingList.map((item) => (
-                <ItemCard
-                key={item.id}
-                item={item}
-                onEdit={handleEditItem}
-                onDelete={handleDeleteItem}
-                />
-            ))}
-            </div>
-        )}
+        {/* Wrap the list in ScrollArea */}
+        <ScrollArea className="flex-grow pr-4 -mr-4 mb-16"> {/* Add padding bottom for FAB */}
+             {isLoading ? (
+                 <div className="flex flex-col gap-2">
+                    {renderSkeletons()}
+                 </div>
+            ) : state.shoppingList.length === 0 ? (
+                 <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground text-center py-10">Your shopping list is empty. Add some items!</p>
+                </div>
+            ) : (
+                // Use flex column for list view
+                <div className="flex flex-col gap-2">
+                {state.shoppingList.map((item) => (
+                    <ItemCard
+                    key={item.id}
+                    item={item}
+                    onEdit={handleEditItem}
+                    onDelete={handleDeleteItem}
+                    />
+                ))}
+                </div>
+            )}
+        </ScrollArea>
+
+         {/* Floating Action Button */}
+         <Button
+            onClick={handleAddItemClick}
+            size="lg" // Make it larger
+            className="fixed bottom-20 right-6 z-10 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground" // Use theme colors
+            aria-label="Add new item"
+          >
+             <PlusCircle className="h-6 w-6" />
+         </Button>
+
 
         <AddEditItemModal
             isOpen={isModalOpen}
@@ -155,5 +169,3 @@ export default function ShoppingListPage() {
     </div>
   );
 }
-
-    
