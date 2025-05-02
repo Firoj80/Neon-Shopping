@@ -1,28 +1,34 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
-import { ExpenseChart } from '@/components/charts/expense-chart'; // Keep for line/bar
+import { ExpenseChart } from '@/components/charts/expense-chart';
 import type { ProcessedExpenseData } from '@/components/charts/expense-chart';
-import { CategoryPieChart } from '@/components/charts/category-pie-chart'; // Import new Pie Chart
-import type { CategoryData } from '@/components/charts/category-pie-chart'; // Import type for Pie Chart data
+import { CategoryPieChart } from '@/components/charts/category-pie-chart';
+import type { CategoryData } from '@/components/charts/category-pie-chart';
 import { useAppContext } from '@/context/app-context';
 import { subDays, format, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon } from 'lucide-react'; // Added PieChartIcon
+import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon } from 'lucide-react'; // Added icons
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { itemCategories } from '@/config/categories';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 
-type ChartType = 'line' | 'bar';
+// Define Chart types
+type TrendChartType = 'line' | 'bar'; // For Expense Trend
+type CategoryChartType = 'pie' | 'bar'; // For Category Breakdown (Added bar option)
+
+
 type TimePeriodPreset = '7d' | '30d' | '90d' | 'custom';
 type CategoryFilter = string; // 'all' or specific category name
 
 export default function StatsPage() {
     const { state, formatCurrency, isLoading } = useAppContext();
-    const [chartType, setChartType] = useState<ChartType>('line');
+    const [trendChartType, setTrendChartType] = useState<TrendChartType>('line');
+    const [categoryChartType, setCategoryChartType] = useState<CategoryChartType>('pie'); // Default to pie
     const [timePeriodPreset, setTimePeriodPreset] = useState<TimePeriodPreset>('30d');
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -45,9 +51,8 @@ export default function StatsPage() {
             case '30d': default: startDate = startOfDay(subDays(now, 29)); break;
         }
         setDateRange({ from: startDate, to: endDate });
-    }, [timePeriodPreset]); // Removed dateRange from dependencies to avoid loop
+    }, [timePeriodPreset]);
 
-    // Handler for DateRangePicker changes
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
         if (newRange?.from && newRange?.to) {
@@ -55,7 +60,7 @@ export default function StatsPage() {
         }
     };
 
-     // Filter items based on current date range and category filter
+     // Filter items based on current date range and category filter (Only *checked* items)
      const filteredItems = useMemo(() => {
         if (!dateRange?.from || !dateRange?.to) return [];
 
@@ -63,8 +68,7 @@ export default function StatsPage() {
         const endDate = endOfDay(dateRange.to);
 
         return state.shoppingList.filter(item => {
-            // Filter only *checked* (purchased) items for expense analysis
-            if (!item.checked) return false;
+            if (!item.checked) return false; // Crucial: Only analyze purchased items
 
             const itemDate = new Date(item.dateAdded);
             const isWithinDate = isWithinInterval(itemDate, { start: startDate, end: endDate });
@@ -107,22 +111,21 @@ export default function StatsPage() {
 
         const formattedData: ProcessedExpenseData[] = Object.entries(dailyTotals)
           .map(([dateStr, total]) => ({
-             date: format(dateMap.get(dateStr)!, dateFormat), // Format using original Date object
+             date: format(dateMap.get(dateStr)!, dateFormat),
              total,
            }))
           .sort((a, b) => {
-              // Find original date strings for sorting comparison
               const dateAStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === a.date)?.[0];
               const dateBStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === b.date)?.[0];
-              if (!dateAStr || !dateBStr) return 0; // Should not happen
+              if (!dateAStr || !dateBStr) return 0;
               return dateMap.get(dateAStr)!.getTime() - dateMap.get(dateBStr)!.getTime();
           });
 
         return formattedData;
 
-    }, [filteredItems, dateRange]); // Depend on filteredItems and dateRange
+    }, [filteredItems, dateRange]);
 
-     // Process data for Pie Chart (Category Breakdown)
+     // Process data for Category Breakdown (Pie or Bar)
      const processedCategoryData = useMemo(() => {
          const categoryTotals: Record<string, number> = {};
 
@@ -133,20 +136,18 @@ export default function StatsPage() {
              categoryTotals[item.category] += item.quantity * item.price;
          });
 
-         // Calculate total for percentage calculation
          const totalSpent = Object.values(categoryTotals).reduce((sum, total) => sum + total, 0);
-         if (totalSpent === 0) return []; // Avoid division by zero
+         if (totalSpent === 0) return [];
 
          const categoryData: CategoryData[] = Object.entries(categoryTotals)
              .map(([category, total]) => ({
                  category,
                  total,
-                 // fill is handled by the chart component using config
              }))
-             .sort((a, b) => b.total - a.total); // Sort by total descending
+             .sort((a, b) => b.total - a.total); // Sort by total descending for both chart types
 
          return categoryData;
-     }, [filteredItems]); // Depend on filteredItems
+     }, [filteredItems]);
 
 
      const summaryStats = useMemo(() => {
@@ -154,17 +155,14 @@ export default function StatsPage() {
 
         const totalSpent = filteredItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
         const daysWithSpending = new Set(filteredItems.map(item => format(new Date(item.dateAdded), 'yyyy-MM-dd')));
-        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size); // Ensure at least 1 to avoid division by zero
+        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size);
 
-         // Use processedTrendData for daily calculations to include zero-spend days within the range
          const numberOfDaysInRange = Math.max(1, processedTrendData.length);
          const averagePerDayInRange = totalSpent / numberOfDaysInRange;
          const averagePerSpendingDay = totalSpent / numberOfDaysWithSpending;
 
-         // Find highest spending day from processedTrendData
          const highestSpendDay = processedTrendData.reduce((max, day) => (day.total > max.total ? day : max), { date: '', total: -1 });
-
-         const totalItems = filteredItems.length; // Total purchased items in filters
+         const totalItems = filteredItems.length;
 
         return {
             totalSpent,
@@ -173,7 +171,7 @@ export default function StatsPage() {
             highestSpendDay: highestSpendDay.total >= 0 ? highestSpendDay : null,
             totalItems,
         };
-    }, [filteredItems, processedTrendData, dateRange]); // Depend on filteredItems and processedTrendData
+    }, [filteredItems, processedTrendData, dateRange]);
 
     if (isLoading) {
         return <StatsPageSkeleton />;
@@ -199,7 +197,6 @@ export default function StatsPage() {
 
 
     return (
-         // Use flex-col and gap for overall page structure
         <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0">
             <h1 className="text-xl sm:text-2xl font-bold text-primary">Expense Dashboard</h1>
 
@@ -238,9 +235,9 @@ export default function StatsPage() {
                      {/* Category Selector */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                          <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
-                             <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[state=open]]:border-secondary [&[state=open]]:shadow-secondary text-xs sm:text-sm">
+                             <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
                                  <Layers className="h-4 w-4 mr-2 opacity-70" />
-                                <SelectValue placeholder="Select category" />
+                                <SelectValue placeholder="Filter by category" />
                             </SelectTrigger>
                              <SelectContent
                                 className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto"
@@ -248,7 +245,7 @@ export default function StatsPage() {
                              >
                                  <ScrollArea className="h-full">
                                     <SelectGroup>
-                                        <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Filter by Category</SelectLabel>
+                                        <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Category</SelectLabel>
                                         <SelectItem value="all" className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">All Categories</SelectItem>
                                         {itemCategories.map((category) => (
                                             <SelectItem key={category} value={category} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
@@ -318,7 +315,7 @@ export default function StatsPage() {
                 </Card>
             </div>
 
-            {/* Chart Section - Use Grid for side-by-side charts on larger screens */}
+            {/* Chart Section */}
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                  {/* Expense Trend Chart */}
                  <Card className="bg-card border-primary/30 shadow-neon lg:col-span-1">
@@ -329,25 +326,27 @@ export default function StatsPage() {
                          </div>
                         <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
                              <Button
-                                variant={chartType === 'line' ? 'secondary' : 'ghost'}
-                                 size="sm"
-                                onClick={() => setChartType('line')}
-                                className={`h-7 px-2 text-xs ${chartType === 'line' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
-                            > Line </Button>
+                                variant={trendChartType === 'line' ? 'secondary' : 'ghost'}
+                                 size="icon" // Use icon size for consistency
+                                onClick={() => setTrendChartType('line')}
+                                className={`h-7 w-7 ${trendChartType === 'line' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                aria-label="Show as Line Chart"
+                            > <LineChartIcon className="h-4 w-4" /> </Button>
                             <Button
-                                variant={chartType === 'bar' ? 'secondary' : 'ghost'}
-                                 size="sm"
-                                onClick={() => setChartType('bar')}
-                                className={`h-7 px-2 text-xs ${chartType === 'bar' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
-                            > Bar </Button>
+                                variant={trendChartType === 'bar' ? 'secondary' : 'ghost'}
+                                 size="icon"
+                                onClick={() => setTrendChartType('bar')}
+                                className={`h-7 w-7 ${trendChartType === 'bar' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                aria-label="Show as Bar Chart"
+                            > <BarChart3 className="h-4 w-4" /> </Button>
                         </div>
                      </CardHeader>
                      <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
                         {processedTrendData.length > 0 ? (
-                            <ExpenseChart data={processedTrendData} chartType={chartType} />
+                            <ExpenseChart data={processedTrendData} chartType={trendChartType} /> // Pass trendChartType
                         ) : (
                             <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
-                                <p className="text-muted-foreground text-center text-sm">No expense data available for the selected filters.</p>
+                                <p className="text-muted-foreground text-center text-sm">No expense data available.</p>
                             </div>
                         )}
                     </CardContent>
@@ -355,18 +354,42 @@ export default function StatsPage() {
 
                  {/* Category Breakdown Chart */}
                  <Card className="bg-card border-secondary/30 shadow-neon lg:col-span-1">
-                     <CardHeader className="p-4 sm:p-5 pb-3 sm:pb-4">
-                         <CardTitle className="text-base sm:text-lg text-secondary flex items-center gap-2">
-                            <PieChartIcon className="h-5 w-5" /> Category Breakdown
-                         </CardTitle>
-                          <CardDescription className="text-xs text-muted-foreground mt-1">{getFilterLabel()}</CardDescription>
+                     <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
+                         <div>
+                             <CardTitle className="text-base sm:text-lg text-secondary flex items-center gap-2">
+                                <Layers className="h-5 w-5" /> Category Breakdown
+                             </CardTitle>
+                             <CardDescription className="text-xs text-muted-foreground mt-1">{getFilterLabel()}</CardDescription>
+                          </div>
+                           <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
+                               <Button
+                                    variant={categoryChartType === 'pie' ? 'primary' : 'ghost'}
+                                    size="icon"
+                                    onClick={() => setCategoryChartType('pie')}
+                                    className={`h-7 w-7 ${categoryChartType === 'pie' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                     aria-label="Show as Pie Chart"
+                                > <PieChartIcon className="h-4 w-4" /> </Button>
+                                <Button
+                                    variant={categoryChartType === 'bar' ? 'primary' : 'ghost'}
+                                    size="icon"
+                                    onClick={() => setCategoryChartType('bar')}
+                                    className={`h-7 w-7 ${categoryChartType === 'bar' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                    aria-label="Show as Bar Chart"
+                                > <BarChart3 className="h-4 w-4" /> </Button>
+                            </div>
                      </CardHeader>
                      <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
                          {processedCategoryData.length > 0 ? (
-                            <CategoryPieChart data={processedCategoryData} />
+                             categoryChartType === 'pie' ? (
+                                 <CategoryPieChart data={processedCategoryData} />
+                             ) : (
+                                 // Placeholder for future Category Bar Chart component
+                                 <ExpenseChart data={processedCategoryData.map(d => ({ date: d.category, total: d.total }))} chartType="bar" keyPrefix="category" />
+                                 // <CategoryBarChart data={processedCategoryData} />
+                             )
                          ) : (
                              <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
-                                 <p className="text-muted-foreground text-center text-sm">No spending by category for the selected filters.</p>
+                                 <p className="text-muted-foreground text-center text-sm">No spending by category.</p>
                              </div>
                          )}
                      </CardContent>
@@ -416,8 +439,11 @@ const StatsPageSkeleton: React.FC = () => (
              {/* Trend Chart Skeleton */}
             <Card className="bg-card border-border/20 shadow-md lg:col-span-1">
                  <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
-                     <Skeleton className="h-5 w-2/5 sm:h-6" />
-                     <Skeleton className="h-8 w-20 rounded-md" />
+                     <div className="w-3/5 space-y-1">
+                         <Skeleton className="h-5 sm:h-6 w-4/5" />
+                         <Skeleton className="h-4 w-3/5" />
+                     </div>
+                     <Skeleton className="h-8 w-16 rounded-md" />
                  </CardHeader>
                  <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center">
                      <Skeleton className="h-4/5 w-11/12" />
@@ -425,9 +451,12 @@ const StatsPageSkeleton: React.FC = () => (
             </Card>
              {/* Pie Chart Skeleton */}
              <Card className="bg-card border-border/20 shadow-md lg:col-span-1">
-                 <CardHeader className="p-4 sm:p-5 pb-3 sm:pb-4">
-                     <Skeleton className="h-5 w-3/5 sm:h-6 mb-1" />
-                     <Skeleton className="h-4 w-1/2" />
+                 <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
+                     <div className="w-3/5 space-y-1">
+                         <Skeleton className="h-5 sm:h-6 w-full" />
+                         <Skeleton className="h-4 w-3/5" />
+                      </div>
+                      <Skeleton className="h-8 w-16 rounded-md" />
                  </CardHeader>
                  <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center">
                      <Skeleton className="h-4/5 w-4/5 rounded-full" />
@@ -436,4 +465,3 @@ const StatsPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
-

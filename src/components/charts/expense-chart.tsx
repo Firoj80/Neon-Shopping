@@ -1,3 +1,4 @@
+
 "use client";
 import React from 'react';
 import {
@@ -11,20 +12,22 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  Cell, // Import Cell for category bar chart coloring
 } from 'recharts';
 import { useAppContext } from '@/context/app-context';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { itemCategories } from '@/config/categories'; // Import categories for coloring
 
 interface ExpenseChartProps {
   data: ProcessedExpenseData[];
   chartType: 'line' | 'bar';
-  // timePeriod prop removed, as filtering is done before passing data
+  keyPrefix?: string; // Optional prefix for gradient IDs if used multiple times
 }
 
 export interface ProcessedExpenseData {
-    date: string; // Formatted date string (e.g., 'MMM dd', 'yyyy-MM-dd')
+    date: string; // Formatted date string OR category name
     total: number;
-    [category: string]: number | string;
+    [category: string]: number | string; // Allow dynamic keys for category data
 }
 
 const chartConfig = {
@@ -32,7 +35,7 @@ const chartConfig = {
     label: "Total Spend",
     color: "hsl(var(--primary))", // Neon Cyan
   },
-  // Define colors for categories if doing category bar chart
+  // Define colors for categories
   Grocery: { label: "Grocery", color: "hsl(var(--chart-1))" },
   Electronics: { label: "Electronics", color: "hsl(var(--chart-2))" },
   Home: { label: "Home", color: "hsl(var(--chart-3))" },
@@ -47,18 +50,17 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 
-export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType }) => {
+export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType, keyPrefix = "trend" }) => {
   const { formatCurrency } = useAppContext();
+  const gradientId = `${keyPrefix}NeonGradientBar`; // Unique gradient ID
 
    const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const entry = payload[0].payload; // Assuming single data key 'total' or similar
       return (
         <div className="rounded-lg border border-border/50 bg-background p-2 text-xs shadow-md backdrop-blur-sm">
            <p className="font-medium text-primary">{`${label}`}</p>
-           {/* Iterate through payload for potential multiple bars/lines */}
            {payload.map((pld: any, index: number) => (
-             <p key={index} style={{ color: pld.color || chartConfig[pld.dataKey as keyof typeof chartConfig]?.color }}>
+             <p key={index} style={{ color: pld.payload.fill || pld.color || chartConfig[pld.dataKey as keyof typeof chartConfig]?.color }}>
               {`${chartConfig[pld.dataKey as keyof typeof chartConfig]?.label || pld.name}: ${formatCurrency(pld.value)}`}
              </p>
            ))}
@@ -68,36 +70,41 @@ export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType }) =
     return null;
   };
 
+  const isCategoryChart = keyPrefix === 'category'; // Check if it's rendering categories
+
   const renderChart = () => {
     if (chartType === 'line') {
       return (
         <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" />
           <XAxis
-            dataKey="date"
+            dataKey="date" // Assumes 'date' key for trend chart
             stroke="hsl(var(--muted-foreground))"
             fontSize={10}
             tickLine={false}
             axisLine={false}
-             // Angle ticks if many data points to prevent overlap
-             // angle={data.length > 15 ? -30 : 0}
-             // dy={data.length > 15 ? 10 : 0}
-             // interval="preserveStartEnd" // Ensure first and last ticks are shown
+            interval={data.length > 10 ? Math.floor(data.length / 10) : 0} // Reduce ticks for many points
+            angle={data.length > 15 ? -30 : 0}
+            dy={data.length > 15 ? 10 : 0}
           />
           <YAxis
              stroke="hsl(var(--muted-foreground))"
              fontSize={10}
              tickLine={false}
              axisLine={false}
-             tickFormatter={(value) => formatCurrency(value).replace(/(\.00$)/, '')} // Remove trailing .00
-             width={40} // Add width to prevent Y-axis label overlap
+             tickFormatter={(value) => formatCurrency(value).replace(/(\.00$)/, '')}
+             width={45} // Increased width slightly
              allowDecimals={false}
           />
-          <Tooltip content={<ChartTooltipContent indicator="line" hideLabel />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '3 3' }} wrapperClassName="!bg-card/80 backdrop-blur-sm !border-primary/50" />
+          <Tooltip
+                content={<CustomTooltip />}
+                cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '3 3' }}
+                wrapperClassName="!bg-card/80 backdrop-blur-sm !border-primary/50"
+           />
           <Line
             type="monotone"
             dataKey="total"
-            name="Total Spend" // Add name for tooltip reference
+            name="Total Spend"
             stroke="hsl(var(--primary))"
             strokeWidth={2}
             dot={{ r: 3, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 1 }}
@@ -110,14 +117,15 @@ export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType }) =
         <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" vertical={false}/>
            <XAxis
-            dataKey="date"
+            dataKey="date" // 'date' key holds category name for category bar chart
             stroke="hsl(var(--muted-foreground))"
             fontSize={10}
             tickLine={false}
             axisLine={false}
-            // angle={data.length > 15 ? -30 : 0}
-            // dy={data.length > 15 ? 10 : 0}
-            // interval="preserveStartEnd"
+            interval={0} // Show all category labels
+            angle={data.length > 8 ? -45 : 0} // Angle labels if many categories
+            dy={data.length > 8 ? 10 : 0}
+            height={data.length > 8 ? 40 : 20} // Adjust height for angled labels
           />
           <YAxis
              stroke="hsl(var(--muted-foreground))"
@@ -125,30 +133,43 @@ export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType }) =
              tickLine={false}
              axisLine={false}
              tickFormatter={(value) => formatCurrency(value).replace(/(\.00$)/, '')}
-             width={40}
+             width={45}
              allowDecimals={false}
           />
-           <Tooltip content={<ChartTooltipContent indicator="dot" hideLabel />} cursor={{ fill: 'hsl(var(--primary)/0.1)' }} wrapperClassName="!bg-card/80 backdrop-blur-sm !border-primary/50" />
+           <Tooltip
+                content={<CustomTooltip />}
+                cursor={{ fill: 'hsl(var(--primary)/0.1)' }}
+                wrapperClassName="!bg-card/80 backdrop-blur-sm !border-primary/50"
+            />
            <defs>
-                <linearGradient id="neonGradientBar" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
                 <stop offset="95%" stopColor="hsl(var(--secondary))" stopOpacity={0.6}/>
                 </linearGradient>
             </defs>
            <Bar
-            dataKey="total" // Or iterate through categories if needed
+            dataKey="total"
             name="Total Spend"
-            fill="url(#neonGradientBar)" // Use gradient fill
-            radius={[4, 4, 0, 0]} // Rounded tops
-             maxBarSize={30} // Limit max bar size for better look
-            />
+            // fill is handled by Cell if it's a category chart
+            // fill={isCategoryChart ? undefined : `url(#${gradientId})`} // Use gradient only for trend
+            radius={[4, 4, 0, 0]}
+             maxBarSize={30}
+            >
+             {/* Apply individual cell colors only for category bar chart */}
+             {isCategoryChart && data.map((entry, index) => {
+                 const category = entry.date; // Category name is in the 'date' field for this setup
+                 const color = chartConfig[category as keyof typeof chartConfig]?.color || chartConfig.Other.color;
+                 return <Cell key={`cell-${index}`} fill={color} />;
+             })}
+             {/* Apply gradient fill only for trend bar chart */}
+             {!isCategoryChart && <Cell fill={`url(#${gradientId})`} />}
+            </Bar>
         </BarChart>
       );
     }
   };
 
   return (
-     // Use ChartContainer for responsiveness and config context
      <ChartContainer config={chartConfig} className="aspect-video h-[250px] sm:h-[300px] w-full">
          <ResponsiveContainer width="100%" height="100%">
              {renderChart()}
