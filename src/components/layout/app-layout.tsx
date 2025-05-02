@@ -26,7 +26,7 @@ import {
   Star,
   Boxes,
   Wallet,
-  Menu,
+  Menu, // Keep Menu icon
   X, // Keep X for the close animation
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
@@ -117,8 +117,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="font-bold">Neon Shopping List</span>
             </Link>
             {/* Hamburger Menu Trigger */}
-            <SidebarTrigger>
-                {/* The Button and icons are now handled inside SidebarTrigger */}
+             {/* Use Menu icon from lucide-react */}
+            <SidebarTrigger asChild>
+                 <Button variant="ghost" size="icon" className="md:hidden">
+                    {/* The animated icon logic is now handled within SidebarTrigger itself */}
+                 </Button>
             </SidebarTrigger>
         </header>
 
