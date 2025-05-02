@@ -19,6 +19,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 const budgetSchema = z.object({
     limit: z.number().min(0, "Budget limit cannot be negative"),
