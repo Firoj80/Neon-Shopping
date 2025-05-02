@@ -25,14 +25,14 @@ import {
   FileText,
   Star,
   Boxes,
-  Wallet,
-  Menu, // Keep Menu icon
-  X, // Keep X for the close animation
+  ShoppingBasket, // Changed from Wallet
+  Menu,
+  X,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
-import { cn } from '@/lib/utils'; // Import cn for conditional classes
-import { motion, AnimatePresence } from 'framer-motion'; // Keep framer-motion imports
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Consistent App Name
 const APP_NAME = "Neon Shopping List";
@@ -61,7 +61,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
        <Sidebar className="hidden md:block">
         <SidebarHeader className="p-4 border-b border-border/30">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-            <Wallet className="w-6 h-6" />
+            <ShoppingBasket className="w-6 h-6" /> {/* Updated Icon */}
             <span>{APP_NAME}</span> {/* Use constant */}
           </Link>
         </SidebarHeader>
@@ -115,13 +115,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
          {/* Mobile Header - Only shown on small screens */}
         <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
             <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-                <Wallet className="w-6 h-6" />
+                <ShoppingBasket className="w-6 h-6" /> {/* Updated Icon */}
                 <span className="font-bold">{APP_NAME}</span> {/* Use constant */}
             </Link>
             {/* Hamburger Menu Trigger */}
             <SidebarTrigger asChild>
                  <Button variant="ghost" size="icon" className="md:hidden">
-                    {/* Animated icon logic is handled within SidebarTrigger */}
+                    {/* Pass icon as children to allow Framer Motion to handle */}
+                    {/* <Menu className="h-5 w-5" /> */}
+                    {/* Animated icon logic is now handled within SidebarTrigger */}
                  </Button>
             </SidebarTrigger>
         </header>
