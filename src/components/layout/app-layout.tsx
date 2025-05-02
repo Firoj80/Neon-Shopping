@@ -10,17 +10,23 @@ import {
   Star,
   ShoppingBag, // Using ShoppingBag now
   Menu,
-  DollarSign // Currency
+  DollarSign, // Currency
+  X, // Import X icon
+  History, // History Icon
+  BarChart3, // Chart Icon
+  Wallet, //Budget
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation'; // Use useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
+
 import { useSidebar } from '@/components/ui/sidebar';
 import { showInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
 
-const AdComponent = dynamic(() => import('@/components/admob/ad-component'), {
+
+const AdComponent = dynamic(() => import('../admob/ad-component'), { // Corrected import path
   ssr: false, // Ensure this component is only loaded on the client-side
 });
 
@@ -174,3 +180,4 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </>
   );
 }
+
