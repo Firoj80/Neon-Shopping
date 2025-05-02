@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading } = useAppContext();
@@ -76,66 +76,72 @@ export default function ShoppingListPage() {
 
   // Updated skeleton for list view
   const CardSkeleton = () => (
-    <Card className="bg-card rounded-lg p-3 flex items-center w-full border border-border/20 animate-pulse">
-        <Skeleton className="h-5 w-5 rounded mr-3 shrink-0" />
-        <div className="flex-grow space-y-2">
-            <Skeleton className="h-4 w-3/4" />
-            <div className="flex space-x-4 text-xs">
-                <Skeleton className="h-3 w-1/6" />
-                <Skeleton className="h-3 w-1/6" />
-                <Skeleton className="h-3 w-1/5" />
+    // Use flex column for skeleton as well for consistency
+    <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse">
+        <div className="flex items-center mb-2">
+            <Skeleton className="h-5 w-5 rounded mr-3 shrink-0" />
+            <div className="flex-grow space-y-1.5">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
             </div>
+             <div className="flex space-x-1 ml-auto shrink-0">
+             <Skeleton className="h-6 w-6 rounded-md" />
+             <Skeleton className="h-6 w-6 rounded-md" />
+           </div>
         </div>
-        <div className="flex space-x-1 ml-auto shrink-0">
-         <Skeleton className="h-7 w-7 rounded-md" />
-         <Skeleton className="h-7 w-7 rounded-md" />
-       </div>
+        <div className="flex justify-between text-xs mt-1">
+             <Skeleton className="h-3 w-1/5" />
+             <Skeleton className="h-3 w-1/5" />
+             <Skeleton className="h-3 w-1/4" />
+        </div>
+
     </Card>
   );
 
 
   return (
-    // Changed flex structure to handle layout better
+    // Use flex-col and h-full to manage height correctly
     <div className="flex flex-col h-full space-y-4">
         <BudgetPanel />
 
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex justify-between items-center mb-2 px-1">
             <h2 className="text-xl font-semibold text-secondary">Your Items</h2>
-            {/* Button is moved below as FAB */}
+            {/* FAB is positioned fixed */}
         </div>
 
-        {/* Use flex-grow on the ScrollArea container */}
+        {/* Container for the list with flex-grow */}
         <div className="flex-grow overflow-hidden">
-            <ScrollArea className="h-full pr-1"> {/* Adjusted padding */}
+            <ScrollArea className="h-full pr-1">
                  {isLoading ? (
-                     <div className="flex flex-col gap-2 pb-20"> {/* Add padding bottom */}
+                     // Add padding-bottom to avoid overlap with FAB and footer
+                     <div className="flex flex-col gap-2 pb-32 md:pb-24">
                         {renderSkeletons()}
                      </div>
                 ) : state.shoppingList.length === 0 ? (
-                     <div className="flex items-center justify-center h-full">
-                        <p className="text-muted-foreground text-center py-10">Your shopping list is empty. Add some items!</p>
+                     <div className="flex items-center justify-center h-full text-center py-10">
+                        <p className="text-muted-foreground">Your shopping list is empty. Add some items!</p>
                     </div>
                 ) : (
-                    // Use flex column for list view
-                    <div className="flex flex-col gap-2 pb-20"> {/* Add padding bottom to prevent overlap with FAB */}
-                    {state.shoppingList.map((item) => (
-                        <ItemCard
-                        key={item.id}
-                        item={item}
-                        onEdit={handleEditItem}
-                        onDelete={handleDeleteItem}
-                        />
-                    ))}
+                    // Use flex column for list view, add padding-bottom
+                    <div className="flex flex-col gap-2 pb-32 md:pb-24">
+                        {state.shoppingList.map((item) => (
+                            <ItemCard
+                            key={item.id}
+                            item={item}
+                            onEdit={handleEditItem}
+                            onDelete={handleDeleteItem}
+                            />
+                        ))}
                     </div>
                 )}
             </ScrollArea>
         </div>
 
-         {/* Floating Action Button */}
+         {/* Floating Action Button - Adjust bottom positioning */}
          <Button
             onClick={handleAddItemClick}
             size="lg" // Make it larger
-            className="fixed bottom-20 right-6 z-10 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground" // Use theme colors
+            className="fixed bottom-[calc(4rem+1.5rem)] right-6 md:bottom-8 md:right-8 z-10 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground" // Adjust bottom value (footer height + margin)
             aria-label="Add new item"
           >
              <PlusCircle className="h-6 w-6" />

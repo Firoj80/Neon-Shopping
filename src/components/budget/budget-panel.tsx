@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,9 +62,11 @@ export const BudgetPanel: React.FC = () => {
   }
 
   return (
-    <Card className="w-full bg-card border-primary/30 shadow-neon mb-6">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-lg font-semibold text-primary flex items-center gap-2">
+    // Ensure card takes full width
+    <Card className="w-full bg-card border-primary/30 shadow-neon mb-4 sm:mb-6">
+       {/* Adjust padding for mobile */}
+       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 sm:pb-3 sm:pt-4 sm:px-6">
+        <CardTitle className="text-base sm:text-lg font-semibold text-primary flex items-center gap-2">
           <Wallet className="h-5 w-5" /> Budget Overview
         </CardTitle>
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
@@ -73,14 +76,14 @@ export const BudgetPanel: React.FC = () => {
                 <span className="sr-only">Edit Budget</span>
               </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] bg-card border-primary/40 shadow-neon">
+          <DialogContent className="w-[90vw] max-w-md sm:max-w-sm bg-card border-primary/40 shadow-neon rounded-lg">
             <DialogHeader>
               <DialogTitle className="text-primary">Set Budget Limit</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(handleSaveBudget)}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="limit" className="text-right text-neonText/80">
+                  <Label htmlFor="limit" className="text-right text-neonText/80 text-xs sm:text-sm">
                     Limit ({state.currency.symbol})
                   </Label>
                   <Input
@@ -95,29 +98,30 @@ export const BudgetPanel: React.FC = () => {
                   {errors.limit && <p className="col-span-4 text-red-500 text-xs text-right">{errors.limit.message}</p>}
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex flex-col sm:flex-row gap-2">
                 <DialogClose asChild>
-                  <Button type="button" variant="secondary" className="hover:bg-secondary/80">
+                  <Button type="button" variant="secondary" className="hover:bg-secondary/80 w-full sm:w-auto">
                     Cancel
                   </Button>
                 </DialogClose>
-                <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow">Set Budget</Button>
+                <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow w-full sm:w-auto">Set Budget</Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </CardHeader>
-      <CardContent className="space-y-4">
+       {/* Adjust padding for mobile */}
+       <CardContent className="space-y-3 sm:space-y-4 px-4 pb-4 sm:px-6 sm:pb-5">
         {/* Progress Bar */}
          <div className="space-y-1">
-             <div className="flex justify-between items-center text-sm text-muted-foreground">
+             <div className="flex justify-between items-center text-xs sm:text-sm text-muted-foreground">
                  <span>Spent: {formatCurrency(budget.spent)}</span>
                  <span>Limit: {formatCurrency(budget.limit)}</span>
              </div>
             <Progress
                 value={spentPercentage}
                 className={cn(
-                    "h-3 bg-secondary/20",
+                    "h-2 sm:h-3 bg-secondary/20", // Adjust height
                      isOverBudget ? "[&>div]:bg-destructive" : "[&>div]:bg-primary"
                 )}
                 aria-label={`${spentPercentage.toFixed(0)}% of budget spent`}
@@ -131,14 +135,14 @@ export const BudgetPanel: React.FC = () => {
         </div>
 
         {/* Remaining Amount */}
-         <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2 text-lg font-medium">
-                 <Coins className={cn("h-5 w-5", isOverBudget ? 'text-destructive' : 'text-green-500')} />
+         <div className="flex items-center justify-between pt-1 sm:pt-2">
+            <div className="flex items-center gap-2 text-sm sm:text-lg font-medium">
+                 <Coins className={cn("h-4 w-4 sm:h-5 sm:w-5", isOverBudget ? 'text-destructive' : 'text-green-500')} />
                 <span className={cn(isOverBudget ? 'text-destructive' : 'text-green-400')}>
                     Remaining:
                 </span>
             </div>
-             <div className={`text-xl font-bold ${isOverBudget ? 'text-destructive' : 'text-green-400'}`}>
+             <div className={`text-base sm:text-xl font-bold ${isOverBudget ? 'text-destructive' : 'text-green-400'}`}>
                 {formatCurrency(remaining)}
             </div>
          </div>
@@ -155,33 +159,34 @@ export const BudgetPanel: React.FC = () => {
 
 const BudgetPanelSkeleton: React.FC = () => {
   return (
-    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-6">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <Skeleton className="h-6 w-2/5" /> {/* Title */}
+     // Ensure skeleton also takes full width
+    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-4 sm:mb-6">
+       {/* Adjust padding */}
+       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 sm:pb-3 sm:pt-4 sm:px-6">
+        <Skeleton className="h-5 w-2/5 sm:h-6" /> {/* Title */}
         <Skeleton className="h-7 w-7 rounded-md" /> {/* Edit Button */}
       </CardHeader>
-      <CardContent className="space-y-4">
+       {/* Adjust padding */}
+       <CardContent className="space-y-3 sm:space-y-4 px-4 pb-4 sm:px-6 sm:pb-5">
         {/* Progress Bar Skeleton */}
         <div className="space-y-1">
           <div className="flex justify-between items-center">
-            <Skeleton className="h-4 w-1/4" />
-            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-3 w-1/4 sm:h-4" />
+            <Skeleton className="h-3 w-1/4 sm:h-4" />
           </div>
-          <Skeleton className="h-3 w-full rounded-full" /> {/* Progress Bar */}
+          <Skeleton className="h-2 sm:h-3 w-full rounded-full" /> {/* Progress Bar */}
           <Skeleton className="h-3 w-1/5 ml-auto" /> {/* Percentage Text */}
         </div>
 
         {/* Remaining Amount Skeleton */}
-        <div className="flex items-center justify-between pt-2">
+         <div className="flex items-center justify-between pt-1 sm:pt-2">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-5 w-5 rounded-full" />
-            <Skeleton className="h-5 w-1/3" />
+            <Skeleton className="h-4 w-4 sm:h-5 sm:w-5 rounded-full" />
+            <Skeleton className="h-4 w-1/3 sm:h-5" />
           </div>
-          <Skeleton className="h-6 w-1/4" />
+          <Skeleton className="h-5 w-1/4 sm:h-6" />
         </div>
       </CardContent>
     </Card>
   );
 };
-
-    

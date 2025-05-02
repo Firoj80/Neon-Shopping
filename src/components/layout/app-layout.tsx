@@ -26,10 +26,11 @@ import {
   Star,
   Boxes,
   Wallet,
-  Menu, // Import the Menu icon
+  Menu, // Keep using Menu icon for trigger
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
+import { cn } from '@/lib/utils'; // Import cn for conditional classes
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -51,15 +52,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar>
+       {/* Desktop Sidebar - Hidden on small screens */}
+       <Sidebar className="hidden md:block">
         <SidebarHeader className="p-4 border-b border-border/30">
-          {/* Updated App Name */}
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
             <Wallet className="w-6 h-6" />
             <span>Shpping List-Neon</span>
           </Link>
         </SidebarHeader>
-        <SidebarContent className="p-2">
+        <SidebarContent className="p-2 flex flex-col"> {/* Use flex-col */}
           <SidebarMenu>
             {menuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
@@ -77,54 +78,57 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             ))}
           </SidebarMenu>
 
-          {/* Separator or different group for help items */}
+          {/* Help Menu Items - Push to bottom */}
            <div className="mt-auto p-2">
              <SidebarMenu>
-            {helpMenuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                    variant="ghost" // Use ghost for less emphasis
-                    size="sm"
-                    >
-                    <Link href={item.href}>
-                        <item.icon />
-                        <span>{item.label}</span>
-                    </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                ))}
-            </SidebarMenu>
+                {helpMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                        asChild
+                        isActive={pathname === item.href}
+                        tooltip={item.label}
+                        variant="ghost" // Use ghost for less emphasis
+                        size="sm"
+                        >
+                        <Link href={item.href}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                        </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    ))}
+                </SidebarMenu>
            </div>
         </SidebarContent>
          <SidebarFooter className="p-2 border-t border-border/30 mt-auto">
-          {/* Footer content if needed, e.g., version number */}
           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset className="flex flex-col min-h-screen"> {/* Ensure inset takes full height */}
+
+      {/* Main Content Area */}
+      <SidebarInset className="flex flex-col min-h-screen">
+         {/* Mobile Header - Only shown on small screens */}
         <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
-            {/* Updated App Name for mobile header */}
-            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary md:hidden">
+            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
                 <Wallet className="w-6 h-6" />
-                <span className="sr-only">Shpping List-Neon</span> {/* Screen reader text */}
+                <span className="font-bold">Shpping List-Neon</span>
             </Link>
-            {/* Updated Trigger Icon */}
-             <SidebarTrigger asChild className="ml-auto">
-                <Button variant="ghost" size="icon" className="h-7 w-7">
+            {/* Hamburger Menu Trigger */}
+             <SidebarTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Menu className="h-5 w-5" />
                     <span className="sr-only">Toggle Menu</span>
                 </Button>
             </SidebarTrigger>
         </header>
-        {/* Make main content area grow */}
+
+        {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
              {children}
         </main>
-        {/* Placeholder for Bottom Banner Ad */}
-        <footer className="h-16 bg-card border-t border-border/30 flex items-center justify-center text-muted-foreground text-sm mt-auto shrink-0"> {/* Footer stays at bottom */}
+
+        {/* Ad Banner Placeholder */}
+        <footer className="h-16 bg-card border-t border-border/30 flex items-center justify-center text-muted-foreground text-sm mt-auto shrink-0">
             AdMob Banner Placeholder
         </footer>
       </SidebarInset>

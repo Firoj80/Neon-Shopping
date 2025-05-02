@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import type { ShoppingListItem } from '@/context/app-context';
 import { itemCategories } from '@/config/categories'; // Import categories from config
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea for potentially long lists
 
 const formSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -91,54 +92,58 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-card border-primary/40 shadow-neon">
+      {/* Adjust modal width for better mobile view */}
+      <DialogContent className="w-[90vw] max-w-md bg-card border-primary/40 shadow-neon rounded-lg">
         <DialogHeader>
-          <DialogTitle className="text-primary">{itemData ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+          <DialogTitle className="text-primary text-lg sm:text-xl">{itemData ? 'Edit Item' : 'Add New Item'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right text-neonText/80">
+        {/* Use grid with adjusted columns for better mobile layout */}
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 p-4 sm:p-6">
+          <div className="grid gap-2">
+            <Label htmlFor="name" className="text-neonText/80">
               Name
             </Label>
             <Input
               id="name"
               {...register('name')}
-              className="col-span-3 border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary"
+              className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm"
               aria-invalid={errors.name ? "true" : "false"}
             />
-             {errors.name && <p className="col-span-4 text-red-500 text-xs text-right">{errors.name.message}</p>}
+             {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="quantity" className="text-right text-neonText/80">
-              Quantity
-            </Label>
-            <Input
-              id="quantity"
-              type="number"
-               {...register('quantity', { valueAsNumber: true })}
-              className="col-span-3 border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary"
-              min="1"
-              aria-invalid={errors.quantity ? "true" : "false"}
-            />
-            {errors.quantity && <p className="col-span-4 text-red-500 text-xs text-right">{errors.quantity.message}</p>}
+          <div className="grid grid-cols-2 gap-4">
+             <div className="grid gap-2">
+                <Label htmlFor="quantity" className="text-neonText/80">
+                Quantity
+                </Label>
+                <Input
+                id="quantity"
+                type="number"
+                {...register('quantity', { valueAsNumber: true })}
+                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm"
+                min="1"
+                aria-invalid={errors.quantity ? "true" : "false"}
+                />
+                {errors.quantity && <p className="text-red-500 text-xs">{errors.quantity.message}</p>}
+            </div>
+             <div className="grid gap-2">
+                <Label htmlFor="price" className="text-neonText/80">
+                Price (each)
+                </Label>
+                <Input
+                id="price"
+                type="number"
+                step="0.01"
+                {...register('price', { valueAsNumber: true })}
+                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm"
+                min="0"
+                aria-invalid={errors.price ? "true" : "false"}
+                />
+                {errors.price && <p className="text-red-500 text-xs">{errors.price.message}</p>}
+            </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="price" className="text-right text-neonText/80">
-              Price (each)
-            </Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              {...register('price', { valueAsNumber: true })}
-              className="col-span-3 border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary"
-               min="0"
-              aria-invalid={errors.price ? "true" : "false"}
-            />
-            {errors.price && <p className="col-span-4 text-red-500 text-xs text-right">{errors.price.message}</p>}
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="category" className="text-right text-neonText/80">
+          <div className="grid gap-2">
+            <Label htmlFor="category" className="text-neonText/80">
               Category
             </Label>
              <Controller
@@ -148,38 +153,46 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                     <Select onValueChange={field.onChange} value={field.value} >
                         <SelectTrigger
                          id="category"
-                         className="col-span-3 border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary"
+                         className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-sm" // Ensure consistent font size
                          aria-invalid={errors.category ? "true" : "false"}
                          >
                         <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
-                         <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto">
-                             <SelectGroup>
-                                <SelectLabel className="text-muted-foreground/80">Categories</SelectLabel>
-                                {itemCategories.map((category) => (
-                                    <SelectItem
-                                        key={category}
-                                        value={category}
-                                        className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary"
-                                    >
-                                        {category}
-                                    </SelectItem>
-                                ))}
-                             </SelectGroup>
+                         {/* Ensure content area is scrollable and has enough height */}
+                         <SelectContent
+                            className="bg-card border-primary/80 text-neonText"
+                            position="popper" // Try popper positioning for better viewport fit
+                            sideOffset={5}
+                         >
+                             <ScrollArea className="h-[200px] w-full"> {/* Wrap in ScrollArea */}
+                                 <SelectGroup>
+                                    <SelectLabel className="text-muted-foreground/80 text-xs px-2">Categories</SelectLabel>
+                                    {itemCategories.map((category) => (
+                                        <SelectItem
+                                            key={category}
+                                            value={category}
+                                            // Increase padding for touch targets
+                                            className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm"
+                                        >
+                                            {category}
+                                        </SelectItem>
+                                    ))}
+                                 </SelectGroup>
+                            </ScrollArea>
                          </SelectContent>
                     </Select>
                 )}
             />
 
-             {errors.category && <p className="col-span-4 text-red-500 text-xs text-right">{errors.category.message}</p>}
+             {errors.category && <p className="text-red-500 text-xs">{errors.category.message}</p>}
           </div>
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
              <DialogClose asChild>
-                <Button type="button" variant="secondary" className="hover:bg-secondary/80">
+                <Button type="button" variant="secondary" className="w-full sm:w-auto hover:bg-secondary/80 text-sm">
                     Cancel
                 </Button>
              </DialogClose>
-            <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow">Save changes</Button>
+            <Button type="submit" className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow text-sm">Save changes</Button>
           </DialogFooter>
         </form>
       </DialogContent>
