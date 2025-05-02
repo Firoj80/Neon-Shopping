@@ -7,16 +7,23 @@ import type {
   ToastActionElement,
   ToastProps,
 } from "@/components/ui/toast"
+import type { VariantProps } from "class-variance-authority" // Import VariantProps
+import type { toastVariants } from "@/components/ui/toast" // Import variants definition if separate
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
-
+// Extend ToasterToast to include variant
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  variant?: VariantProps<typeof toastVariants>["variant"] // Add variant type
 }
+
+
+const TOAST_LIMIT = 3 // Increased limit slightly
+const TOAST_REMOVE_DELAY = 5000 // 5 seconds auto-remove
+
+type ActionType = typeof actionTypes
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -32,7 +39,6 @@ function genId() {
   return count.toString()
 }
 
-type ActionType = typeof actionTypes
 
 type Action =
   | {
@@ -60,7 +66,8 @@ const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
-    return
+     // Clear existing timeout if the same toast is updated/re-added quickly
+    clearTimeout(toastTimeouts.get(toastId));
   }
 
   const timeout = setTimeout(() => {
@@ -77,12 +84,19 @@ const addToRemoveQueue = (toastId: string) => {
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
+      // Add toast and start its removal timer
+      addToRemoveQueue(action.toast.id);
       return {
         ...state,
+        // Ensure limit is respected
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       }
 
     case "UPDATE_TOAST":
+       // If updating, potentially reset timer (e.g., if content changes significantly)
+       if (action.toast.id) {
+           addToRemoveQueue(action.toast.id);
+       }
       return {
         ...state,
         toasts: state.toasts.map((t) =>
@@ -93,18 +107,23 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
+      // If toastId is provided, clear its specific timeout
       if (toastId) {
-        addToRemoveQueue(toastId)
+        const timeout = toastTimeouts.get(toastId);
+        if (timeout) {
+          clearTimeout(timeout);
+          toastTimeouts.delete(toastId);
+        }
       } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
+         // If no toastId, clear all timeouts (e.g., dismiss all)
+        toastTimeouts.forEach(timeout => clearTimeout(timeout));
+        toastTimeouts.clear();
       }
+
 
       return {
         ...state,
+        // Set open to false, the toast will be removed by REMOVE_TOAST later or on manual dismiss
         toasts: state.toasts.map((t) =>
           t.id === toastId || toastId === undefined
             ? {
@@ -116,6 +135,15 @@ export const reducer = (state: State, action: Action): State => {
       }
     }
     case "REMOVE_TOAST":
+      // Clear timeout just in case it wasn't cleared by dismiss
+       if (action.toastId) {
+         const timeout = toastTimeouts.get(action.toastId);
+         if (timeout) {
+           clearTimeout(timeout);
+           toastTimeouts.delete(action.toastId);
+         }
+       }
+
       if (action.toastId === undefined) {
         return {
           ...state,
@@ -126,6 +154,8 @@ export const reducer = (state: State, action: Action): State => {
         ...state,
         toasts: state.toasts.filter((t) => t.id !== action.toastId),
       }
+    default:
+      return state; // Add default case
   }
 }
 
@@ -140,6 +170,7 @@ function dispatch(action: Action) {
   })
 }
 
+// Update Toast type to include variant
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
@@ -163,6 +194,9 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Start the timer for automatic removal when adding
+  // addToRemoveQueue(id); // Moved inside reducer for consistency
 
   return {
     id: id,

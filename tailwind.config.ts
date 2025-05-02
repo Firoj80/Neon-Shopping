@@ -61,10 +61,14 @@ export default {
   				ring: 'hsl(var(--sidebar-ring))'
   			}
   		},
+      boxShadow: {
+        neon: '0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--secondary))',
+      },
   		borderRadius: {
+        // Use the radius variable defined in globals.css
   			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			md: 'calc(var(--radius) - 4px)', // Adjusted slightly
+  			sm: 'calc(var(--radius) - 8px)' // Adjusted slightly
   		},
   		keyframes: {
   			'accordion-down': {
