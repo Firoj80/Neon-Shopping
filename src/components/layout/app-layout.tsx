@@ -9,7 +9,6 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
-  SidebarTrigger,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -25,11 +24,11 @@ import {
   FileText,
   Star,
   Boxes,
-  ShoppingBasket,
+  Wallet, // Use Wallet for app icon
   Menu,
   X,
-  History, // Added History icon
-  DollarSign, // Use DollarSign for Currency
+  History,
+  DollarSign,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
@@ -64,12 +63,12 @@ const MobileHeader = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <ShoppingBasket className="w-6 h-6" />
+        <Wallet className="w-6 h-6" /> {/* Updated Icon */}
         <span className="font-bold">{APP_NAME}</span>
       </Link>
 
-      {/* Placeholder for balance */}
-      <div className="w-8"></div>
+      {/* Placeholder for balance or actions */}
+      <div className="w-8"></div> {/* Keep consistent width */}
     </header>
   );
 };
@@ -81,8 +80,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const mainMenuItems = [
     { href: '/list', label: 'Shopping List', icon: LayoutGrid },
     { href: '/stats', label: 'Dashboard', icon: BarChart3 },
-    { href: '/history', label: 'History', icon: History }, // Added History
-    { href: '/currency', label: 'Currency', icon: DollarSign }, // Added Currency
+    { href: '/history', label: 'History', icon: History },
+    { href: '/currency', label: 'Currency', icon: DollarSign },
   ];
 
   const helpMenuItems = [
@@ -97,14 +96,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       {/* Desktop Sidebar */}
-      <Sidebar className="hidden md:block">
-        <SidebarHeader className="p-4 border-b border-border/30">
+      <Sidebar className="hidden md:flex md:flex-col"> {/* Ensure sidebar uses flex */}
+        <SidebarHeader className="p-4 border-b border-border/30 shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-            <ShoppingBasket className="w-6 h-6" />
-            <span>{APP_NAME}</span>
+            <Wallet className="w-6 h-6" /> {/* Updated Icon */}
+            <span>{APP_NAME}</span> {/* Ensure this name is consistent */}
           </Link>
         </SidebarHeader>
-        <SidebarContent className="p-2 flex flex-col">
+        <SidebarContent className="p-2 flex-grow"> {/* Allow content to grow */}
           <SidebarMenu>
             {mainMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
@@ -121,10 +120,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
-
-          {/* Help Menu Items */}
-          <div className="mt-auto p-2">
-            <SidebarMenu>
+        </SidebarContent>
+         {/* Help Menu Items */}
+         <div className="p-2 shrink-0 border-t border-border/30">
+           <SidebarMenu>
               {helpMenuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
@@ -142,9 +141,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
-          </div>
-        </SidebarContent>
-        <SidebarFooter className="p-2 border-t border-border/30 mt-auto">
+         </div>
+        <SidebarFooter className="p-2 border-t border-border/30 shrink-0">
           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
@@ -155,14 +153,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileHeader />
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        {/* Add padding-bottom to account for fixed footer height */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(4rem+1rem)] md:pb-[calc(4rem+1.5rem)] lg:pb-[calc(4rem+2rem)]">
           {children}
         </main>
 
-        {/* Ad Banner Placeholder */}
-        <footer className="h-16 bg-card border-t border-border/30 flex items-center justify-center text-muted-foreground text-sm mt-auto shrink-0">
-          AdMob Banner Placeholder
-        </footer>
+        {/* Ad Banner Placeholder - Fixed to bottom */}
+        <footer className="fixed bottom-0 left-0 right-0 z-20 h-16 bg-card border-t border-border/30 flex items-center justify-center text-muted-foreground text-sm md:ml-[var(--sidebar-width)] peer-data-[state=collapsed]:md:ml-[var(--sidebar-width-icon)] peer-data-[collapsible=offcanvas]:md:ml-0 peer-data-[variant=inset]:md:left-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:right-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:bottom-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:rounded-b-xl transition-[margin-left,left,right,bottom] duration-200 ease-linear">
+           AdMob Banner Placeholder
+         </footer>
+
       </SidebarInset>
     </SidebarProvider>
   );
