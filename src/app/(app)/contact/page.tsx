@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Mail, Zap } from 'lucide-react'; // Example icons
 
 export default function ContactPage() {
+  const contactEmail = "firojalama80@gmail.com"; // Updated email address
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Contact Us</h1>
@@ -16,9 +18,8 @@ export default function ContactPage() {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-primary" />
-            {/* Consider updating the email address if it was NeonWallet specific */}
-            <a href="mailto:support@neonshoppinglist.app" className="text-neonText hover:text-primary transition-colors">
-              support@neonshoppinglist.app
+            <a href={`mailto:${contactEmail}`} className="text-neonText hover:text-primary transition-colors break-all">
+              {contactEmail}
             </a>
           </div>
            <div className="flex items-center gap-3">
@@ -33,3 +34,4 @@ export default function ContactPage() {
     </div>
   );
 }
+

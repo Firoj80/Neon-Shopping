@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -26,17 +25,17 @@ import {
   FileText,
   Star,
   Boxes,
-  ShoppingBasket,
+  ShoppingBasket, // Use ShoppingBasket for app icon
   Menu,
   X,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion'; // Import Framer Motion
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Consistent App Name
-const APP_NAME = "Neon Shopping List";
+const APP_NAME = "Neon Shopping List"; // Ensure this is the correct name
 
 // New Mobile Header component that uses the hook
 const MobileHeader = () => {
@@ -45,13 +44,10 @@ const MobileHeader = () => {
   if (!isMobile) return null; // Only render on mobile
 
   return (
+     // Use sticky to keep it at the top while scrolling down page content
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
-      <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <ShoppingBasket className="w-6 h-6" />
-        <span className="font-bold">{APP_NAME}</span>
-      </Link>
-      {/* Hamburger Menu Trigger */}
-      <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+       {/* Hamburger Menu Trigger on the left */}
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2"> {/* Added margin-right */}
          <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={openMobile ? "x" : "menu"}
@@ -65,6 +61,15 @@ const MobileHeader = () => {
         </AnimatePresence>
         <span className="sr-only">Toggle Sidebar</span>
       </Button>
+
+       {/* App Name/Logo */}
+      <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+        <ShoppingBasket className="w-6 h-6" />
+        <span className="font-bold">{APP_NAME}</span>
+      </Link>
+
+      {/* Placeholder for potential right-side actions */}
+      <div className="w-8"></div> {/* Maintain balance */}
     </header>
   );
 };
@@ -72,7 +77,6 @@ const MobileHeader = () => {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  // NOTE: useSidebar hook is NOT called here anymore
 
   const menuItems = [
     { href: '/list', label: 'Shopping List', icon: LayoutGrid },
@@ -146,7 +150,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       {/* Main Content Area */}
-      <SidebarInset className="flex flex-col min-h-screen">
+       {/* Added overflow-x-hidden to prevent horizontal scroll */}
+      <SidebarInset className="flex flex-col min-h-screen overflow-x-hidden">
          {/* Mobile Header is now rendered inside the provider context */}
          <MobileHeader />
 
@@ -163,3 +168,4 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider> // Provider ends here
   );
 }
+

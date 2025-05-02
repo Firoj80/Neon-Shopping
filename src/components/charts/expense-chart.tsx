@@ -12,22 +12,18 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppContext } from '@/context/app-context';
-import type { ShoppingListItem } from '@/context/app-context';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { format } from 'date-fns';
 
 interface ExpenseChartProps {
   data: ProcessedExpenseData[];
   chartType: 'line' | 'bar';
-  timePeriod: '7d' | '30d' | '90d';
+  // timePeriod prop removed, as filtering is done before passing data
 }
 
 export interface ProcessedExpenseData {
     date: string; // Formatted date string (e.g., 'MMM dd', 'yyyy-MM-dd')
     total: number;
-    // Add category breakdown if needed for bar chart by category
     [category: string]: number | string;
 }
 
@@ -51,7 +47,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 
-export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType, timePeriod }) => {
+export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType }) => {
   const { formatCurrency } = useAppContext();
 
    const CustomTooltip = ({ active, payload, label }: any) => {
@@ -83,6 +79,10 @@ export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType, tim
             fontSize={10}
             tickLine={false}
             axisLine={false}
+             // Angle ticks if many data points to prevent overlap
+             // angle={data.length > 15 ? -30 : 0}
+             // dy={data.length > 15 ? 10 : 0}
+             // interval="preserveStartEnd" // Ensure first and last ticks are shown
           />
           <YAxis
              stroke="hsl(var(--muted-foreground))"
@@ -90,15 +90,18 @@ export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType, tim
              tickLine={false}
              axisLine={false}
              tickFormatter={(value) => formatCurrency(value).replace(/(\.00$)/, '')} // Remove trailing .00
+             width={40} // Add width to prevent Y-axis label overlap
+             allowDecimals={false}
           />
           <Tooltip content={<ChartTooltipContent indicator="line" hideLabel />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '3 3' }} wrapperClassName="!bg-card/80 backdrop-blur-sm !border-primary/50" />
           <Line
             type="monotone"
             dataKey="total"
+            name="Total Spend" // Add name for tooltip reference
             stroke="hsl(var(--primary))"
             strokeWidth={2}
-            dot={{ r: 4, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
-            activeDot={{ r: 6, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+            dot={{ r: 3, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 1 }}
+            activeDot={{ r: 5, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
           />
         </LineChart>
       );
@@ -107,11 +110,14 @@ export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType, tim
         <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" vertical={false}/>
            <XAxis
-            dataKey="date" // Assuming 'date' or potentially 'category' if switching view
+            dataKey="date"
             stroke="hsl(var(--muted-foreground))"
             fontSize={10}
             tickLine={false}
             axisLine={false}
+            // angle={data.length > 15 ? -30 : 0}
+            // dy={data.length > 15 ? 10 : 0}
+            // interval="preserveStartEnd"
           />
           <YAxis
              stroke="hsl(var(--muted-foreground))"
@@ -119,38 +125,34 @@ export const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, chartType, tim
              tickLine={false}
              axisLine={false}
              tickFormatter={(value) => formatCurrency(value).replace(/(\.00$)/, '')}
+             width={40}
+             allowDecimals={false}
           />
            <Tooltip content={<ChartTooltipContent indicator="dot" hideLabel />} cursor={{ fill: 'hsl(var(--primary)/0.1)' }} wrapperClassName="!bg-card/80 backdrop-blur-sm !border-primary/50" />
-           <Bar
-            dataKey="total" // Or iterate through categories if needed
-            fill="url(#neonGradient)" // Use gradient fill
-            radius={[4, 4, 0, 0]} // Rounded tops
-            barSize={15} // Adjust bar size
-            />
-           {/* Define gradient */}
-            <defs>
-                <linearGradient id="neonGradient" x1="0" y1="0" x2="0" y2="1">
+           <defs>
+                <linearGradient id="neonGradientBar" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
                 <stop offset="95%" stopColor="hsl(var(--secondary))" stopOpacity={0.6}/>
                 </linearGradient>
             </defs>
+           <Bar
+            dataKey="total" // Or iterate through categories if needed
+            name="Total Spend"
+            fill="url(#neonGradientBar)" // Use gradient fill
+            radius={[4, 4, 0, 0]} // Rounded tops
+             maxBarSize={30} // Limit max bar size for better look
+            />
         </BarChart>
       );
     }
   };
 
-   const titleSuffix = timePeriod === '7d' ? 'Last 7 Days' : timePeriod === '30d' ? 'Last 30 Days' : 'Last 90 Days';
-
   return (
-    <Card className="bg-card border-primary/30 shadow-neon">
-      <CardHeader>
-        <CardTitle className="text-primary">{`Expense Trend (${titleSuffix})`}</CardTitle>
-      </CardHeader>
-      <CardContent className="pl-2">
-         <ChartContainer config={chartConfig} className="aspect-video h-[300px] w-full">
+     // Use ChartContainer for responsiveness and config context
+     <ChartContainer config={chartConfig} className="aspect-video h-[250px] sm:h-[300px] w-full">
+         <ResponsiveContainer width="100%" height="100%">
              {renderChart()}
-         </ChartContainer>
-      </CardContent>
-    </Card>
+         </ResponsiveContainer>
+     </ChartContainer>
   );
 };
