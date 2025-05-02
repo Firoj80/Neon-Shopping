@@ -1,3 +1,4 @@
+
 "use client";
 import type React from 'react';
 import { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
@@ -7,13 +8,13 @@ import { getUserCurrency } from '@/services/currency';
 // --- Types ---
 interface BudgetItem {
     limit: number;
-    spent: number;
+    spent: number; // Represents money actually spent (checked items)
 }
 
 interface AppState {
     currency: Currency;
     budget: BudgetItem;
-    shoppingList: ShoppingListItem[];
+    shoppingList: ShoppingListItem[]; // All items, checked or unchecked
 }
 
 interface ShoppingListItem {
@@ -22,7 +23,7 @@ interface ShoppingListItem {
     quantity: number;
     price: number;
     category: string;
-    checked: boolean;
+    checked: boolean; // Indicates if the item has been purchased
     dateAdded: number; // Timestamp
 }
 
@@ -52,6 +53,14 @@ const initialState: AppState = {
 
 const LOCAL_STORAGE_KEY = 'neonShoppingListState'; // Updated storage key
 
+// Helper to calculate spent amount based on checked items
+const calculateSpent = (list: ShoppingListItem[]): number => {
+    return list
+        .filter(item => item.checked) // Only include checked items
+        .reduce((total, item) => total + (item.price * item.quantity), 0);
+};
+
+
 function appReducer(state: AppState, action: Action): AppState {
     let newState: AppState;
     switch (action.type) {
@@ -59,57 +68,68 @@ function appReducer(state: AppState, action: Action): AppState {
             newState = { ...state, currency: action.payload };
             break;
         case 'SET_BUDGET_LIMIT':
-            newState = { ...state, budget: { ...state.budget, limit: action.payload } };
+            // Ensure spent is recalculated if limit changes, though it shouldn't directly affect spent
+            newState = {
+                ...state,
+                budget: { ...state.budget, limit: action.payload, spent: calculateSpent(state.shoppingList) }
+            };
             break;
         case 'ADD_SHOPPING_ITEM': {
             const newItem: ShoppingListItem = {
                 ...action.payload,
                 id: crypto.randomUUID(),
                 dateAdded: Date.now(),
+                 // New items start unchecked, so they don't affect 'spent' yet
             };
             newState = { ...state, shoppingList: [newItem, ...state.shoppingList] };
-             // Update spent amount
-            newState.budget.spent = calculateSpent(newState.shoppingList);
+             // Spent amount doesn't change when adding unchecked items
+             // newState.budget.spent remains the same initially
             break;
         }
-         case 'UPDATE_SHOPPING_ITEM':
+         case 'UPDATE_SHOPPING_ITEM': {
+             const updatedList = state.shoppingList.map((item) =>
+                 item.id === action.payload.id ? action.payload : item
+             );
              newState = {
                  ...state,
-                 shoppingList: state.shoppingList.map((item) =>
-                     item.id === action.payload.id ? action.payload : item
-                 ),
+                 shoppingList: updatedList,
+                 budget: { ...state.budget, spent: calculateSpent(updatedList) } // Recalculate spent based on updated list (checked status might change)
              };
-              // Update spent amount
-             newState.budget.spent = calculateSpent(newState.shoppingList);
              break;
-        case 'REMOVE_SHOPPING_ITEM':
+            }
+        case 'REMOVE_SHOPPING_ITEM': {
+            const filteredList = state.shoppingList.filter((item) => item.id !== action.payload);
             newState = {
                 ...state,
-                shoppingList: state.shoppingList.filter((item) => item.id !== action.payload),
+                shoppingList: filteredList,
+                budget: { ...state.budget, spent: calculateSpent(filteredList) } // Recalculate spent after removal
             };
-             // Update spent amount
-            newState.budget.spent = calculateSpent(newState.shoppingList);
             break;
-        case 'TOGGLE_SHOPPING_ITEM':
+        }
+        case 'TOGGLE_SHOPPING_ITEM': {
+            const toggledList = state.shoppingList.map((item) =>
+                item.id === action.payload ? { ...item, checked: !item.checked } : item
+            );
             newState = {
                 ...state,
-                shoppingList: state.shoppingList.map((item) =>
-                    item.id === action.payload ? { ...item, checked: !item.checked } : item
-                ),
+                shoppingList: toggledList,
+                budget: { ...state.budget, spent: calculateSpent(toggledList) } // Recalculate spent when item is checked/unchecked
             };
-            // Note: Toggling doesn't change the spent amount, only adding/removing/updating price does.
             break;
-         case 'LOAD_STATE':
-            // Carefully merge loaded state, prioritizing loaded values but keeping defaults if missing
+        }
+         case 'LOAD_STATE': {
+            // Carefully merge loaded state
+            const loadedList = action.payload.shoppingList || state.shoppingList;
             newState = {
                 currency: action.payload.currency || state.currency,
                 budget: {
                     limit: action.payload.budget?.limit ?? state.budget.limit,
-                    spent: calculateSpent(action.payload.shoppingList || state.shoppingList), // Recalculate spent based on loaded/current list
+                    spent: calculateSpent(loadedList), // Recalculate spent based on loaded list's checked status
                 },
-                shoppingList: action.payload.shoppingList || state.shoppingList,
+                shoppingList: loadedList,
             };
             break;
+         }
         default:
             newState = state;
     }
@@ -127,10 +147,7 @@ function appReducer(state: AppState, action: Action): AppState {
     return newState;
 }
 
-// Helper to calculate spent amount
-const calculateSpent = (list: ShoppingListItem[]): number => {
-     return list.reduce((total, item) => total + (item.price * item.quantity), 0);
-}
+
 
 // --- Context & Provider ---
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -156,7 +173,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         if (typeof parsedState === 'object' && parsedState !== null) {
                              loadedState = {
                                 currency: parsedState.currency,
-                                budget: parsedState.budget,
+                                budget: parsedState.budget, // Keep loaded budget limit
                                 shoppingList: Array.isArray(parsedState.shoppingList) ? parsedState.shoppingList : undefined,
                              };
                         }
@@ -174,6 +191,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                      const finalInitialState = {
                          ...loadedState,
                          currency: userCurrency ?? loadedState.currency ?? defaultCurrency,
+                         // Let reducer calculate initial 'spent' based on loaded list
                      };
                     dispatch({ type: 'LOAD_STATE', payload: finalInitialState });
                  }

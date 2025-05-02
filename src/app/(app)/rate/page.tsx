@@ -1,6 +1,7 @@
+
 'use client'; // Needed for potential client-side redirect or interaction
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Star, ExternalLink } from 'lucide-react';
@@ -8,7 +9,7 @@ import { Star, ExternalLink } from 'lucide-react';
 export default function RatePage() {
 
   // Replace with your actual Play Store link
-  const playStoreLink = "https://play.google.com/store/apps/details?id=YOUR_APP_PACKAGE_NAME";
+  const playStoreLink = "https://play.google.com/store/apps/details?id=com.firoj.neonshopping"; // Updated URL
 
   const handleRateClick = () => {
     if (typeof window !== 'undefined') {

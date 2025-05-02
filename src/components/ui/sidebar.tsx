@@ -290,8 +290,6 @@ const SidebarTrigger = React.forwardRef<
 
   // If asChild is true, render the child component directly.
    if (asChild) {
-    // Ensure only a single child is passed when asChild is true
-    const child = React.Children.only(children);
      return (
        <Slot
          ref={ref}
@@ -300,7 +298,8 @@ const SidebarTrigger = React.forwardRef<
          className={cn(className)}
          {...props} // Pass down props like variant, size
        >
-         {child}
+          {/* Ensure only a single child is passed when asChild is true */}
+         {children}
        </Slot>
      );
    }
@@ -818,3 +817,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+

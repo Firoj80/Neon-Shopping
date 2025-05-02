@@ -1,40 +1,47 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Boxes } from 'lucide-react'; // Example icon
+import { Boxes, ExternalLink } from 'lucide-react'; // Example icon, added ExternalLink
+import { Button } from '@/components/ui/button'; // Import Button
 
 export default function MoreAppsPage() {
   // Replace with links to your other apps if available
-  const otherApps = [
-    // { name: "CyberNote", description: "Neon-themed note-taking app.", link: "#" },
-    // { name: "Pixel Runner", description: "Retro arcade runner.", link: "#" },
-  ];
+  // const otherApps = [
+  //   // { name: "CyberNote", description: "Neon-themed note-taking app.", link: "#" },
+  //   // { name: "Pixel Runner", description: "Retro arcade runner.", link: "#" },
+  // ];
+
+  const developerLink = "https://play.google.com/store/apps/developer?id=Featured+Cool+Apps"; // Updated URL
+
+  const handleOpenLink = () => {
+    if (typeof window !== 'undefined') {
+      window.open(developerLink, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-primary">More Apps by [Your Name/Company]</h1>
+      <h1 className="text-2xl font-bold text-primary">More Apps by Featured Cool Apps</h1> {/* Updated Company Name */}
       <Card className="bg-card border-secondary/30 shadow-neon">
         <CardHeader>
           <CardTitle className="text-secondary flex items-center gap-2">
             <Boxes className="h-5 w-5" /> Explore Our Creations
           </CardTitle>
-           {otherApps.length === 0 && (
-               <CardDescription className="text-muted-foreground pt-2">
-                 We're hard at work creating more tools and experiences. Check back later!
-               </CardDescription>
-            )}
+           <CardDescription className="text-muted-foreground pt-2">
+                 Check out other applications from our developer account on the Google Play Store!
+           </CardDescription>
         </CardHeader>
-         {otherApps.length > 0 && (
-            <CardContent className="space-y-4">
-            {otherApps.map((app, index) => (
-                <div key={index} className="p-3 border border-border/50 rounded-lg hover:bg-muted/10 transition-colors">
-                <a href={app.link} target="_blank" rel="noopener noreferrer" className="block">
-                    <h3 className="font-semibold text-neonText">{app.name}</h3>
-                    <p className="text-sm text-muted-foreground">{app.description}</p>
-                </a>
-                </div>
-            ))}
-            </CardContent>
-        )}
+         <CardContent className="flex flex-col items-center gap-4">
+           <p className="text-neonText text-center">
+                Click the button below to view our developer page.
+           </p>
+           <Button
+             onClick={handleOpenLink}
+             className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow w-full sm:w-auto"
+           >
+             View on Play Store <ExternalLink className="ml-2 h-4 w-4" />
+           </Button>
+         </CardContent>
       </Card>
     </div>
   );

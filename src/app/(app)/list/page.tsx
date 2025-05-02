@@ -1,8 +1,8 @@
 
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, ShoppingCart, CheckCircle } from 'lucide-react'; // Added icons
 import { ItemCard } from '@/components/shopping/item-card';
 import { useAppContext } from '@/context/app-context';
 import type { ShoppingListItem } from '@/context/app-context';
@@ -17,11 +17,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading } = useAppContext();
@@ -69,14 +69,12 @@ export default function ShoppingListPage() {
   };
 
  const renderSkeletons = () => (
-    Array.from({ length: 5 }).map((_, index) => (
+    Array.from({ length: 3 }).map((_, index) => ( // Reduced skeleton count
       <CardSkeleton key={index} />
     ))
   );
 
-  // Updated skeleton for list view
   const CardSkeleton = () => (
-    // Use flex column for skeleton as well for consistency
     <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse">
         <div className="flex items-center mb-2">
             <Skeleton className="h-5 w-5 rounded mr-3 shrink-0" />
@@ -94,54 +92,69 @@ export default function ShoppingListPage() {
              <Skeleton className="h-3 w-1/5" />
              <Skeleton className="h-3 w-1/4" />
         </div>
-
     </Card>
+  );
+
+  const currentItems = useMemo(() => state.shoppingList.filter(item => !item.checked), [state.shoppingList]);
+  const purchasedItems = useMemo(() => state.shoppingList.filter(item => item.checked), [state.shoppingList]);
+
+  const renderItemList = (items: ShoppingListItem[], emptyMessage: string) => (
+     isLoading ? (
+         <div className="flex flex-col gap-2 pb-32 md:pb-24">
+            {renderSkeletons()}
+         </div>
+    ) : items.length === 0 ? (
+         <div className="flex items-center justify-center h-full text-center py-10">
+            <p className="text-muted-foreground">{emptyMessage}</p>
+        </div>
+    ) : (
+        <div className="flex flex-col gap-2 pb-32 md:pb-24">
+            {items.map((item) => (
+                <ItemCard
+                key={item.id}
+                item={item}
+                onEdit={handleEditItem}
+                onDelete={handleDeleteItem}
+                />
+            ))}
+        </div>
+    )
   );
 
 
   return (
-    // Use flex-col and h-full to manage height correctly
     <div className="flex flex-col h-full space-y-4">
         <BudgetPanel />
 
-        <div className="flex justify-between items-center mb-2 px-1">
-            <h2 className="text-xl font-semibold text-secondary">Your Items</h2>
-            {/* FAB is positioned fixed */}
-        </div>
+        <Tabs defaultValue="current" className="flex-grow flex flex-col">
+             {/* Tabs Header */}
+             <TabsList className="grid w-full grid-cols-2 mb-4 bg-card border border-primary/20 shadow-sm">
+                 <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
+                     <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
+                 </TabsTrigger>
+                 <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
+                     <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
+                 </TabsTrigger>
+             </TabsList>
 
-        {/* Container for the list with flex-grow */}
-        <div className="flex-grow overflow-hidden">
-            <ScrollArea className="h-full pr-1">
-                 {isLoading ? (
-                     // Add padding-bottom to avoid overlap with FAB and footer
-                     <div className="flex flex-col gap-2 pb-32 md:pb-24">
-                        {renderSkeletons()}
-                     </div>
-                ) : state.shoppingList.length === 0 ? (
-                     <div className="flex items-center justify-center h-full text-center py-10">
-                        <p className="text-muted-foreground">Your shopping list is empty. Add some items!</p>
-                    </div>
-                ) : (
-                    // Use flex column for list view, add padding-bottom
-                    <div className="flex flex-col gap-2 pb-32 md:pb-24">
-                        {state.shoppingList.map((item) => (
-                            <ItemCard
-                            key={item.id}
-                            item={item}
-                            onEdit={handleEditItem}
-                            onDelete={handleDeleteItem}
-                            />
-                        ))}
-                    </div>
-                )}
-            </ScrollArea>
-        </div>
+             {/* Tabs Content Area */}
+             <div className="flex-grow overflow-hidden">
+                 <ScrollArea className="h-full pr-1">
+                     <TabsContent value="current">
+                         {renderItemList(currentItems, "No current items. Add some!")}
+                     </TabsContent>
+                     <TabsContent value="purchased">
+                         {renderItemList(purchasedItems, "No items purchased yet.")}
+                     </TabsContent>
+                 </ScrollArea>
+             </div>
+        </Tabs>
 
-         {/* Floating Action Button - Adjust bottom positioning */}
+         {/* Floating Action Button */}
          <Button
             onClick={handleAddItemClick}
-            size="lg" // Make it larger
-            className="fixed bottom-[calc(4rem+1.5rem)] right-6 md:bottom-8 md:right-8 z-10 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground" // Adjust bottom value (footer height + margin)
+            size="lg"
+            className="fixed bottom-[calc(4rem+1.5rem)] right-6 md:bottom-8 md:right-8 z-10 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
           >
              <PlusCircle className="h-6 w-6" />
@@ -152,7 +165,7 @@ export default function ShoppingListPage() {
             isOpen={isModalOpen}
             onClose={() => {
                 setIsModalOpen(false);
-                setEditingItem(null); // Clear editing state when closing
+                setEditingItem(null);
             }}
             onSave={handleSaveItem}
             itemData={editingItem}
