@@ -16,8 +16,9 @@ export default function ContactPage() {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-primary" />
-            <a href="mailto:support@neonwallet.app" className="text-neonText hover:text-primary transition-colors">
-              support@neonwallet.app
+            {/* Consider updating the email address if it was NeonWallet specific */}
+            <a href="mailto:support@neonshoppinglist.app" className="text-neonText hover:text-primary transition-colors">
+              support@neonshoppinglist.app
             </a>
           </div>
            <div className="flex items-center gap-3">
@@ -25,7 +26,7 @@ export default function ContactPage() {
             <span className="text-neonText">Feature Requests & Feedback</span>
            </div>
              <p className="text-xs text-muted-foreground pl-8">
-                We're always looking to improve. Share your ideas on how to make NeonWallet even better! Use the email above for now.
+                We're always looking to improve. Share your ideas on how to make Neon Shopping List even better! Use the email above for now. {/* Updated App Name */}
              </p>
         </CardContent>
       </Card>

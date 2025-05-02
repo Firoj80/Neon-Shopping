@@ -31,7 +31,7 @@ export default function RatePage() {
       <Card className="bg-card border-primary/30 shadow-neon max-w-md w-full">
         <CardHeader>
           <CardTitle className="text-secondary flex items-center justify-center gap-2">
-             <Star className="h-6 w-6" /> Rate NeonWallet
+             <Star className="h-6 w-6" /> Rate Neon Shopping List {/* Updated App Name */}
            </CardTitle>
           <CardDescription className="text-muted-foreground">
             Enjoying the app? Your feedback helps us improve!

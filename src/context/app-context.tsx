@@ -50,7 +50,7 @@ const initialState: AppState = {
     shoppingList: [],
 };
 
-const LOCAL_STORAGE_KEY = 'neonWalletState';
+const LOCAL_STORAGE_KEY = 'neonShoppingListState'; // Updated storage key
 
 function appReducer(state: AppState, action: Action): AppState {
     let newState: AppState;

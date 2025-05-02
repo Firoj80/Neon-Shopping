@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 export default function AboutPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-primary">About NeonWallet</h1>
+      <h1 className="text-2xl font-bold text-primary">About Neon Shopping List</h1> {/* Updated App Name */}
       <Card className="bg-card border-primary/30 shadow-neon">
         <CardHeader>
           <CardTitle className="text-secondary">Our Mission</CardTitle>
         </CardHeader>
         <CardContent className="text-muted-foreground space-y-4">
           <p>
-            Welcome to NeonWallet, your cyberpunk companion for managing finances with flair.
+            Welcome to Neon Shopping List, your cyberpunk companion for managing finances with flair. {/* Updated App Name */}
             We believe tracking expenses and shopping lists shouldn't be boring.
           </p>
           <p>
@@ -20,7 +20,7 @@ export default function AboutPage() {
             the neon-lit streets of the future.
           </p>
            <p>
-            Built with modern web technologies, NeonWallet aims to be fast, responsive,
+            Built with modern web technologies, Neon Shopping List aims to be fast, responsive, {/* Updated App Name */}
             and accessible across devices.
           </p>
         </CardContent>

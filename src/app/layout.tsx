@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'NeonWallet - Cyberpunk Expense Tracker',
+  title: 'Neon Shopping List - Cyberpunk Expense Tracker', // Updated App Name
   description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
 };
 

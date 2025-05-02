@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         </CardHeader>
         <CardContent className="text-muted-foreground space-y-4">
           <p>
-            At NeonWallet, we prioritize your privacy. This application is designed to operate primarily offline, storing your data directly on your device using your browser's local storage.
+            At Neon Shopping List, we prioritize your privacy. This application is designed to operate primarily offline, storing your data directly on your device using your browser's local storage. {/* Updated App Name */}
           </p>
           <h3 className="font-semibold text-neonText/90 pt-2">Data Storage</h3>
           <p>
