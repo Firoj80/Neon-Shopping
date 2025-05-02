@@ -14,7 +14,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   useSidebar,
-} from '@/components/ui/sidebar'; // Adjusted import path
+} from '@/components/ui/sidebar';
 import {
   LayoutGrid,
   BarChart3,
@@ -24,7 +24,7 @@ import {
   FileText,
   Star,
   Boxes,
-  ShoppingBag, // Changed Icon
+  ShoppingBag,
   Menu,
   X,
   History,
@@ -34,7 +34,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { useAdMob } from '@/hooks/useAdmob'; // Temporarily commented out
+// import { useAdMob } from '@/hooks/useAdmob'; // Removed AdMob hook
 
 const APP_NAME = "Neon Shopping List";
 
@@ -77,7 +77,7 @@ const MobileHeader = () => {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  // const { showInterstitialAd } = useAdMob(); // Temporarily commented out
+  // const { showInterstitialAd } = useAdMob(); // Removed AdMob hook
 
   const mainMenuItems = [
     { href: '/list', label: 'Shopping List', icon: LayoutGrid },
@@ -96,7 +96,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const handleLinkClick = (href: string) => {
-    // Temporarily disable ad showing on these routes for debugging
+    // Removed interstitial ad calls
     // const adRoutes = ['/stats', '/history', '/currency'];
     // if (adRoutes.includes(href)) {
     //   showInterstitialAd();
@@ -142,7 +142,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       tooltip={item.label}
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleLinkClick(item.href)} // Optional: show ads for these too
+                      onClick={() => handleLinkClick(item.href)} // Removed ad logic here too
                     >
                       <Link href={item.href}>
                         <item.icon />
@@ -166,16 +166,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileHeader />
 
         {/* Content */}
-        {/* Add padding-bottom to account for fixed footer height */}
-        {/* Ensure content area is the main scrollable part */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(4rem+1rem)] md:pb-[calc(4rem+1.5rem)] lg:pb-[calc(4rem+2rem)]">
+        {/* Removed padding-bottom related to fixed footer */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
         </main>
 
-        {/* Ad Banner Placeholder - Fixed to bottom */}
+        {/* Ad Banner Placeholder - Removed */}
+        {/*
         <footer className="fixed bottom-0 left-0 right-0 z-20 h-16 bg-card border-t border-border/30 flex items-center justify-center text-muted-foreground text-sm md:ml-[var(--sidebar-width)] peer-data-[state=collapsed]:md:ml-[var(--sidebar-width-icon)] peer-data-[collapsible=offcanvas]:md:ml-0 peer-data-[variant=inset]:md:left-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:right-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:bottom-[calc(theme(spacing.2))] peer-data-[variant=inset]:md:rounded-b-xl transition-[margin-left,left,right,bottom] duration-200 ease-linear">
            AdMob Banner Placeholder
          </footer>
+        */}
 
       </SidebarInset>
     </SidebarProvider>

@@ -8,11 +8,13 @@ export default function MoreAppsPage() {
   const developerLink = "https://play.google.com/store/apps/developer?id=Featured+Cool+Apps"; // Updated URL
 
   useEffect(() => {
-    // Redirect immediately on the client-side after mount
+    // Redirect immediately on the client-side after mount using standard web methods
     if (typeof window !== 'undefined') {
        window.location.href = developerLink;
+       // Alternatively, open in a new tab:
+       // window.open(developerLink, '_blank');
     }
-  }, [developerLink]); // Added developerLink dependency
+  }, [developerLink]);
 
 
   // Show a simple loading indicator while redirecting

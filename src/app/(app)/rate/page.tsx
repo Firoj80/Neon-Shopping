@@ -9,11 +9,13 @@ export default function RatePage() {
   const playStoreLink = "https://play.google.com/store/apps/details?id=com.firoj.neonshopping"; // Updated URL
 
   useEffect(() => {
-    // Redirect immediately on the client-side after mount
+    // Redirect immediately on the client-side after mount using standard web methods
     if (typeof window !== 'undefined') {
        window.location.href = playStoreLink;
+       // Alternatively, open in a new tab:
+       // window.open(playStoreLink, '_blank');
     }
-  }, [playStoreLink]); // Added playStoreLink dependency
+  }, [playStoreLink]);
 
   // Show a simple loading indicator while redirecting
   return (

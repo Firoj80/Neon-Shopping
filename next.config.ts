@@ -17,10 +17,10 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    unoptimized: true, // Required for static export if using next/image
+    // unoptimized: true, // Removed for non-static export
   },
   // Ensure static export is configured for Capacitor
-  output: 'export',
+  // output: 'export', // Removed as Capacitor is removed
   // Set trailingSlash to true if your static server requires it (optional)
   // trailingSlash: true,
 };

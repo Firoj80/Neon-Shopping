@@ -9,7 +9,7 @@ export default function PrivacyPage() {
         <CardHeader>
           <CardTitle className="text-secondary">Your Data, Your Control</CardTitle>
            <CardDescription className="text-muted-foreground">
-            Last Updated: [Insert Date]
+            Last Updated: [Insert Date] {/* TODO: Update this date */}
           </CardDescription>
         </CardHeader>
         <CardContent className="text-muted-foreground space-y-4">
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
            </p>
             <h3 className="font-semibold text-neonText/90 pt-2">Third-Party Services</h3>
            <p>
-            This app may integrate with AdMob for displaying advertisements. AdMob is governed by Google's Privacy Policy. We do not share your shopping list or budget data with AdMob.
+            This app does not currently integrate with third-party services that collect personal data beyond standard browser functionality. {/* Removed AdMob mention */}
            </p>
            <h3 className="font-semibold text-neonText/90 pt-2">Data Security</h3>
            <p>

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
-// import { AdInitializer } from '@/components/ads/ad-initializer'; // Temporarily commented out
+// import { AdInitializer } from '@/components/ads/ad-initializer'; // Removed AdInitializer
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -31,7 +31,7 @@ export default function RootLayout({
         )}
       >
         <Providers>
-           {/* <AdInitializer /> */} {/* Temporarily commented out */}
+           {/* <AdInitializer /> */} {/* Removed AdInitializer */}
           <AppLayout>
              {children}
           </AppLayout>

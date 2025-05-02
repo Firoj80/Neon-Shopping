@@ -9,7 +9,7 @@ export default function TermsPage() {
         <CardHeader>
           <CardTitle className="text-secondary">Usage Agreement</CardTitle>
            <CardDescription className="text-muted-foreground">
-            Last Updated: [Insert Date]
+            Last Updated: [Insert Date] {/* TODO: Update this date */}
           </CardDescription>
         </CardHeader>
         <CardContent className="text-muted-foreground space-y-4">
@@ -26,7 +26,7 @@ export default function TermsPage() {
            </p>
             <h3 className="font-semibold text-neonText/90 pt-2">3. Advertisements</h3>
            <p>
-             The App may display advertisements through third-party services like AdMob. Your interaction with these ads is subject to the terms and privacy policies of the respective ad providers.
+            The App does not currently display third-party advertisements. {/* Removed AdMob mention */}
            </p>
            <h3 className="font-semibold text-neonText/90 pt-2">4. Intellectual Property</h3>
            <p>
