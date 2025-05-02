@@ -12,11 +12,13 @@ const config: CapacitorConfig = {
       appId: {
         // Replace with your actual AdMob App IDs
         // It's strongly recommended to use environment variables for these
-        android: 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy',
+        android: 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy', // TODO: Replace with actual ID
         // ios: 'ca-app-pub-xxxxxxxxxxxxxxxx~zzzzzzzzzz' // Add iOS ID if needed
       },
        // Optional: Configure other global settings if needed
        // sameAppKey: true, // Example setting
+       // testingDevices: ['YOUR_TEST_DEVICE_ID'], // Add your test device ID here
+       initializeForTesting: true, // Use test ads during development
     },
   },
    // Server configuration for local development (optional but helpful)

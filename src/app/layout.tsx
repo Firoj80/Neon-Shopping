@@ -6,8 +6,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
-// Removed ClientOnly import as AdComponent handles client-side loading
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
 
 
 const geistMono = Geist_Mono({
@@ -34,12 +33,12 @@ export default function RootLayout({
         )}
       >
         <Providers>
-           {/* AdInitializer is rendered via AdComponent which is dynamically imported client-side */}
-            <SidebarProvider>
+          {/* Wrap AppLayout with SidebarProvider */}
+          <SidebarProvider>
              <AppLayout>
-             {children}
+              {children}
             </AppLayout>
-            </SidebarProvider>
+          </SidebarProvider>
           <Toaster />
         </Providers>
       </body>

@@ -6,9 +6,10 @@ import { Capacitor } from '@capacitor/core';
 import { AdMob, AdOptions, AdLoadInfo, BannerAdOptions, BannerAdSize, BannerAdPosition, InterstitialAdOptions } from '@capacitor-community/admob';
 
 // AdMob configuration (Replace with your actual IDs - Use environment variables ideally)
-const ADMOB_APP_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy'; // Replace with your Android App ID
-const BANNER_AD_UNIT_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz'; // Replace with your Android Banner ID
-const INTERSTITIAL_AD_UNIT_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx/wwwwwwwwww'; // Replace with your Android Interstitial ID
+// TODO: Replace with actual AdMob IDs
+const ADMOB_APP_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy';
+const BANNER_AD_UNIT_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz';
+const INTERSTITIAL_AD_UNIT_ID_ANDROID = 'ca-app-pub-xxxxxxxxxxxxxxxx/wwwwwwwwww';
 
 let isAdMobInitialized = false; // Prevent multiple initializations
 let isInterstitialPrepared = false; // Track if interstitial is ready
@@ -25,7 +26,7 @@ export function AdInitializer() {
     // Only proceed if on client and on a native platform
     if (!isClient || !Capacitor.isNativePlatform()) {
       if (isClient && !Capacitor.isNativePlatform()) {
-        // console.log("Not on native platform, skipping AdMob.");
+         console.log("Not on native platform, skipping AdMob.");
       }
       return;
     }
@@ -35,7 +36,7 @@ export function AdInitializer() {
 
       try {
         console.log("Attempting AdMob initialization...");
-        // Initialize AdMob
+        // Initialize AdMob using settings from capacitor.config.ts
         await AdMob.initialize({
           // requestTrackingAuthorization: true, // Optional: Request tracking authorization (iOS)
           // testingDevices: ['YOUR_TEST_DEVICE_ID'], // Add test device IDs during development
@@ -46,11 +47,11 @@ export function AdInitializer() {
 
         // Show Banner Ad
         const bannerOptions: BannerAdOptions = {
-          adId: BANNER_AD_UNIT_ID_ANDROID,
+          adId: BANNER_AD_UNIT_ID_ANDROID, // Use your actual banner ID
           adSize: BannerAdSize.ADAPTIVE_BANNER,
           position: BannerAdPosition.BOTTOM_CENTER,
           margin: 0,
-          isTesting: process.env.NODE_ENV !== 'production',
+          isTesting: process.env.NODE_ENV !== 'production', // Or false for production
           // npa: true, // Optional: Non-personalized ads
         };
         await AdMob.showBanner(bannerOptions);
@@ -67,10 +68,12 @@ export function AdInitializer() {
 
     initialize();
 
-    // Cleanup function (optional, AdMob doesn't usually require explicit cleanup)
-    // return () => {
-    //   AdMob.hideBanner(); // Example cleanup if needed
-    // };
+    // Optional cleanup function
+    return () => {
+       if (Capacitor.isNativePlatform()) {
+           AdMob.hideBanner().catch(err => console.error("Error hiding banner:", err));
+       }
+    };
 
   }, [isClient]); // Rerun if isClient changes
 
@@ -87,13 +90,13 @@ export const prepareInterstitialAd = async () => {
   }
 
   if (isInterstitialPrepared) {
-    // console.log("Interstitial already prepared.");
+     console.log("Interstitial already prepared.");
     return; // Don't prepare again if already ready
   }
 
   try {
     const options: InterstitialAdOptions = {
-      adId: INTERSTITIAL_AD_UNIT_ID_ANDROID,
+      adId: INTERSTITIAL_AD_UNIT_ID_ANDROID, // Use your actual interstitial ID
       isTesting: process.env.NODE_ENV !== 'production',
       // npa: true,
     };
@@ -108,7 +111,7 @@ export const prepareInterstitialAd = async () => {
 };
 
 // Function to show the prepared interstitial ad (exported for use elsewhere)
-export const showInterstitialAd = async () => {
+export const showPreparedInterstitialAd = async () => { // Renamed to avoid conflict
     // Check platform and if AdMob is initialized and interstitial is ready
   if (!isAdMobInitialized || !isInterstitialPrepared || !Capacitor.isNativePlatform()) {
     console.log("Cannot show Interstitial Ad: AdMob not initialized, ad not prepared, or not on native platform.");

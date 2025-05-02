@@ -9,25 +9,25 @@ import {
   ShieldCheck,
   FileText,
   Star,
-  Menu, // Keep Menu icon
+  Menu,
   DollarSign,
-  X, // Keep X icon
+  X,
   History,
   BarChart3,
-  WalletCards, // More relevant icon for budget/shopping
-  ShoppingCart, // Keep for list
+  Wallet,
+  ShoppingCart,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
-import { showInterstitialAd } from '@/components/admob/ad-initializer'; // Import the AdMob function
+import { useSidebar, SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+import { showPreparedInterstitialAd, prepareInterstitialAd } from '@/components/admob/ad-initializer'; // Import the AdMob functions
 import dynamic from 'next/dynamic';
 
 
 // Dynamically import AdComponent only on the client-side
-const AdComponent = dynamic(() => import('@/components/admob/ad-component'), { // Corrected import path
+const AdComponent = dynamic(() => import('@/components/admob/ad-component'), {
   ssr: false, // Ensure this component is only loaded on the client-side
 });
 
@@ -41,7 +41,7 @@ const MobileHeader = () => {
   if (!isMobile) return null;
 
   return (
-     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Hamburger Menu Trigger on the left */}
       <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
         <AnimatePresence initial={false} mode="wait">
@@ -60,7 +60,7 @@ const MobileHeader = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <WalletCards className="w-6 h-6" /> {/* Changed icon */}
+        <Wallet className="w-6 h-6" /> {/* Use Wallet icon */}
         <span>{APP_NAME}</span> {/* Use APP_NAME */}
       </Link>
 
@@ -104,7 +104,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         if (item.showAd) {
           try {
               // Attempt to show the *prepared* ad
-              await showInterstitialAd();
+              await showPreparedInterstitialAd(); // Use the renamed function
               // Wait a short moment after ad potentially closes before navigating
               // Adjust delay as needed, ensure it's long enough for ad flow but not annoying
               setTimeout(() => {
@@ -131,8 +131,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
        <Sidebar className="hidden md:flex md:flex-col">
          <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-             <WalletCards className="w-6 h-6" /> {/* Changed icon */}
-             <span>{APP_NAME}</span>
+             <Wallet className="w-6 h-6" /> {/* Use Wallet icon */}
+             <span>{APP_NAME}</span> {/* Use consistent app name */}
            </Link>
          </SidebarHeader>
          <SidebarContent className="p-2 flex-grow flex flex-col overflow-y-auto"> {/* Allow content to grow and scroll */}
