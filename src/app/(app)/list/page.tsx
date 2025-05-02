@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading } = useAppContext();
@@ -66,28 +67,28 @@ export default function ShoppingListPage() {
   };
 
  const renderSkeletons = () => (
-    Array.from({ length: 8 }).map((_, index) => (
+    Array.from({ length: 5 }).map((_, index) => (
       <CardSkeleton key={index} />
     ))
   );
 
+  // Updated skeleton for list view
   const CardSkeleton = () => (
-    <div className="bg-card rounded-2xl p-4 flex flex-col min-h-[120px] border border-border/20">
-      <div className="flex items-start space-x-3 mb-2">
-        <Skeleton className="h-5 w-5 rounded mt-1" />
-        <Skeleton className="h-4 w-3/4 mt-1" />
-      </div>
-      <div className="space-y-2 pl-7 mt-auto">
-        <Skeleton className="h-3 w-1/2" />
-        <Skeleton className="h-3 w-1/3" />
-        <Skeleton className="h-3 w-1/4" />
-         <Skeleton className="h-3 w-2/5" />
-      </div>
-       <div className="p-2 border-t border-border/20 flex justify-end space-x-1 mt-2">
+    <Card className="bg-card rounded-lg p-3 flex items-center w-full border border-border/20 animate-pulse">
+        <Skeleton className="h-5 w-5 rounded mr-3 shrink-0" />
+        <div className="flex-grow space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <div className="flex space-x-4 text-xs">
+                <Skeleton className="h-3 w-1/6" />
+                <Skeleton className="h-3 w-1/6" />
+                <Skeleton className="h-3 w-1/5" />
+            </div>
+        </div>
+        <div className="flex space-x-1 ml-auto shrink-0">
          <Skeleton className="h-7 w-7 rounded-md" />
          <Skeleton className="h-7 w-7 rounded-md" />
        </div>
-    </div>
+    </Card>
   );
 
 
@@ -95,23 +96,24 @@ export default function ShoppingListPage() {
     <div className="flex flex-col h-full">
         <BudgetPanel />
 
-        <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-primary">Shopping List</h1>
-            <Button onClick={handleAddItemClick} className="shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow">
+        <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-secondary">Your Items</h2>
+            <Button onClick={handleAddItemClick} size="sm" className="shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Item
             </Button>
         </div>
 
         {isLoading ? (
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 flex-grow">
+             <div className="flex flex-col gap-2 flex-grow">
                 {renderSkeletons()}
              </div>
         ) : state.shoppingList.length === 0 ? (
              <div className="flex-grow flex items-center justify-center">
-                <p className="text-muted-foreground text-center">Your shopping list is empty. Add some items!</p>
+                <p className="text-muted-foreground text-center py-10">Your shopping list is empty. Add some items!</p>
             </div>
         ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 flex-grow">
+            // Use flex column for list view
+            <div className="flex flex-col gap-2 flex-grow">
             {state.shoppingList.map((item) => (
                 <ItemCard
                 key={item.id}
@@ -153,3 +155,5 @@ export default function ShoppingListPage() {
     </div>
   );
 }
+
+    
