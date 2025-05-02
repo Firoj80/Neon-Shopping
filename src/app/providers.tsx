@@ -1,8 +1,9 @@
+
 "use client";
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+// Removed ReactQueryDevtools import
 import { AppProvider } from '@/context/app-context'; // Assuming context is created here
 
 const queryClient = new QueryClient({
@@ -14,19 +15,18 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [isClient, setIsClient] = React.useState(false);
+  // Removed isClient state as it was only used for Devtools
 
-  React.useEffect(() => {
-    setIsClient(true);
-  }, []);
-
+  // No longer need useEffect for Devtools initialization
 
   return (
     <QueryClientProvider client={queryClient}>
         <AppProvider>
             {children}
-            {isClient && <ReactQueryDevtools initialIsOpen={false} />}
+            {/* Removed ReactQueryDevtools rendering logic */}
+            {/* {isClient && <ReactQueryDevtools initialIsOpen={false} />} */}
         </AppProvider>
     </QueryClientProvider>
   );
 }
+
