@@ -26,6 +26,7 @@ import {
   Star,
   Boxes,
   Wallet,
+  Menu, // Import the Menu icon
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
@@ -52,9 +53,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="p-4 border-b border-border/30">
+          {/* Updated App Name */}
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
             <Wallet className="w-6 h-6" />
-            <span>NeonWallet</span>
+            <span>Shpping List-Neon</span>
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2">
@@ -102,13 +104,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset className="flex flex-col"> {/* Make inset flex column */}
+      <SidebarInset className="flex flex-col min-h-screen"> {/* Ensure inset takes full height */}
         <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+            {/* Updated App Name for mobile header */}
             <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary md:hidden">
                 <Wallet className="w-6 h-6" />
-                <span className="sr-only">NeonWallet</span>
+                <span className="sr-only">Shpping List-Neon</span> {/* Screen reader text */}
             </Link>
-          <SidebarTrigger className="ml-auto" />
+            {/* Updated Trigger Icon */}
+             <SidebarTrigger asChild className="ml-auto">
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Toggle Menu</span>
+                </Button>
+            </SidebarTrigger>
         </header>
         {/* Make main content area grow */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
