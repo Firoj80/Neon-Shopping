@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -101,7 +102,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset className="flex flex-col"> {/* Make inset flex column */}
         <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
             <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary md:hidden">
                 <Wallet className="w-6 h-6" />
@@ -109,9 +110,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           <SidebarTrigger className="ml-auto" />
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+        {/* Make main content area grow */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+             {children}
+        </main>
         {/* Placeholder for Bottom Banner Ad */}
-        <footer className="sticky bottom-0 h-16 bg-card border-t border-border/30 flex items-center justify-center text-muted-foreground text-sm">
+        <footer className="h-16 bg-card border-t border-border/30 flex items-center justify-center text-muted-foreground text-sm mt-auto shrink-0"> {/* Footer stays at bottom */}
             AdMob Banner Placeholder
         </footer>
       </SidebarInset>

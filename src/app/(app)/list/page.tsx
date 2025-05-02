@@ -95,38 +95,41 @@ export default function ShoppingListPage() {
 
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height,4rem)-var(--footer-height,4rem)-2rem)] relative"> {/* Adjust height based on header/footer */}
+    // Changed flex structure to handle layout better
+    <div className="flex flex-col h-full space-y-4">
         <BudgetPanel />
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-2">
             <h2 className="text-xl font-semibold text-secondary">Your Items</h2>
-            {/* Button is moved below */}
+            {/* Button is moved below as FAB */}
         </div>
 
-        {/* Wrap the list in ScrollArea */}
-        <ScrollArea className="flex-grow pr-4 -mr-4 mb-16"> {/* Add padding bottom for FAB */}
-             {isLoading ? (
-                 <div className="flex flex-col gap-2">
-                    {renderSkeletons()}
-                 </div>
-            ) : state.shoppingList.length === 0 ? (
-                 <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground text-center py-10">Your shopping list is empty. Add some items!</p>
-                </div>
-            ) : (
-                // Use flex column for list view
-                <div className="flex flex-col gap-2">
-                {state.shoppingList.map((item) => (
-                    <ItemCard
-                    key={item.id}
-                    item={item}
-                    onEdit={handleEditItem}
-                    onDelete={handleDeleteItem}
-                    />
-                ))}
-                </div>
-            )}
-        </ScrollArea>
+        {/* Use flex-grow on the ScrollArea container */}
+        <div className="flex-grow overflow-hidden">
+            <ScrollArea className="h-full pr-1"> {/* Adjusted padding */}
+                 {isLoading ? (
+                     <div className="flex flex-col gap-2 pb-20"> {/* Add padding bottom */}
+                        {renderSkeletons()}
+                     </div>
+                ) : state.shoppingList.length === 0 ? (
+                     <div className="flex items-center justify-center h-full">
+                        <p className="text-muted-foreground text-center py-10">Your shopping list is empty. Add some items!</p>
+                    </div>
+                ) : (
+                    // Use flex column for list view
+                    <div className="flex flex-col gap-2 pb-20"> {/* Add padding bottom to prevent overlap with FAB */}
+                    {state.shoppingList.map((item) => (
+                        <ItemCard
+                        key={item.id}
+                        item={item}
+                        onEdit={handleEditItem}
+                        onDelete={handleDeleteItem}
+                        />
+                    ))}
+                    </div>
+                )}
+            </ScrollArea>
+        </div>
 
          {/* Floating Action Button */}
          <Button
