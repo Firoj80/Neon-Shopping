@@ -13,7 +13,7 @@ export default function RatePage() {
     if (typeof window !== 'undefined') {
        window.location.href = playStoreLink;
     }
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, [playStoreLink]); // Added playStoreLink dependency
 
   // Show a simple loading indicator while redirecting
   return (

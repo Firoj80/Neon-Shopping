@@ -12,7 +12,7 @@ export default function MoreAppsPage() {
     if (typeof window !== 'undefined') {
        window.location.href = developerLink;
     }
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, [developerLink]); // Added developerLink dependency
 
 
   // Show a simple loading indicator while redirecting
