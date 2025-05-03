@@ -1,4 +1,3 @@
-
 "use client";
 import React from 'react';
 import Link from 'next/link';
@@ -22,15 +21,6 @@ import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSidebar, SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
-import { showPreparedInterstitialAd, prepareInterstitialAd } from '@/components/admob/ad-initializer'; // Import the AdMob functions
-import dynamic from 'next/dynamic';
-
-
-// Dynamically import AdComponent only on the client-side
-const AdComponent = dynamic(() => import('@/components/admob/ad-component'), {
-  ssr: false, // Ensure this component is only loaded on the client-side
-});
-
 
 const APP_NAME = "Neon Shopping List";
 
@@ -54,7 +44,6 @@ const MobileHeader = () => {
           >
             {openMobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </motion.div>
-        </AnimatePresence>
          <span className="sr-only">Toggle Sidebar</span>
       </Button>
 
@@ -78,9 +67,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const mainMenuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: BarChart3, showAd: true }, // Mark for interstitial ad
-    { href: '/history', label: 'History', icon: History, showAd: true }, // Mark for interstitial ad
-    { href: '/currency', label: 'Currency', icon: DollarSign, showAd: true } // Mark for interstitial ad
+    { href: '/stats', label: 'Dashboard', icon: BarChart3 }, // Mark for interstitial ad
+    { href: '/history', label: 'History', icon: History }, // Mark for interstitial ad
+    { href: '/currency', label: 'Currency', icon: DollarSign } // Mark for interstitial ad
   ];
 
   const helpMenuItems = [
@@ -101,23 +90,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
          setOpenMobile(false);
        }
 
-        if (item.showAd) {
-          try {
-              // Attempt to show the *prepared* ad
-              await showPreparedInterstitialAd(); // Use the renamed function
-              // Wait a short moment after ad potentially closes before navigating
-              // Adjust delay as needed, ensure it's long enough for ad flow but not annoying
-              setTimeout(() => {
-                 router.push(item.href);
-              }, 150); // Delay might need adjustment based on ad behavior
-          } catch (error) {
-              console.error("Error showing interstitial or navigating:", error);
-              // Navigate anyway if showing ad failed
-              router.push(item.href);
-          }
-        } else {
-           router.push(item.href); // Navigate directly if no ad
-        }
+        router.push(item.href);
    };
 
 
@@ -125,7 +98,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
        {/* AdMob Banner Placement */}
        {/* AdComponent renders AdInitializer which handles the banner */}
-       <AdComponent />
+       {/*<AdComponent />*/}
 
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
@@ -187,7 +160,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
          {/* Content - Add padding bottom to avoid overlap with fixed banner */}
          {/* Adjust pb value if banner height differs or causes overlap */}
-         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[60px] sm:pb-[70px] md:pb-8">
+         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-8">
            {children}
          </main>
 

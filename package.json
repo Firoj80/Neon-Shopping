@@ -10,14 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "cap:sync": "npm run build && npx cap sync android",
-    "cap:open": "npx cap open android"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@capacitor/android": "^6.1.0",
-    "@capacitor/cli": "^6.1.0",
-    "@capacitor/core": "^6.1.0",
     "@genkit-ai/googleai": "^1.6.2",
     "@genkit-ai/next": "^1.6.2",
     "@hookform/resolvers": "^4.1.3",
