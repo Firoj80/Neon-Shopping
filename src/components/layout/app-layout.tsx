@@ -1,3 +1,4 @@
+
 "use client";
 import React from 'react';
 import Link from 'next/link';
@@ -10,21 +11,24 @@ import {
   Star,
   Menu,
   DollarSign,
-  X,
+  X, // Ensure X is imported
   History,
   BarChart3,
   Wallet,
   ShoppingCart,
+  Store, // Use Store icon for More Apps
+  Banknote, // Use Banknote for Currency
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSidebar, SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+import { useSidebar, SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar';
+
 
 const APP_NAME = "Neon Shopping List";
 
-// Mobile Header component
+// --- Mobile Header Component ---
 const MobileHeader = () => {
   const { isMobile, openMobile, toggleSidebar } = useSidebar();
 
@@ -44,13 +48,14 @@ const MobileHeader = () => {
           >
             {openMobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </motion.div>
-         <span className="sr-only">Toggle Sidebar</span>
+        </AnimatePresence>
+        <span className="sr-only">Toggle Sidebar</span>
       </Button>
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <Wallet className="w-6 h-6" /> {/* Use Wallet icon */}
-        <span>{APP_NAME}</span> {/* Use APP_NAME */}
+        <Wallet className="w-6 h-6" />
+        <span className="font-bold">{APP_NAME}</span> {/* Use consistent app name */}
       </Link>
 
       {/* Placeholder to balance header */}
@@ -60,16 +65,17 @@ const MobileHeader = () => {
 };
 
 
+// --- App Layout Component ---
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
-  const router = useRouter(); // Use router for navigation after ad
+  const router = useRouter();
 
   const mainMenuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: BarChart3 }, // Mark for interstitial ad
-    { href: '/history', label: 'History', icon: History }, // Mark for interstitial ad
-    { href: '/currency', label: 'Currency', icon: DollarSign } // Mark for interstitial ad
+    { href: '/stats', label: 'Dashboard', icon: BarChart3 },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/currency', label: 'Currency', icon: Banknote } // Updated icon
   ];
 
   const helpMenuItems = [
@@ -78,93 +84,82 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/privacy', label: 'Privacy Policy', icon: ShieldCheck },
     { href: '/terms', label: 'Terms of Service', icon: FileText },
     { href: '/rate', label: 'Rate App', icon: Star },
-    { href: '/more-apps', label: 'More Apps', icon: LayoutGrid },
+    { href: '/more-apps', label: 'More Apps', icon: Store }, // Updated icon
   ];
 
-   // Function to handle link clicks and potentially show ads
-   const handleLinkClick = async (item: { href: string, showAd?: boolean }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-       event.preventDefault(); // Prevent default link behavior initially
+  const handleLinkClick = (item: { href: string }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+    event.preventDefault(); // Prevent default link behavior initially
 
-       // Close mobile sidebar if open
-       if (isMobile) {
-         setOpenMobile(false);
-       }
-
-        router.push(item.href);
-   };
-
+    // Close mobile sidebar if open
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    router.push(item.href);
+  };
 
   return (
-    <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
-       {/* AdMob Banner Placement */}
-       {/* AdComponent renders AdInitializer which handles the banner */}
-       {/*<AdComponent />*/}
+    <>
+      {/* Desktop Sidebar */}
+      <Sidebar className="hidden md:flex md:flex-col">
+        <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
+          <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+            <Wallet className="w-6 h-6" />
+            <span className="font-bold">{APP_NAME}</span> {/* Use consistent app name */}
+          </Link>
+        </SidebarHeader>
+        <SidebarContent className="p-2 flex-grow flex flex-col overflow-y-auto">
+          <SidebarMenu className="flex-grow">
+            {mainMenuItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href}
+                  tooltip={item.label}
+                >
+                  <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+          <div className="p-2 shrink-0 border-t border-sidebar-border mt-auto">
+            <SidebarMenu>
+              {helpMenuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href}
+                    tooltip={item.label}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </div>
+        </SidebarContent>
+        <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
+          <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
+        </SidebarFooter>
+      </Sidebar>
 
-       {/* Desktop Sidebar */}
-       <Sidebar className="hidden md:flex md:flex-col">
-         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
-           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-             <Wallet className="w-6 h-6" /> {/* Use Wallet icon */}
-             <span>{APP_NAME}</span> {/* Use consistent app name */}
-           </Link>
-         </SidebarHeader>
-         <SidebarContent className="p-2 flex-grow flex flex-col overflow-y-auto"> {/* Allow content to grow and scroll */}
-           <SidebarMenu className="flex-grow">
-             {mainMenuItems.map((item) => (
-               <SidebarMenuItem key={item.href}>
-                 <SidebarMenuButton
-                   asChild
-                   isActive={pathname === item.href}
-                   tooltip={item.label}
-                 >
-                   <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
-                     <item.icon className="h-4 w-4"/>
-                     <span>{item.label}</span>
-                   </Link>
-                 </SidebarMenuButton>
-               </SidebarMenuItem>
-             ))}
-           </SidebarMenu>
-            {/* Help Menu Items */}
-            <div className="p-2 shrink-0 border-t border-sidebar-border mt-auto"> {/* Use mt-auto for footer */}
-              <SidebarMenu>
-                 {helpMenuItems.map((item) => (
-                   <SidebarMenuItem key={item.href}>
-                     <SidebarMenuButton
-                       asChild
-                       isActive={pathname === item.href}
-                       tooltip={item.label}
-                       variant="ghost"
-                       size="sm"
-                     >
-                        <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
-                         <item.icon className="h-4 w-4"/>
-                         <span>{item.label}</span>
-                       </Link>
-                     </SidebarMenuButton>
-                   </SidebarMenuItem>
-                 ))}
-               </SidebarMenu>
-            </div>
-         </SidebarContent>
+      {/* Main Content Area */}
+      <SidebarInset className="flex flex-col min-h-screen">
+        {/* Mobile Header */}
+        <MobileHeader />
 
-         <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
-           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
-         </SidebarFooter>
-       </Sidebar>
-
-       {/* Main Content Area */}
-       <SidebarInset className="flex flex-col min-h-screen">
-         {/* Mobile Header */}
-         <MobileHeader />
-
-         {/* Content - Add padding bottom to avoid overlap with fixed banner */}
-         {/* Adjust pb value if banner height differs or causes overlap */}
-         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-8">
-           {children}
-         </main>
-
-       </SidebarInset>
-      </>
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+          {children}
+        </main>
+      </SidebarInset>
+    </>
   );
 }
