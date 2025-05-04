@@ -1,0 +1,145 @@
+Okay, here is a detailed prompt designed to guide an AI (like Gemini) in developing a Flutter clone of your "Neon Shopping List" application, mirroring the UI and functionality we've discussed.
+
+---
+
+**Prompt for AI (e.g., Gemini): Develop a Flutter App Clone**
+
+**Project Goal:** Create a native Android application clone of the "Neon Shopping List" app using Flutter and Dart. The app should replicate the user interface (UI), features, and functionality of the described Next.js web application, including its neon cyberpunk aesthetic.
+
+**Target Platform:** Android (initially, Flutter allows for iOS expansion later).
+
+**Core Technologies:**
+*   **Framework:** Flutter
+*   **Language:** Dart
+*   **State Management:** Provider or Riverpod (Choose one and be consistent).
+*   **Data Persistence:** `sqflite` (for structured data like lists and budgets) or `shared_preferences` (for simpler settings like currency). `sqflite` is recommended for the list/budget data.
+*   **UI:** Flutter Material Widgets (customized for the neon theme).
+*   **Charting:** `charts_flutter` or a similar Flutter charting library.
+*   **Icons:** Flutter's built-in `Icons` class or a package like `lucide_icons`.
+*   **HTTP:** `http` package (if fetching currency data from an API is implemented later).
+*   **Validation:** Potentially use a package or manual validation for forms.
+
+**I. Core Principles:**
+1.  **Architecture:** Implement a clear architecture, preferably MVVM (Model-View-ViewModel) or a similar pattern suitable for Flutter (like using Provider/Riverpod with ViewModels/ChangeNotifiers/StateNotifiers). Separate UI, business logic, and data layers.
+2.  **UI Theme:** Replicate the neon cyberpunk theme:
+    *   **Dark Background:** Use a black or very dark grey background (`Colors.black` or similar).
+    *   **Neon Accents:** Use bright Cyan (`#00FFFF`) as the primary accent and Magenta (`#FF00FF`) as the secondary accent for buttons, highlights, progress bars, etc.
+    *   **Text Colors:** Use light grey/white for primary text and darker grey for muted text.
+    *   **Font:** Use a suitable monospace font (like `google_fonts` package with a font like 'Roboto Mono' or 'Source Code Pro').
+3.  **Responsiveness:** Ensure the layout adapts reasonably well to different Android screen sizes and densities using Flutter's layout widgets (`Expanded`, `Flexible`, `MediaQuery`, `LayoutBuilder`).
+4.  **Material Design Adaptation:** Use Flutter's Material widgets but customize their appearance (colors, shapes, fonts) to match the neon theme.
+
+**II. Project Setup:**
+1.  **Flutter Project Creation:** Create a new Flutter project.
+2.  **Dependencies:** Add the necessary dependencies to `pubspec.yaml` (state management, persistence, charting, icons, etc.).
+3.  **Folder Structure:** Organize the project logically (e.g., `lib/src/`, `lib/src/models/`, `lib/src/providers/` or `lib/src/notifiers/`, `lib/src/screens/`, `lib/src/widgets/`, `lib/src/database/`, `lib/src/services/`).
+
+**III. Data Models (Dart Classes):**
+*   Define Dart classes mirroring the structure of the data:
+    *   `ShoppingListItem`: `id` (String/UUID), `name` (String), `quantity` (int), `price` (double), `category` (String), `checked` (bool), `dateAdded` (DateTime or int timestamp). Annotate for `sqflite` if used.
+    *   `BudgetItem`: `limit` (double), `spent` (double), `lastSetDate` (DateTime or String YYYY-MM-DD). Annotate for `sqflite`.
+    *   `Currency`: `code` (String), `symbol` (String), `name` (String).
+
+**IV. Data Persistence (`sqflite` Recommended):**
+1.  **Database Helper:** Create a singleton class to manage the SQLite database connection.
+2.  **DAOs (Data Access Objects):** Create classes or interfaces with methods to perform CRUD (Create, Read, Update, Delete) operations for `ShoppingListItem`, `BudgetItem`, and selected `Currency`.
+3.  **Initialization:** Initialize the database when the app starts.
+4.  **State Hydration:** Load data from the database into the state management solution upon app launch.
+5.  **Saving Changes:** Persist changes to the database whenever the state updates (e.g., adding/editing/deleting items, setting budget, changing currency).
+
+**V. State Management (Provider/Riverpod):**
+1.  **Central State:** Create a central state object (e.g., `AppState` managed by a `ChangeNotifier` or `StateNotifier`) to hold:
+    *   The list of `ShoppingListItem` objects.
+    *   The current `BudgetItem`.
+    *   The selected `Currency`.
+    *   Loading states.
+2.  **Providers:** Set up the necessary Providers at the root of the application (`MaterialApp`).
+3.  **Consuming State:** Use `Consumer` widgets or `context.watch`/`ref.watch` to access and listen to state changes in the UI.
+4.  **Dispatching Actions:** Call methods on the `ChangeNotifier`/`StateNotifier` to update the state (which should also trigger database saves).
+
+**VI. Navigation:**
+1.  **Main Navigation:** Use a `BottomNavigationBar` for the primary sections: List, Stats, History, Currency.
+2.  **Screen Structure:** Use a `Scaffold` for each main screen, containing an `AppBar` (optional, can be simple) and the `BottomNavigationBar`. The main content area will host the respective screen's widgets.
+3.  **Dialogs/Modals:** Use `showDialog` or `showModalBottomSheet` for adding/editing items and setting the budget.
+4.  **Routing (Optional but Recommended):** Consider using a routing package like `go_router` for more complex navigation needs, although `Navigator.push` might suffice initially.
+
+**VII. Screen-by-Screen Implementation Details:**
+
+**A. Main Structure (`Scaffold` with `BottomNavigationBar`)**
+*   **AppBar:** Simple, dark background, potentially displaying the current screen title.
+*   **BottomNavigationBar:**
+    *   Icons: `Icons.shopping_cart`, `Icons.bar_chart`, `Icons.history`, `Icons.attach_money`.
+    *   Labels: "List", "Stats", "History", "Currency".
+    *   Styling: Dark background, neon accent color for the selected item.
+    *   Functionality: Switches the main content area between the respective screens/fragments.
+
+**B. List Screen (`/list`)**
+*   **Layout:** `Column` containing `BudgetPanelWidget`, `TabBarWidget`, and `Expanded(TabBarViewWidget)`. `FloatingActionButton` overlaid.
+*   **BudgetPanelWidget:**
+    *   UI: `Card` containing `Row`/`Column` with `Text` widgets for Spent/Limit/Remaining, `LinearProgressIndicator` (styled neon), `IconButton` (edit icon).
+    *   Functionality: Displays data from the `BudgetItem` state. Edit button opens the Budget Dialog. Progress bar reflects `spent / limit`. Remaining amount changes color if over budget (e.g., red).
+*   **TabBarWidget:**
+    *   UI: `TabBar` with two tabs: "Current" and "Purchased". Styled with neon accents for the indicator and selected tab text.
+*   **TabBarViewWidget:**
+    *   UI: `TabBarView` containing two separate `ListView.builder` widgets (one for current, one for purchased).
+    *   Functionality: Displays `ItemCardWidget` for each item. Filters items based on the `checked` status for the respective tab. Shows an empty state `Text` widget if a list is empty.
+*   **FloatingActionButton:**
+    *   UI: Circular FAB with a `+` icon, positioned bottom-right. Neon primary color background.
+    *   Functionality: Opens the `AddEditItemDialog`.
+*   **ItemCardWidget:**
+    *   UI: `Card` containing `Row` with `Checkbox`, `Column` (for Name, Details), and `Row` (for Edit/Delete buttons).
+    *   Functionality: Checkbox toggles `checked` state (updates state/DB). Edit button opens `AddEditItemDialog` with item data. Delete button shows a confirmation `AlertDialog` and then deletes (updates state/DB). Displays name, qty, price, total, category badge. Name text has strikethrough if `checked`.
+*   **AddEditItemDialog:**
+    *   UI: `AlertDialog` containing `Column` with `TextField`s (Name, Qty, Price), `DropdownButtonFormField` (Category), "Save" & "Cancel" `TextButton`s or `ElevatedButton`s.
+    *   Functionality: Form validation. On save, creates/updates the `ShoppingListItem` in the state/DB. Closes dialog.
+
+**C. Stats Screen (`/stats`)**
+*   **Layout:** `SingleChildScrollView` containing a `Column` with filter section, summary cards, and chart sections.
+*   **Filter Section:**
+    *   UI: `Row` or `Wrap` containing `DropdownButtonFormField` (Time Period Preset), `DateRangePicker` (use a suitable package or build custom), `DropdownButtonFormField` (Category). Style dropdowns with neon accents.
+    *   Functionality: Updates local state variables for selected filters. Triggers data reprocessing when filters change.
+*   **Summary Cards Section:**
+    *   UI: `GridView` or `Wrap` containing multiple `Card` widgets. Each card has an `Icon` and `Text` widgets.
+    *   Functionality: Displays calculated statistics (Total Spent, Avg Spend, Highest Spend Day, Items Purchased) based on *filtered* data. Format currency correctly.
+*   **Chart Section:**
+    *   UI: Two `Card` widgets. Each contains a `Row` (for title/toggle) and the chart widget. Toggle buttons (`TextButton` or `IconButton`) switch between Line/Bar and Pie/Bar.
+    *   Functionality: Uses `charts_flutter` (or similar). Expense Trend chart displays daily totals over the selected period. Category Breakdown chart shows spending per category. Charts update based on filters. Use neon colors for chart elements.
+
+**D. History Screen (`/history`)**
+*   **Layout:** `Column` containing filter/sort section and `Expanded(ListView.builder)`.
+*   **Filter/Sort Section:**
+    *   UI: Similar to Stats filters - `DateRangePicker`, `DropdownButtonFormField` (Category), `DropdownButtonFormField` (Sort Order).
+    *   Functionality: Updates local state for filters/sort. Triggers list refresh.
+*   **History List:**
+    *   UI: `ListView.builder` displaying `HistoryItemCardWidget`. Shows empty state text if no history matches filters.
+*   **HistoryItemCardWidget:**
+    *   UI: `Card` similar to `ItemCardWidget` but without the checkbox. Displays name, qty, price, total, *purchase date*, category badge, and a delete `IconButton`.
+    *   Functionality: Delete button shows confirmation `AlertDialog` and removes the item permanently from the list/DB.
+
+**E. Currency Screen (`/currency`)**
+*   **Layout:** `Column` containing a search `TextField` and `Expanded(ListView.builder)`.
+*   **Search Field:**
+    *   UI: `TextField` with a search icon. Neon focus highlight.
+    *   Functionality: Filters the displayed currency list based on user input (matching name, code, or symbol).
+*   **Currency List:**
+    *   UI: `ListView.builder` displaying `ListTile` or custom rows for each currency. Each row shows Name, Code, Symbol. Highlight the currently selected currency.
+    *   Functionality: Tapping a row updates the selected `Currency` in the state/DB.
+
+**F. Other Screens (About, Contact, Privacy, Terms, Rate, More Apps)**
+*   **Layout:** Simple `Scaffold` with an `AppBar` and a `SingleChildScrollView` containing `Text` widgets or `Card`s with text content.
+*   **Functionality:**
+    *   Display static information.
+    *   "Rate App" and "More Apps": Use the `url_launcher` package to open the respective Google Play Store URLs.
+
+**VIII. Theming and Styling:**
+*   **`ThemeData`:** Define a custom `ThemeData` in your `MaterialApp` to set the dark background, neon accent colors, monospace font, and custom styles for widgets like `Card`, `Button`, `AppBar`, `BottomNavigationBar`, `ProgressIndicator`, etc.
+*   **Consistency:** Apply the theme consistently across all screens and widgets.
+
+**IX. Building and Testing:**
+*   **Regular Builds:** Build the Android app frequently (`flutter run`) to test on an emulator or physical device.
+*   **Debugging:** Use Flutter DevTools and `print()` statements for debugging.
+*   **Testing:** Write widget tests and integration tests.
+
+---
+
+This detailed prompt provides a comprehensive roadmap for developing the Flutter clone. Remember to break down the work into smaller tasks and iterate. Good luck!
