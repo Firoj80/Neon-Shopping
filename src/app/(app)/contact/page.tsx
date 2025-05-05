@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Mail, Zap } from 'lucide-react'; // Example icons
 
 export default function ContactPage() {
-  const contactEmail = "firojalama80@gmail.com"; // Updated email address
+  const contactEmail = "firojalama80@gmail.com"; // Your email address
 
   return (
     <div className="space-y-6">
@@ -27,11 +27,10 @@ export default function ContactPage() {
             <span className="text-neonText">Feature Requests & Feedback</span>
            </div>
              <p className="text-xs text-muted-foreground pl-8">
-                We're always looking to improve. Share your ideas on how to make Neon Shopping List even better! Use the email above for now. {/* Updated App Name */}
+                We're always looking to improve. Share your ideas on how to make Neon Shopping even better! Use the email above for now. {/* Updated App Name */}
              </p>
         </CardContent>
       </Card>
     </div>
   );
 }
-

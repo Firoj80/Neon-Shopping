@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         </CardHeader>
         <CardContent className="text-muted-foreground space-y-4">
           <p>
-            At Neon Shopping List, we prioritize your privacy. This application is designed to operate primarily offline, storing your data directly on your device using your browser's local storage. {/* Updated App Name */}
+            At Neon Shopping, we prioritize your privacy. This application is designed to operate primarily offline, storing your data directly on your device using your browser's local storage. {/* Updated App Name */}
           </p>
           <h3 className="font-semibold text-neonText/90 pt-2">Data Storage</h3>
           <p>
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
            </p>
             <h3 className="font-semibold text-neonText/90 pt-2">Third-Party Services</h3>
            <p>
-            This app does not currently integrate with third-party services that collect personal data beyond standard browser functionality. {/* Removed AdMob mention */}
+            This app does not currently integrate with third-party services that collect personal data beyond standard browser functionality.
            </p>
            <h3 className="font-semibold text-neonText/90 pt-2">Data Security</h3>
            <p>

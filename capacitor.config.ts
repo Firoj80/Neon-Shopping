@@ -1,18 +1,18 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.firoj.neonshopping',
-  appName: 'Neon Shopping List',
+  appId: 'com.firoj.neonshopping', // Keep your package name
+  appName: 'Neon Shopping', // Updated App Name
   webDir: 'out', // Ensure this matches your Next.js export directory
   bundledWebRuntime: false,
-  // Remove AdMob config for now to avoid potential issues
   plugins: {
-    // AdMob: { // Removed AdMob plugin config
-    //   appId: {
-    //     android: 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy', // TODO: Replace with actual ID
-    //   },
-    //    initializeForTesting: true, // Use test ads during development
-    // },
+    AdMob: {
+      appId: {
+        android: 'ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy', // Replace with your AdMob App ID
+        // ios: 'ca-app-pub-xxxxxxxxxxxxxxxx~zzzzzzzzzz' // Add iOS ID if needed
+      },
+      initializeForTesting: true, // Keep true for testing, set to false for production
+    },
   },
    // Server configuration for local development (optional but helpful)
    server: {

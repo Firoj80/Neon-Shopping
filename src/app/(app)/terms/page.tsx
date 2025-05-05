@@ -14,11 +14,11 @@ export default function TermsPage() {
         </CardHeader>
         <CardContent className="text-muted-foreground space-y-4">
           <p>
-            Welcome to Neon Shopping List! By using this application ("App"), you agree to these Terms of Service ("Terms"). Please read them carefully. {/* Updated App Name */}
+            Welcome to Neon Shopping! By using this application ("App"), you agree to these Terms of Service ("Terms"). Please read them carefully. {/* Updated App Name */}
           </p>
           <h3 className="font-semibold text-neonText/90 pt-2">1. Use of the App</h3>
           <p>
-            Neon Shopping List is provided for personal, non-commercial use to help you track shopping lists and expenses. You agree not to use the App for any illegal or unauthorized purpose. {/* Updated App Name */}
+            Neon Shopping is provided for personal, non-commercial use to help you track shopping lists and expenses. You agree not to use the App for any illegal or unauthorized purpose. {/* Updated App Name */}
           </p>
            <h3 className="font-semibold text-neonText/90 pt-2">2. Data Storage and Responsibility</h3>
            <p>
@@ -26,7 +26,7 @@ export default function TermsPage() {
            </p>
             <h3 className="font-semibold text-neonText/90 pt-2">3. Advertisements</h3>
            <p>
-            The App does not currently display third-party advertisements. {/* Removed AdMob mention */}
+            The App may display third-party advertisements via Google AdMob. Your interaction with these ads is subject to the terms and privacy policies of Google AdMob.
            </p>
            <h3 className="font-semibold text-neonText/90 pt-2">4. Intellectual Property</h3>
            <p>

@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import {
   ShoppingCart,
@@ -15,32 +15,33 @@ import {
   Store as Apps, // Alias Store to Apps
   Menu,
   X,
-  DollarSign,
+  ShoppingBag, // New icon for Shopping
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
-// Temporarily remove AdMob related imports
-// import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
+import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
 import dynamic from 'next/dynamic';
 
-
-// Dynamically import AdInitializer to ensure it only runs client-side
-// Temporarily disable dynamic import as well
-// const AdInitializer = dynamic(() => import('@/components/admob/ad-initializer').then(mod => mod.AdInitializer), {
-//   ssr: false,
+// Dynamically import AdComponent to ensure it only runs client-side
+// const AdComponent = dynamic(() => import('@/components/admob/ad-component'), {
+//   ssr: false, // Ensure this component is only loaded on the client-side
 // });
 
-// AdComponent placeholder
+// AdComponent placeholder (if AdMob is temporarily removed or needs client-side handling)
 const AdComponent = () => {
-    // Render nothing, or a placeholder div if needed for layout
-    // return <div className="admob-placeholder h-16 bg-gray-800 text-center text-xs text-gray-500 flex items-center justify-center">Ad Placeholder</div>;
-     return null;
+    // Render a fixed placeholder for the banner ad at the bottom
+    return (
+      <div className="fixed bottom-0 left-0 right-0 h-16 bg-black/80 border-t border-primary/30 flex items-center justify-center text-xs text-muted-foreground z-40">
+        {/* Ad Banner Placeholder */}
+      </div>
+    );
 };
 
-const APP_NAME = "Neon Shopping List"; // Consistent App Name
+
+const APP_NAME = "Neon Shopping"; // Updated App Name
 
 // --- Mobile Header Component ---
 const MobileHeader = () => {
@@ -68,7 +69,7 @@ const MobileHeader = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-         <DollarSign className="w-5 h-5" /> {/* Updated Icon */}
+         <ShoppingBag className="w-6 h-6" /> {/* Use ShoppingBag icon */}
         <span className="font-bold">{APP_NAME}</span> {/* Use consistent app name */}
       </Link>
 
@@ -85,12 +86,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
   const router = useRouter();
 
-  // Updated Menu Items
+  // AdMob Interstitial Trigger Routes
+  const interstitialTriggerRoutes = ['/stats', '/history', '/settings']; // Updated '/settings'
+
+  // Menu Items & Icons
   const menuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: Dashboard },
     { href: '/history', label: 'History', icon: History },
-    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/settings', label: 'Settings', icon: Settings }, // Updated to Settings
     { href: '/about', label: 'About Us', icon: InfoIcon },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: Policy },
@@ -99,8 +103,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/more-apps', label: 'More Apps', icon: Apps },
   ];
 
-   // AdMob Interstitial Trigger Routes (keep for reference, but won't trigger now)
-   const interstitialTriggerRoutes = ['/stats', '/history', '/currency']; // Updated to '/currency'
 
   const handleLinkClick = async (item: { href: string }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
      event.preventDefault(); // Prevent default link behavior initially
@@ -110,27 +112,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       setOpenMobile(false);
     }
 
-    // Temporarily disable interstitial logic
     // Check if the clicked route should trigger an interstitial ad
-    //  if (interstitialTriggerRoutes.includes(item.href)) {
-    //    console.log(`Interstitial triggered for: ${item.href}`);
-    //    try {
-    //      await showPreparedInterstitialAd(); // Attempt to show the ad
-    //    } catch (error) {
-    //      console.error("Error showing interstitial ad on click:", error);
-    //    } finally {
-    //      // Navigate regardless of whether the ad showed or not
-    //      router.push(item.href);
-    //    }
-    //  } else {
+     if (interstitialTriggerRoutes.includes(item.href)) {
+       console.log(`Interstitial triggered for: ${item.href}`);
+       try {
+         await showPreparedInterstitialAd(); // Attempt to show the ad
+       } catch (error) {
+         console.error("Error showing interstitial ad on click:", error);
+       } finally {
+         // Navigate regardless of whether the ad showed or not
+         router.push(item.href);
+       }
+     } else {
        // Navigate directly for other routes
        router.push(item.href);
-    //  }
+     }
   };
 
-  // Apply hover styles dynamically using CSS group hover and data attributes if possible,
-  // or manage hover state with React if more complex effects are needed.
-  const menuItemClasses = cn(
+
+   const menuItemClasses = cn(
      "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm", // Adjusted gap and padding
      "border border-primary/30 hover:border-white", // Neon cyan border, white on hover
      "transition-all duration-300 ease-in-out", // Smooth transitions
@@ -147,18 +147,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
    );
 
   return (
-    <>
-       {/* AdMob Banner Placement */}
-       <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
-         {/* Render the AdComponent which will handle AdMob logic */}
-         <AdComponent />
-       </div>
+    <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
+       {/* AdMob Banner Placement (Placeholder) */}
+       <AdComponent />
 
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-             <DollarSign className="w-5 h-5" /> {/* Updated Icon */}
+             <ShoppingBag className="w-6 h-6" /> {/* Use ShoppingBag icon */}
             <span className="font-bold">{APP_NAME}</span> {/* Ensure this name is consistent */}
           </Link>
         </SidebarHeader>
@@ -197,7 +194,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileHeader />
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20"> {/* Added bottom padding */}
+         {/* Add padding-bottom to avoid content being hidden by the fixed banner */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20"> {/* Adjusted bottom padding */}
           {children}
         </main>
       </SidebarInset>

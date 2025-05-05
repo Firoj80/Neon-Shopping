@@ -7,6 +7,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
+import ClientOnly from '@/components/client-only'; // Import ClientOnly
+import { AdInitializer } from '@/components/admob/ad-initializer'; // Import AdInitializer
 
 
 const geistMono = Geist_Mono({
@@ -15,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Neon Shopping List - Cyberpunk Expense Tracker', // Updated App Name
+  title: 'Neon Shopping - Cyberpunk Expense Tracker', // Updated App Name
   description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
 };
 
@@ -33,11 +35,14 @@ export default function RootLayout({
         )}
       >
         <Providers>
-          {/* Wrap AppLayout with SidebarProvider */}
           <SidebarProvider>
              <AppLayout>
               {children}
-            </AppLayout>
+             </AppLayout>
+             {/* Render AdInitializer within ClientOnly to ensure it runs client-side */}
+             <ClientOnly>
+                <AdInitializer />
+             </ClientOnly>
           </SidebarProvider>
           <Toaster />
         </Providers>
