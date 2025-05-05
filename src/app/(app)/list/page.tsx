@@ -1,6 +1,5 @@
-
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, ShoppingCart, CheckCircle } from 'lucide-react'; // Added icons
 import { ItemCard } from '@/components/shopping/item-card';
@@ -22,12 +21,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
+import ClientOnly from '@/components/client-only'; // Import ClientOnly
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true); // Indicate component has mounted client-side
+  }, []);
 
   const handleAddItemClick = () => {
     setEditingItem(null);
@@ -121,38 +126,41 @@ export default function ShoppingListPage() {
     )
   );
 
-
   return (
     // Use flex-col and h-full to allow content scrolling within the main area
     <div className="flex flex-col h-full">
-
-         {/* Sticky Header Section - Contains BudgetPanel and TabsList */}
+       {/* Sticky Header Section - Contains BudgetPanel and TabsList */}
+        {/* Ensure this section has a defined height */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-4">
             <BudgetPanel />
-            <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner">
-                 <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
-                     <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
-                 </TabsTrigger>
-                 <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
-                     <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
-                 </TabsTrigger>
-             </TabsList>
+             {/* Only render Tabs on the client */}
+            <ClientOnly>
+                <Tabs defaultValue="current" className="flex flex-col">
+                    <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner">
+                        <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
+                            <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
+                            <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
+                        </TabsTrigger>
+                    </TabsList>
+
+                    {/* Scrollable Content Area */}
+                    <div className="flex-grow overflow-hidden mt-4"> {/* Added margin-top */}
+                        {/* We need to wrap the ScrollArea in a container that takes up the remaining space */}
+                        {/* Calculate height dynamically based on viewport and sticky header height */}
+                        <ScrollArea className="h-[calc(100vh-220px)] pr-1"> {/* Adjust height calc as needed */}
+                            <TabsContent value="current" className="mt-0"> {/* Removed default margin */}
+                                {renderItemList(currentItems, "No current items. Add some!")}
+                            </TabsContent>
+                            <TabsContent value="purchased" className="mt-0"> {/* Removed default margin */}
+                                {renderItemList(purchasedItems, "No items purchased yet.")}
+                            </TabsContent>
+                        </ScrollArea>
+                    </div>
+                </Tabs>
+            </ClientOnly>
         </div>
-
-        {/* Scrollable Content Area */}
-        <div className="flex-grow overflow-hidden mt-4"> {/* Added margin-top */}
-             {/* We need to wrap the ScrollArea in a container that takes up the remaining space */}
-             {/* Approximate height calculation - adjust 200px based on the actual height of the sticky header */}
-             <ScrollArea className="h-[calc(100vh-200px)] pr-1"> {/* Adjust height calc as needed */}
-                 <TabsContent value="current" className="mt-0"> {/* Removed default margin */}
-                     {renderItemList(currentItems, "No current items. Add some!")}
-                 </TabsContent>
-                 <TabsContent value="purchased" className="mt-0"> {/* Removed default margin */}
-                     {renderItemList(purchasedItems, "No items purchased yet.")}
-                 </TabsContent>
-             </ScrollArea>
-         </div>
-
 
          {/* Floating Action Button - Stays fixed */}
          <Button
@@ -163,7 +171,6 @@ export default function ShoppingListPage() {
           >
              <PlusCircle className="h-6 w-6" />
          </Button>
-
 
         <AddEditItemModal
             isOpen={isModalOpen}
