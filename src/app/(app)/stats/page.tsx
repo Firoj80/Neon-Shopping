@@ -37,7 +37,7 @@ export default function StatsPage() {
 
     // Update date range when preset changes
     useEffect(() => {
-        if (timePeriodPreset === 'custom' || !dateRange) return;
+        if (timePeriodPreset === 'custom' || !dateRange) return; // Don't overwrite custom range
 
         const now = new Date();
         let startDate: Date;
@@ -66,7 +66,7 @@ export default function StatsPage() {
         const endDate = endOfDay(dateRange.to);
 
         return state.shoppingList.filter(item => {
-            if (!item.checked) return false;
+            if (!item.checked) return false; // Only purchased items
 
             const itemDate = new Date(item.dateAdded);
             const isWithinDate = isWithinInterval(itemDate, { start: startDate, end: endDate });
@@ -85,11 +85,13 @@ export default function StatsPage() {
         const dailyTotals: Record<string, number> = {};
         const datesInRange = eachDayOfInterval({ start: startDate, end: endDate });
 
+        // Initialize all days in the range with 0
         datesInRange.forEach(date => {
             const formattedDate = format(date, 'yyyy-MM-dd');
             dailyTotals[formattedDate] = 0;
         });
 
+        // Add spending from filtered items
         filteredItems.forEach(item => {
             const itemDate = format(new Date(item.dateAdded), 'yyyy-MM-dd');
              if (dailyTotals.hasOwnProperty(itemDate)) {
@@ -97,23 +99,27 @@ export default function StatsPage() {
              }
         });
 
+         // Determine appropriate date format based on range duration
          const durationDays = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24);
          let dateFormat = 'MMM dd';
-         if (durationDays <= 7) dateFormat = 'eee';
-         else if (durationDays > 90) dateFormat = 'MMM yy';
+         if (durationDays <= 7) dateFormat = 'eee'; // Abbreviated weekday for <= 7 days
+         else if (durationDays > 90) dateFormat = 'MMM yy'; // Month and year for > 90 days
 
+         // Create a map for easy date object lookup
          const dateMap = new Map<string, Date>();
          Object.keys(dailyTotals).forEach(dateStr => {
-             dateMap.set(dateStr, parseISO(dateStr + 'T00:00:00Z'));
+             dateMap.set(dateStr, parseISO(dateStr + 'T00:00:00Z')); // Use UTC to avoid timezone issues
          });
 
+        // Format data for the chart, ensuring correct sorting
         const formattedData: ProcessedExpenseData[] = Object.entries(dailyTotals)
           .map(([dateStr, total]) => ({
-             date: format(dateMap.get(dateStr)!, dateFormat),
+             date: format(dateMap.get(dateStr)!, dateFormat), // Format using the chosen format
              total,
            }))
           .sort((a, b) => {
-              // Find original date strings to sort correctly
+              // Find original date strings to sort correctly based on Date objects
+              // This approach can be complex; sorting by original date string before mapping is safer
               const dateAStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === a.date)?.[0];
               const dateBStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === b.date)?.[0];
               if (!dateAStr || !dateBStr) return 0;
@@ -131,6 +137,7 @@ export default function StatsPage() {
 
          filteredItems.forEach(item => {
              const categoryId = item.category;
+             // Use state.categories to find the name, default to 'Uncategorized'
              const categoryName = state.categories.find(c => c.id === categoryId)?.name || 'Uncategorized';
              if (!categoryTotals[categoryId]) {
                  categoryTotals[categoryId] = { total: 0, name: categoryName };
@@ -139,7 +146,7 @@ export default function StatsPage() {
          });
 
          const totalSpent = Object.values(categoryTotals).reduce((sum, catData) => sum + catData.total, 0);
-         if (totalSpent === 0) return [];
+         if (totalSpent === 0) return []; // Return empty if no spending
 
          // Transform data for the chart components
          const categoryData: CategoryData[] = Object.entries(categoryTotals)
@@ -155,7 +162,13 @@ export default function StatsPage() {
      // Dynamically generate chart config for categories based on context
      const dynamicChartConfig = useMemo(() => {
         const config: ChartConfig = { total: { label: "Total Spend", color: "hsl(var(--primary))" } };
-        const availableColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(150 100% 50%)", "hsl(270 100% 60%)", "hsl(30 100% 50%)", "hsl(210 100% 60%)", "hsl(330 100% 60%)"];
+        // Define a palette of distinct neon-like colors
+        const availableColors = [
+            "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
+            "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(150 100% 50%)", // Neon Green
+            "hsl(270 100% 60%)", "hsl(30 100% 50%)", // Neon Orange
+            "hsl(210 100% 60%)", "hsl(330 100% 60%)" // Neon Pink
+        ];
         let colorIndex = 0;
 
         state.categories.forEach(cat => {
@@ -165,7 +178,8 @@ export default function StatsPage() {
           };
           colorIndex++;
         });
-        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" }; // Add fallback
+        // Add a fallback color for uncategorized items
+        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" }; // Neutral gray
 
         return config;
      }, [state.categories]);
@@ -176,20 +190,28 @@ export default function StatsPage() {
 
         const totalSpent = filteredItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
         const daysWithSpending = new Set(filteredItems.map(item => format(new Date(item.dateAdded), 'yyyy-MM-dd')));
-        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size);
+        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size); // Avoid division by zero
 
-         const numberOfDaysInRange = Math.max(1, processedTrendData.length);
+         // Calculate number of days in the selected range
+         const start = startOfDay(dateRange.from);
+         const end = endOfDay(dateRange.to);
+         const numberOfDaysInRange = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 3600 * 24) + 1); // Inclusive
+
          const averagePerDayInRange = totalSpent / numberOfDaysInRange;
          const averagePerSpendingDay = totalSpent / numberOfDaysWithSpending;
 
-         const highestSpendDay = processedTrendData.reduce((max, day) => (day.total > max.total ? day : max), { date: '', total: -1 });
+         // Find the day with the highest spending from processedTrendData
+         const highestSpendDay = processedTrendData.reduce(
+            (max, day) => (day.total > max.total ? day : max),
+            { date: '', total: -1 } // Initial value with negative total
+          );
          const totalItems = filteredItems.length;
 
         return {
             totalSpent,
             averagePerDayInRange,
             averagePerSpendingDay,
-            highestSpendDay: highestSpendDay.total >= 0 ? highestSpendDay : null,
+            highestSpendDay: highestSpendDay.total >= 0 ? highestSpendDay : null, // Only return if total is non-negative
             totalItems,
         };
     }, [filteredItems, processedTrendData, dateRange]);
@@ -223,11 +245,11 @@ export default function StatsPage() {
 
 
     return (
-        <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0">
+        <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full"> {/* Ensure h-full for flex layout */}
             <h1 className="text-xl sm:text-2xl font-bold text-primary">Expense Dashboard</h1>
 
-            {/* Filter Section */}
-             <Card className="bg-card/80 border-border/20 shadow-sm">
+            {/* Filter Section - Made Sticky */}
+             <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm"> {/* Sticky classes added */}
                 <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                     <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2">
                         <Filter className="h-4 w-4" /> Filters
@@ -241,7 +263,7 @@ export default function StatsPage() {
                                 <CalendarDays className="h-4 w-4 mr-2 opacity-70" />
                                 <SelectValue placeholder="Select time period" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-secondary/80 text-neonText">
+                            <SelectContent className="bg-card border-secondary/80 text-neonText glow-border-inner">
                                 <SelectItem value="7d" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">Last 7 Days</SelectItem>
                                 <SelectItem value="30d" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">Last 30 Days</SelectItem>
                                 <SelectItem value="90d" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">Last 90 Days</SelectItem>
@@ -266,7 +288,7 @@ export default function StatsPage() {
                                 <SelectValue placeholder="Filter by category" />
                             </SelectTrigger>
                              <SelectContent
-                                className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto"
+                                className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner"
                                 position="popper"
                              >
                                  <ScrollArea className="h-full">
@@ -287,141 +309,145 @@ export default function StatsPage() {
                 </CardContent>
             </Card>
 
+            {/* Scrollable Content Area */}
+            <div className="flex-grow overflow-y-auto mt-4"> {/* Added mt-4 for spacing below sticky filter */}
+                <div className="space-y-4 sm:space-y-6 pb-6"> {/* Added padding-bottom */}
+                    {/* Summary Cards */}
+                    <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                        {/* Total Spent */}
+                        <Card className="bg-card border-primary/30 shadow-neon glow-border-inner">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
+                            <CardTitle className="text-xs sm:text-sm font-medium text-primary">Total Spent</CardTitle>
+                            <WalletCards className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                            <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.totalSpent)}</div>
+                            <p className="text-xs text-muted-foreground">{summaryStats.totalItems} items ({getFilterLabel()})</p>
+                            </CardContent>
+                        </Card>
+                        {/* Avg Spend / Day */}
+                        <Card className="bg-card border-secondary/30 shadow-neon glow-border-inner">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
+                            <CardTitle className="text-xs sm:text-sm font-medium text-secondary">Avg. Spend / Day</CardTitle>
+                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                            <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.averagePerDayInRange)}</div>
+                            <p className="text-xs text-muted-foreground">Avg/spending day: {formatCurrency(summaryStats.averagePerSpendingDay)}</p>
+                            </CardContent>
+                        </Card>
+                        {/* Highest Spend Day */}
+                        <Card className="bg-card border-yellow-500/30 shadow-neon glow-border-inner">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
+                            <CardTitle className="text-xs sm:text-sm font-medium text-yellow-500">Highest Spend Day</CardTitle>
+                            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                            {summaryStats.highestSpendDay ? (
+                                <>
+                                    <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.highestSpendDay.total)}</div>
+                                    <p className="text-xs text-muted-foreground">on {summaryStats.highestSpendDay.date}</p>
+                                </>
+                            ) : (
+                                <div className="text-lg font-bold text-muted-foreground">-</div>
+                            )}
+                            </CardContent>
+                        </Card>
+                        {/* Items Purchased */}
+                        <Card className="bg-card border-green-500/30 shadow-neon glow-border-inner">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
+                            <CardTitle className="text-xs sm:text-sm font-medium text-green-500">Items Purchased</CardTitle>
+                            <Layers className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                            <div className="text-lg sm:text-2xl font-bold text-neonText">{summaryStats.totalItems}</div>
+                                <p className="text-xs text-muted-foreground">{getFilterLabel()}</p>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-            {/* Summary Cards */}
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                 {/* Total Spent */}
-                <Card className="bg-card border-primary/30 shadow-neon">
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
-                    <CardTitle className="text-xs sm:text-sm font-medium text-primary">Total Spent</CardTitle>
-                    <WalletCards className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                     <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
-                    <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.totalSpent)}</div>
-                      <p className="text-xs text-muted-foreground">{summaryStats.totalItems} items ({getFilterLabel()})</p>
-                    </CardContent>
-                </Card>
-                 {/* Avg Spend / Day */}
-                 <Card className="bg-card border-secondary/30 shadow-neon">
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
-                    <CardTitle className="text-xs sm:text-sm font-medium text-secondary">Avg. Spend / Day</CardTitle>
-                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                     <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
-                    <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.averagePerDayInRange)}</div>
-                     <p className="text-xs text-muted-foreground">Avg/spending day: {formatCurrency(summaryStats.averagePerSpendingDay)}</p>
-                    </CardContent>
-                </Card>
-                 {/* Highest Spend Day */}
-                 <Card className="bg-card border-yellow-500/30 shadow-neon">
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
-                    <CardTitle className="text-xs sm:text-sm font-medium text-yellow-500">Highest Spend Day</CardTitle>
-                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
-                    {summaryStats.highestSpendDay ? (
-                        <>
-                            <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.highestSpendDay.total)}</div>
-                             <p className="text-xs text-muted-foreground">on {summaryStats.highestSpendDay.date}</p>
-                        </>
-                    ) : (
-                        <div className="text-lg font-bold text-muted-foreground">-</div>
-                    )}
-                    </CardContent>
-                </Card>
-                 {/* Items Purchased */}
-                 <Card className="bg-card border-green-500/30 shadow-neon">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
-                    <CardTitle className="text-xs sm:text-sm font-medium text-green-500">Items Purchased</CardTitle>
-                    <Layers className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
-                       <div className="text-lg sm:text-2xl font-bold text-neonText">{summaryStats.totalItems}</div>
-                        <p className="text-xs text-muted-foreground">{getFilterLabel()}</p>
-                    </CardContent>
-                </Card>
-            </div>
+                    {/* Chart Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        {/* Expense Trend Chart */}
+                        <Card className="bg-card border-primary/30 shadow-neon lg:col-span-1 glow-border-inner">
+                            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
+                                <div>
+                                    <CardTitle className="text-base sm:text-lg text-primary">Expense Trend</CardTitle>
+                                    <CardDescription className="text-xs text-muted-foreground mt-1">{getFilterLabel()}</CardDescription>
+                                </div>
+                                <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
+                                    <Button
+                                        variant={trendChartType === 'line' ? 'secondary' : 'ghost'}
+                                        size="icon"
+                                        onClick={() => setTrendChartType('line')}
+                                        className={`h-7 w-7 ${trendChartType === 'line' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                        aria-label="Show as Line Chart"
+                                    > <LineChartIcon className="h-4 w-4" /> </Button>
+                                    <Button
+                                        variant={trendChartType === 'bar' ? 'secondary' : 'ghost'}
+                                        size="icon"
+                                        onClick={() => setTrendChartType('bar')}
+                                        className={`h-7 w-7 ${trendChartType === 'bar' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                        aria-label="Show as Bar Chart"
+                                    > <BarChart3 className="h-4 w-4" /> </Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
+                                {processedTrendData.length > 0 ? (
+                                    // Pass dynamicChartConfig to ExpenseChart
+                                    <ExpenseChart data={processedTrendData} chartType={trendChartType} chartConfig={dynamicChartConfig} />
+                                ) : (
+                                    <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
+                                        <p className="text-muted-foreground text-center text-sm">No expense data available for the selected filters.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
 
-            {/* Chart Section */}
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                 {/* Expense Trend Chart */}
-                 <Card className="bg-card border-primary/30 shadow-neon lg:col-span-1">
-                     <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
-                         <div>
-                             <CardTitle className="text-base sm:text-lg text-primary">Expense Trend</CardTitle>
-                             <CardDescription className="text-xs text-muted-foreground mt-1">{getFilterLabel()}</CardDescription>
-                         </div>
-                        <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
-                             <Button
-                                variant={trendChartType === 'line' ? 'secondary' : 'ghost'}
-                                 size="icon"
-                                onClick={() => setTrendChartType('line')}
-                                className={`h-7 w-7 ${trendChartType === 'line' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
-                                aria-label="Show as Line Chart"
-                            > <LineChartIcon className="h-4 w-4" /> </Button>
-                            <Button
-                                variant={trendChartType === 'bar' ? 'secondary' : 'ghost'}
-                                 size="icon"
-                                onClick={() => setTrendChartType('bar')}
-                                className={`h-7 w-7 ${trendChartType === 'bar' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
-                                aria-label="Show as Bar Chart"
-                            > <BarChart3 className="h-4 w-4" /> </Button>
-                        </div>
-                     </CardHeader>
-                     <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
-                        {processedTrendData.length > 0 ? (
-                             // Pass dynamicChartConfig to ExpenseChart
-                            <ExpenseChart data={processedTrendData} chartType={trendChartType} chartConfig={dynamicChartConfig} />
-                        ) : (
-                            <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
-                                <p className="text-muted-foreground text-center text-sm">No expense data available for the selected filters.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                 {/* Category Breakdown Chart */}
-                 <Card className="bg-card border-secondary/30 shadow-neon lg:col-span-1">
-                     <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
-                         <div>
-                             <CardTitle className="text-base sm:text-lg text-secondary flex items-center gap-2">
-                                <Layers className="h-5 w-5" /> Category Breakdown
-                             </CardTitle>
-                             <CardDescription className="text-xs text-muted-foreground mt-1">{getFilterLabel()}</CardDescription>
-                          </div>
-                           <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
-                               <Button
-                                    variant={categoryChartType === 'pie' ? 'primary' : 'ghost'}
-                                    size="icon"
-                                    onClick={() => setCategoryChartType('pie')}
-                                    className={`h-7 w-7 ${categoryChartType === 'pie' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
-                                     aria-label="Show as Pie Chart"
-                                > <PieChartIcon className="h-4 w-4" /> </Button>
-                                <Button
-                                    variant={categoryChartType === 'bar' ? 'primary' : 'ghost'}
-                                    size="icon"
-                                    onClick={() => setCategoryChartType('bar')}
-                                    className={`h-7 w-7 ${categoryChartType === 'bar' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
-                                    aria-label="Show as Bar Chart"
-                                > <BarChart3 className="h-4 w-4" /> </Button>
-                            </div>
-                     </CardHeader>
-                     <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
-                         {processedCategoryData.length > 0 ? (
-                             categoryChartType === 'pie' ? (
-                                 // Pass dynamicChartConfig to CategoryPieChart
-                                 <CategoryPieChart data={processedCategoryData} chartConfig={dynamicChartConfig} />
-                             ) : (
-                                 // Pass dynamicChartConfig to ExpenseChart for category bar view
-                                 <ExpenseChart data={processedCategoryData.map(d => ({ date: d.category, total: d.total }))} chartType="bar" keyPrefix="category" chartConfig={dynamicChartConfig}/>
-                             )
-                         ) : (
-                             <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
-                                 <p className="text-muted-foreground text-center text-sm">No spending by category for the selected filters.</p>
-                             </div>
-                         )}
-                     </CardContent>
-                 </Card>
+                        {/* Category Breakdown Chart */}
+                        <Card className="bg-card border-secondary/30 shadow-neon lg:col-span-1 glow-border-inner">
+                            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
+                                <div>
+                                    <CardTitle className="text-base sm:text-lg text-secondary flex items-center gap-2">
+                                        <Layers className="h-5 w-5" /> Category Breakdown
+                                    </CardTitle>
+                                    <CardDescription className="text-xs text-muted-foreground mt-1">{getFilterLabel()}</CardDescription>
+                                </div>
+                                <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
+                                    <Button
+                                            variant={categoryChartType === 'pie' ? 'primary' : 'ghost'}
+                                            size="icon"
+                                            onClick={() => setCategoryChartType('pie')}
+                                            className={`h-7 w-7 ${categoryChartType === 'pie' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                            aria-label="Show as Pie Chart"
+                                        > <PieChartIcon className="h-4 w-4" /> </Button>
+                                        <Button
+                                            variant={categoryChartType === 'bar' ? 'primary' : 'ghost'}
+                                            size="icon"
+                                            onClick={() => setCategoryChartType('bar')}
+                                            className={`h-7 w-7 ${categoryChartType === 'bar' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                            aria-label="Show as Bar Chart"
+                                        > <BarChart3 className="h-4 w-4" /> </Button>
+                                    </div>
+                            </CardHeader>
+                            <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
+                                {processedCategoryData.length > 0 ? (
+                                    categoryChartType === 'pie' ? (
+                                        // Pass dynamicChartConfig to CategoryPieChart
+                                        <CategoryPieChart data={processedCategoryData} chartConfig={dynamicChartConfig} />
+                                    ) : (
+                                        // Pass dynamicChartConfig to ExpenseChart for category bar view
+                                        <ExpenseChart data={processedCategoryData.map(d => ({ date: d.category, total: d.total }))} chartType="bar" keyPrefix="category" chartConfig={dynamicChartConfig}/>
+                                    )
+                                ) : (
+                                    <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
+                                        <p className="text-muted-foreground text-center text-sm">No spending by category for the selected filters.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -430,11 +456,11 @@ export default function StatsPage() {
 
 
 const StatsPageSkeleton: React.FC = () => (
-    <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 animate-pulse">
+    <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse"> {/* Ensure h-full */}
         <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" /> {/* Title */}
 
-        {/* Filter Skeleton */}
-        <Card className="bg-card/80 border-border/20 shadow-sm">
+        {/* Filter Skeleton - Sticky */}
+        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                 <Skeleton className="h-5 w-1/5" />
             </CardHeader>
@@ -445,53 +471,55 @@ const StatsPageSkeleton: React.FC = () => (
             </CardContent>
         </Card>
 
+        {/* Scrollable Content Skeleton */}
+        <div className="flex-grow overflow-y-auto mt-4">
+            <div className="space-y-4 sm:space-y-6 pb-6">
+                {/* Summary Cards Skeleton */}
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Card key={i} className="bg-card border-border/20 shadow-md glow-border-inner">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
+                                <Skeleton className="h-4 w-3/5" />
+                                <Skeleton className="h-4 w-4" />
+                            </CardHeader>
+                            <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                                <Skeleton className="h-6 w-1/2 sm:h-7 mb-1" />
+                                <Skeleton className="h-3 w-3/4" />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
 
-        {/* Summary Cards Skeleton */}
-         <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="bg-card border-border/20 shadow-md">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
-                        <Skeleton className="h-4 w-3/5" />
-                        <Skeleton className="h-4 w-4" />
-                    </CardHeader>
-                    <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
-                        <Skeleton className="h-6 w-1/2 sm:h-7 mb-1" />
-                        <Skeleton className="h-3 w-3/4" />
-                    </CardContent>
-                </Card>
-            ))}
+                {/* Chart Section Skeleton */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    {/* Trend Chart Skeleton */}
+                    <Card className="bg-card border-border/20 shadow-md lg:col-span-1 glow-border-inner">
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
+                            <div className="w-3/5 space-y-1">
+                                <Skeleton className="h-5 sm:h-6 w-4/5" />
+                                <Skeleton className="h-4 w-3/5" />
+                            </div>
+                            <Skeleton className="h-8 w-16 rounded-md" />
+                        </CardHeader>
+                        <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center">
+                            <Skeleton className="h-4/5 w-11/12" />
+                        </CardContent>
+                    </Card>
+                    {/* Pie Chart Skeleton */}
+                    <Card className="bg-card border-border/20 shadow-md lg:col-span-1 glow-border-inner">
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
+                            <div className="w-3/5 space-y-1">
+                                <Skeleton className="h-5 sm:h-6 w-full" />
+                                <Skeleton className="h-4 w-3/5" />
+                            </div>
+                            <Skeleton className="h-8 w-16 rounded-md" />
+                        </CardHeader>
+                        <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center">
+                            <Skeleton className="h-4/5 w-4/5 rounded-full" />
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
-
-         {/* Chart Section Skeleton */}
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-             {/* Trend Chart Skeleton */}
-            <Card className="bg-card border-border/20 shadow-md lg:col-span-1">
-                 <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
-                     <div className="w-3/5 space-y-1">
-                         <Skeleton className="h-5 sm:h-6 w-4/5" />
-                         <Skeleton className="h-4 w-3/5" />
-                     </div>
-                     <Skeleton className="h-8 w-16 rounded-md" />
-                 </CardHeader>
-                 <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center">
-                     <Skeleton className="h-4/5 w-11/12" />
-                 </CardContent>
-            </Card>
-             {/* Pie Chart Skeleton */}
-             <Card className="bg-card border-border/20 shadow-md lg:col-span-1">
-                 <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
-                     <div className="w-3/5 space-y-1">
-                         <Skeleton className="h-5 sm:h-6 w-full" />
-                         <Skeleton className="h-4 w-3/5" />
-                      </div>
-                      <Skeleton className="h-8 w-16 rounded-md" />
-                 </CardHeader>
-                 <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center">
-                     <Skeleton className="h-4/5 w-4/5 rounded-full" />
-                 </CardContent>
-             </Card>
-         </div>
     </div>
 );
-
-    

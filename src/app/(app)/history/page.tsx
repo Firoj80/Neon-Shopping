@@ -106,13 +106,13 @@ export default function HistoryPage() {
     };
 
     return (
-        <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full">
+        <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full"> {/* Ensure h-full */}
             <h1 className="text-xl sm:text-2xl font-bold text-primary flex items-center gap-2">
                 <History className="h-6 w-6" /> Purchase History
             </h1>
 
-            {/* Filter & Sort Section */}
-            <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm">
+            {/* Filter & Sort Section - Made Sticky */}
+            <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border-inner"> {/* Sticky classes added */}
                 <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                     <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2">
                         <Filter className="h-4 w-4" /> Filters & Sort
@@ -135,7 +135,7 @@ export default function HistoryPage() {
                                 <Layers className="h-4 w-4 mr-2 opacity-70" />
                                 <SelectValue placeholder="Filter by category" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto" position="popper">
+                            <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner" position="popper">
                                 <ScrollArea className="h-full">
                                     <SelectGroup>
                                         <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Category</SelectLabel>
@@ -158,7 +158,7 @@ export default function HistoryPage() {
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
                                 <SelectValue placeholder="Sort by..." />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-secondary/80 text-neonText" position="popper">
+                            <SelectContent className="bg-card border-secondary/80 text-neonText glow-border-inner" position="popper">
                                 <SelectGroup>
                                      <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Sort Order</SelectLabel>
                                     <SelectItem value="dateDesc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Date (Newest First)</SelectItem>
@@ -172,8 +172,8 @@ export default function HistoryPage() {
                 </CardContent>
             </Card>
 
-            {/* History List */}
-            <div className="flex-grow overflow-hidden">
+            {/* History List - Scrollable */}
+            <div className="flex-grow overflow-y-auto mt-4"> {/* Added mt-4 and overflow-y-auto */}
                 <ScrollArea className="h-full pr-1">
                     {historyItems.length > 0 ? (
                         <div className="flex flex-col gap-2 pb-4">
@@ -191,7 +191,7 @@ export default function HistoryPage() {
 
              {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="glow-border">
                     <AlertDialogHeader>
                     <AlertDialogTitle>Delete Item from History?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -225,7 +225,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
   const categoryName = getCategoryName(item.category); // Get category name
 
   return (
-    <Card className="rounded-lg shadow-sm p-3 w-full border-secondary/20 bg-card/70 hover:border-secondary/40 transition-colors duration-200">
+    <Card className="rounded-lg shadow-sm p-3 w-full border-secondary/20 bg-card/70 hover:border-secondary/40 transition-colors duration-200 glow-border-inner">
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
          {/* Item Details */}
         <div className="flex-grow min-w-0">
@@ -264,11 +264,11 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
 
 // --- Skeleton Loader ---
 const HistoryPageSkeleton: React.FC = () => (
-    <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">
+    <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse"> {/* Ensure h-full */}
         <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" /> {/* Title */}
 
-        {/* Filter Skeleton */}
-        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10">
+        {/* Filter Skeleton - Sticky */}
+        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border-inner">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                 <Skeleton className="h-5 w-1/5" />
             </CardHeader>
@@ -279,12 +279,12 @@ const HistoryPageSkeleton: React.FC = () => (
             </CardContent>
         </Card>
 
-        {/* History List Skeleton */}
-         <div className="flex-grow overflow-hidden">
+        {/* History List Skeleton - Scrollable */}
+         <div className="flex-grow overflow-y-auto mt-4">
             <ScrollArea className="h-full pr-1">
                 <div className="flex flex-col gap-2 pb-4">
                     {[1, 2, 3, 4, 5].map((i) => (
-                       <Card key={i} className="rounded-lg p-3 w-full border-border/20 bg-card/70">
+                       <Card key={i} className="rounded-lg p-3 w-full border-border/20 bg-card/70 glow-border-inner">
                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                             <div className="flex-grow min-w-0 space-y-1.5">
                               <Skeleton className="h-4 w-3/4" />
@@ -307,5 +307,3 @@ const HistoryPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
-
-    
