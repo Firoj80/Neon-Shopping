@@ -14,10 +14,14 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // Ensure children are treated as an array of React nodes
+  // This might help if the structure passed down is causing issues.
+  const validatedChildren = React.Children.toArray(children);
+
   return (
     <QueryClientProvider client={queryClient}>
         <AppProvider>
-            {children}
+            {validatedChildren}
         </AppProvider>
     </QueryClientProvider>
   );
