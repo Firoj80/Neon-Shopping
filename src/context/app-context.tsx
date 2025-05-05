@@ -107,12 +107,13 @@ function appReducer(state: AppState, action: Action): AppState {
       break;
     }
     case 'RESET_DAILY_BUDGET': {
+       // Preserve the existing limit if resetting, but recalculate spent
       newState = {
         ...state,
         budget: {
-          limit: 0,
-          spent: calculateTodaysSpent(state.shoppingList, todayDate),
-          lastSetDate: action.payload.today,
+          ...state.budget, // Keep existing limit and lastSetDate
+          spent: calculateTodaysSpent(state.shoppingList, todayDate), // Recalculate spent for today
+          lastSetDate: action.payload.today, // Update lastSetDate to today to prevent immediate re-reset
         }
       };
       break;
@@ -239,7 +240,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(true);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Effect 1: Load initial state from localStorage and fetch currency
+  // Effect 1: Load initial state from localStorage
   useEffect(() => {
     let isMounted = true;
     const loadInitialData = async () => {
@@ -264,31 +265,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
 
-        // Auto-detect currency logic is now in the Settings page
-        // const userCurrency = await getUserCurrency();
+        // Removed currency auto-detection from here - it's handled in settings page now
 
         if (isMounted) {
           // Ensure categories have default if none loaded
           if (!loadedStateFromStorage.categories || loadedStateFromStorage.categories.length === 0) {
              loadedStateFromStorage.categories = DEFAULT_CATEGORIES;
           }
+          // Ensure currency has default if none loaded
+           if (!loadedStateFromStorage.currency) {
+             loadedStateFromStorage.currency = defaultCurrency;
+           }
 
-          const finalInitialState = {
-            ...loadedStateFromStorage,
-            // currency: userCurrency ?? loadedStateFromStorage.currency ?? defaultCurrency,
-            currency: loadedStateFromStorage.currency ?? defaultCurrency, // Use saved or default, detection happens in settings
-          };
-          dispatch({ type: 'LOAD_STATE', payload: finalInitialState });
+
+          dispatch({ type: 'LOAD_STATE', payload: loadedStateFromStorage });
           setIsHydrated(true);
         }
 
       } catch (error) {
         console.error("Failed to load initial data:", error);
         if (isMounted) {
-           // Ensure categories have default if none loaded even on error
+           // Ensure defaults on error
            if (!loadedStateFromStorage.categories || loadedStateFromStorage.categories.length === 0) {
              loadedStateFromStorage.categories = DEFAULT_CATEGORIES;
            }
+            if (!loadedStateFromStorage.currency) {
+              loadedStateFromStorage.currency = defaultCurrency;
+            }
            dispatch({ type: 'LOAD_STATE', payload: loadedStateFromStorage });
            setIsHydrated(true);
         }
@@ -311,10 +314,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isLoading && isHydrated) {
       const today = new Date();
       const todayString = format(today, 'yyyy-MM-dd');
-      const lastSetDate = state.budget.lastSetDate ? new Date(state.budget.lastSetDate + 'T00:00:00') : null;
+      const lastSetDate = state.budget.lastSetDate ? new Date(state.budget.lastSetDate + 'T00:00:00') : null; // Ensure time is start of day
 
-      if (!lastSetDate || !isSameDay(today, lastSetDate)) {
+      // Reset only if lastSetDate is not null AND it's not the same as today
+      if (lastSetDate && !isSameDay(today, lastSetDate)) {
+        console.log("Budget last set date is not today. Resetting daily budget spent calculation.");
         dispatch({ type: 'RESET_DAILY_BUDGET', payload: { today: todayString } });
+      } else if (!lastSetDate) {
+         // If lastSetDate is null (first run or data cleared), set it to today but don't change spent/limit yet
+         console.log("Budget last set date is null. Setting it to today.");
+         dispatch({ type: 'RESET_DAILY_BUDGET', payload: { today: todayString } });
       }
       // Recalculation of spent amount is handled within relevant actions now
     }
@@ -356,5 +365,3 @@ export const useAppContext = (): AppContextProps => {
   }
   return context;
 };
-
-    
