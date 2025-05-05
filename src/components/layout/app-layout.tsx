@@ -1,4 +1,3 @@
-
 "use client";
 import React from 'react';
 import Link from 'next/link';
@@ -16,6 +15,7 @@ import {
   Menu,
   X,
   ShoppingBag, // New icon for Shopping
+  Wallet
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
@@ -41,7 +41,7 @@ const AdComponent = () => {
 };
 
 
-const APP_NAME = "Neon Shopping"; // Updated App Name
+const APP_NAME = "Neon Shopping List"; // Updated App Name
 
 // --- Mobile Header Component ---
 const MobileHeader = () => {
@@ -69,7 +69,7 @@ const MobileHeader = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-         <ShoppingBag className="w-6 h-6" /> {/* Use ShoppingBag icon */}
+         <ShoppingCart className="w-6 h-6" /> {/* Use ShoppingBag icon */}
         <span className="font-bold">{APP_NAME}</span> {/* Use consistent app name */}
       </Link>
 
@@ -87,14 +87,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   // AdMob Interstitial Trigger Routes
-  const interstitialTriggerRoutes = ['/stats', '/history', '/settings']; // Updated '/settings'
+  const interstitialTriggerRoutes = ['/stats', '/history', '/currency']; // Updated '/settings'
 
   // Menu Items & Icons
   const menuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: Dashboard },
     { href: '/history', label: 'History', icon: History },
-    { href: '/settings', label: 'Settings', icon: Settings }, // Updated to Settings
+    { href: '/currency', label: 'Currency', icon: Wallet }, // Changed to Settings
     { href: '/about', label: 'About Us', icon: InfoIcon },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: Policy },
@@ -135,7 +135,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
      "border border-primary/30 hover:border-white", // Neon cyan border, white on hover
      "transition-all duration-300 ease-in-out", // Smooth transitions
      "hover:text-white hover:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // White glow on hover
-     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // Focus glow
+     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // Focus glow
      "[&_svg]:size-5 [&_svg]:shrink-0", // Icon size adjusted
      "[&_span:last-child]:truncate" // Truncate text
    );
@@ -155,7 +155,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-             <ShoppingBag className="w-6 h-6" /> {/* Use ShoppingBag icon */}
+             <ShoppingCart className="w-6 h-6" /> {/* Use ShoppingBag icon */}
             <span className="font-bold">{APP_NAME}</span> {/* Ensure this name is consistent */}
           </Link>
         </SidebarHeader>
