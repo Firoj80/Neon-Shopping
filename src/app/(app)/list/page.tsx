@@ -126,32 +126,32 @@ export default function ShoppingListPage() {
     // Use flex-col and h-full to allow content scrolling within the main area
     <div className="flex flex-col h-full">
 
-        {/* Sticky Header Section */}
+         {/* Sticky Header Section - Contains BudgetPanel and TabsList */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-4">
             <BudgetPanel />
-             <Tabs defaultValue="current" className="w-full"> {/* Keep Tabs wrapping everything */}
-                 <TabsList className="grid w-full grid-cols-2 mb-0 bg-card border border-primary/20 shadow-sm glow-border-inner"> {/* TabsList inside sticky */}
-                     <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
-                         <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
-                     </TabsTrigger>
-                     <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
-                         <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
-                     </TabsTrigger>
-                 </TabsList>
-
-                 {/* Scrollable Content Area - Must be outside the sticky div, but inside Tabs */}
-                 <div className="flex-grow overflow-hidden mt-4"> {/* Added margin-top */}
-                     <ScrollArea className="h-[calc(100vh-200px)] pr-1"> {/* Adjust height calc as needed */}
-                         <TabsContent value="current" className="mt-0"> {/* Removed default margin */}
-                             {renderItemList(currentItems, "No current items. Add some!")}
-                         </TabsContent>
-                         <TabsContent value="purchased" className="mt-0"> {/* Removed default margin */}
-                             {renderItemList(purchasedItems, "No items purchased yet.")}
-                         </TabsContent>
-                     </ScrollArea>
-                 </div>
-             </Tabs>
+            <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner">
+                 <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
+                     <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
+                 </TabsTrigger>
+                 <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
+                     <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
+                 </TabsTrigger>
+             </TabsList>
         </div>
+
+        {/* Scrollable Content Area */}
+        <div className="flex-grow overflow-hidden mt-4"> {/* Added margin-top */}
+             {/* We need to wrap the ScrollArea in a container that takes up the remaining space */}
+             {/* Approximate height calculation - adjust 200px based on the actual height of the sticky header */}
+             <ScrollArea className="h-[calc(100vh-200px)] pr-1"> {/* Adjust height calc as needed */}
+                 <TabsContent value="current" className="mt-0"> {/* Removed default margin */}
+                     {renderItemList(currentItems, "No current items. Add some!")}
+                 </TabsContent>
+                 <TabsContent value="purchased" className="mt-0"> {/* Removed default margin */}
+                     {renderItemList(purchasedItems, "No items purchased yet.")}
+                 </TabsContent>
+             </ScrollArea>
+         </div>
 
 
          {/* Floating Action Button - Stays fixed */}
