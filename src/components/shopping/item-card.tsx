@@ -1,4 +1,3 @@
-
 "use client";
 import type React from 'react';
 import { Card } from "@/components/ui/card";
@@ -28,10 +27,11 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onEdit, onDelete }) =>
 
   return (
     <Card className={cn(
-        "rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col sm:flex-row sm:items-center p-3 w-full border-primary/20 hover:border-primary/50",
+        "rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col  p-3 w-full border-primary/20 hover:border-primary/50",
         item.checked ? "bg-card/60 border-border/10" : "bg-card"
-     )}>
-        <div className="flex items-start sm:items-center flex-grow min-w-0 mb-2 sm:mb-0">
+     )}
+     style={{ minHeight: '80px' }}> {/* Reduced minHeight */}
+        <div className="flex items-start  flex-grow min-w-0 mb-2 sm:mb-0">
             <Checkbox
                 id={`item-${item.id}`}
                 checked={item.checked}
@@ -62,7 +62,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onEdit, onDelete }) =>
             </div>
         </div>
 
-        <div className="flex space-x-1 self-end sm:self-center sm:ml-auto shrink-0 pl-2">
+        <div className="flex space-x-2 self-end  shrink-0 pl-2"> {/* Adjusted spacing and alignment */}
             <Button
                 variant="ghost"
                 size="icon"
@@ -86,4 +86,3 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onEdit, onDelete }) =>
   );
 };
 
-    
