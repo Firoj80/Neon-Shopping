@@ -4,11 +4,11 @@ import { Geist_Mono } from 'next/font/google'; // Using Mono for a more cyberpun
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
-import { Providers } from './providers';
+import { Providers } from './providers'; // Combined providers
 import { AppLayout } from '@/components/layout/app-layout';
+import { ClientOnly } from '@/components/client-only'; // Import ClientOnly
+import { ThemeWatcher } from '@/context/theme-watcher'; // Import ThemeWatcher
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
-import ClientOnly from '@/components/client-only'; // Import ClientOnly
-// Removed AdInitializer import as AdMob was removed
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Neon Shopping - Cyberpunk Expense Tracker', // Updated App Name
+  title: 'Neon Shopping', // Updated App Name
   description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
 };
 
@@ -26,27 +26,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // ThemeWatcher applies the theme class dynamically to the <html> tag
+    // We need html/body tags here for ThemeWatcher to target documentElement
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body
-        className={cn(
-          geistMono.variable,
-          'font-mono antialiased min-h-screen flex flex-col bg-background', // Ensure background covers full height
-        )}
-      >
-        <Providers>
-          <SidebarProvider>
-             <AppLayout>
-              {children}
-             </AppLayout>
-             {/*
-             <ClientOnly>
-                <AdInitializer />
-             </ClientOnly>
-             */}
-          </SidebarProvider>
-          <Toaster />
-        </Providers>
-      </body>
-    </html>
+        <body
+            className={cn(
+            geistMono.variable,
+            'font-mono antialiased min-h-screen flex flex-col bg-background', // Ensure background covers full height
+            )}
+        >
+          <Providers>
+            <ThemeWatcher>
+               {/* Wrap AppLayout with SidebarProvider */}
+               <SidebarProvider>
+                  <AppLayout>
+                      {children}
+                  </AppLayout>
+               </SidebarProvider>
+              <Toaster />
+            </ThemeWatcher>
+          </Providers>
+         </body>
+     </html>
   );
 }

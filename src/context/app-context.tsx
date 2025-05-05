@@ -3,6 +3,8 @@
 import type React from 'react';
 import { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import { format, startOfDay, isSameDay } from 'date-fns';
+import { themes, defaultTheme } from '@/config/themes'; // Import themes and default theme
+import { v4 as uuidv4 } from 'uuid';
 
 // --- Types ---
 export interface Currency {
@@ -32,11 +34,26 @@ export interface ShoppingListItem {
   dateAdded: number; // Timestamp
 }
 
+// Define Theme type based on themes.ts structure
+export interface Theme {
+  id: string;
+  name: string;
+  description: string;
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    // Add other relevant theme colors if needed
+  };
+}
+
 interface AppState {
+  userId: string;
   currency: Currency;
   budget: BudgetItem;
   shoppingList: ShoppingListItem[];
-  categories: Category[]; // Add categories to state
+  categories: Category[];
+  theme: string; // Store the ID of the selected theme
 }
 
 type Action =
@@ -50,6 +67,7 @@ type Action =
   | { type: 'ADD_CATEGORY'; payload: { name: string } } // Add category action
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } } // Update category action
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } } // Remove category action
+  | { type: 'SET_THEME'; payload: string } // Add theme action (payload is theme ID)
   | { type: 'LOAD_STATE'; payload: Partial<AppState> };
 
 interface AppContextProps {
@@ -70,13 +88,15 @@ const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 const initialState: AppState = {
+  userId: '', // Will be set on load
   currency: defaultCurrency,
   budget: { limit: 0, spent: 0, lastSetDate: null },
   shoppingList: [],
-  categories: DEFAULT_CATEGORIES, // Initialize with default categories
+  categories: DEFAULT_CATEGORIES,
+  theme: defaultTheme.id, // Initialize with the default theme ID
 };
 
-const LOCAL_STORAGE_KEY = 'neonShoppingListState_v3'; // Increment version for schema change
+const LOCAL_STORAGE_KEY = 'neonShoppingListState_v4'; // Increment version for theme change
 
 // Helper to calculate spent amount based on checked items added *today*
 const calculateTodaysSpent = (list: ShoppingListItem[], todayDate: Date): number => {
@@ -193,18 +213,24 @@ function appReducer(state: AppState, action: Action): AppState {
         newState.budget.spent = calculateTodaysSpent(newState.shoppingList, todayDate);
         break;
     }
+     case 'SET_THEME': {
+      newState = { ...state, theme: action.payload };
+      break;
+    }
     case 'LOAD_STATE': {
       const loadedList = action.payload.shoppingList || initialState.shoppingList;
       const loadedBudget = action.payload.budget || initialState.budget;
       const loadedCurrency = action.payload.currency || initialState.currency;
-      // Load categories, falling back to default if none are saved
       const loadedCategories = action.payload.categories && action.payload.categories.length > 0
                                   ? action.payload.categories
                                   : DEFAULT_CATEGORIES;
+      const loadedTheme = action.payload.theme || initialState.theme; // Load theme
+      const loadedUserId = action.payload.userId || initialState.userId; // Load userId
 
       const initialSpent = calculateTodaysSpent(loadedList, todayDate);
 
       newState = {
+        userId: loadedUserId,
         currency: loadedCurrency,
         budget: {
           limit: loadedBudget.limit,
@@ -212,7 +238,8 @@ function appReducer(state: AppState, action: Action): AppState {
           lastSetDate: loadedBudget.lastSetDate,
         },
         shoppingList: loadedList,
-        categories: loadedCategories, // Load categories
+        categories: loadedCategories,
+        theme: loadedTheme, // Assign loaded theme
       };
       break;
     }
@@ -247,36 +274,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsLoading(true);
       let loadedStateFromStorage: Partial<AppState> = {};
       try {
+         // Check for existing user ID
+         let userId = localStorage.getItem('user_id');
+         if (!userId) {
+           userId = uuidv4(); // Generate if not found
+           localStorage.setItem('user_id', userId);
+         }
+
         const savedStateRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (savedStateRaw) {
           try {
             const parsedState = JSON.parse(savedStateRaw);
             if (typeof parsedState === 'object' && parsedState !== null) {
               loadedStateFromStorage = {
+                userId: parsedState.userId || userId, // Use loaded ID or the one just checked/generated
                 currency: parsedState.currency,
                 budget: parsedState.budget,
                 shoppingList: Array.isArray(parsedState.shoppingList) ? parsedState.shoppingList : undefined,
-                 categories: Array.isArray(parsedState.categories) ? parsedState.categories : undefined, // Load categories
+                categories: Array.isArray(parsedState.categories) ? parsedState.categories : undefined,
+                theme: parsedState.theme, // Load theme
               };
             }
           } catch (e) {
             console.error("Failed to parse saved state:", e);
             localStorage.removeItem(LOCAL_STORAGE_KEY);
+             loadedStateFromStorage.userId = userId; // Ensure userId is set even if state parsing fails
           }
+        } else {
+           loadedStateFromStorage.userId = userId; // Ensure userId is set if no saved state
         }
 
-        // Removed currency auto-detection from here - it's handled in settings page now
-
         if (isMounted) {
-          // Ensure categories have default if none loaded
+          // Ensure defaults if none loaded
           if (!loadedStateFromStorage.categories || loadedStateFromStorage.categories.length === 0) {
              loadedStateFromStorage.categories = DEFAULT_CATEGORIES;
           }
-          // Ensure currency has default if none loaded
            if (!loadedStateFromStorage.currency) {
              loadedStateFromStorage.currency = defaultCurrency;
            }
-
+           if (!loadedStateFromStorage.theme) {
+             loadedStateFromStorage.theme = defaultTheme.id; // Set default theme if none loaded
+           }
 
           dispatch({ type: 'LOAD_STATE', payload: loadedStateFromStorage });
           setIsHydrated(true);
@@ -285,13 +323,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (error) {
         console.error("Failed to load initial data:", error);
         if (isMounted) {
+           let userId = localStorage.getItem('user_id') || uuidv4(); // Get or generate userId on error too
+           if (!localStorage.getItem('user_id')) localStorage.setItem('user_id', userId);
+
            // Ensure defaults on error
+           loadedStateFromStorage.userId = userId;
            if (!loadedStateFromStorage.categories || loadedStateFromStorage.categories.length === 0) {
              loadedStateFromStorage.categories = DEFAULT_CATEGORIES;
            }
             if (!loadedStateFromStorage.currency) {
               loadedStateFromStorage.currency = defaultCurrency;
             }
+             if (!loadedStateFromStorage.theme) {
+               loadedStateFromStorage.theme = defaultTheme.id;
+             }
            dispatch({ type: 'LOAD_STATE', payload: loadedStateFromStorage });
            setIsHydrated(true);
         }
@@ -325,7 +370,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
          console.log("Budget last set date is null. Setting it to today.");
          dispatch({ type: 'RESET_DAILY_BUDGET', payload: { today: todayString } });
       }
-      // Recalculation of spent amount is handled within relevant actions now
     }
   }, [isLoading, isHydrated, state.budget.lastSetDate]); // Only depends on these
 

@@ -1,140 +1,224 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Define base variables that might not change between themes */
 @layer base {
-  :root {
-    --background: 0 0% 0%; /* Black */
-    --foreground: 0 0% 95%; /* Near White */
-
-    --card: 0 0% 7%; /* Dark Gray */
-    --card-foreground: 0 0% 95%;
-
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 95%;
-
-    --primary: 180 100% 50%; /* Neon Cyan */
-    --primary-foreground: 180 100% 10%; /* Dark Cyan for text on primary */
-
-    --secondary: 300 100% 50%; /* Neon Magenta */
-    --secondary-foreground: 300 100% 10%; /* Dark Magenta for text on secondary */
-
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-
-    --accent: 300 100% 70%; /* Brighter Magenta for hover/focus */
-    --accent-foreground: 0 0% 5%;
-
-    --destructive: 0 84.2% 60.2%; /* Default Red */
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 180 100% 30%; /* Darker Cyan border */
-    --input: 0 0% 15%;
-    --ring: 180 100% 50%; /* Neon Cyan ring */
-
-    --radius: 1rem; /* Increased radius for rounded-2xl feel */
-
-    --chart-1: 180 100% 50%; /* Neon Cyan */
-    --chart-2: 300 100% 50%; /* Neon Magenta */
-    --chart-3: 120 100% 50%; /* Neon Green */
-    --chart-4: 60 100% 50%; /* Neon Yellow */
-    --chart-5: 30 100% 50%; /* Neon Orange */
-
-    /* ShadCN Sidebar Variables (Adapted) */
-    --sidebar-background: 0 0% 5%; /* Slightly lighter black */
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 180 100% 50%; /* Neon Cyan */
-    --sidebar-primary-foreground: 180 100% 10%;
-    --sidebar-accent: 300 100% 70%; /* Brighter Magenta */
-    --sidebar-accent-foreground: 0 0% 5%;
-    --sidebar-border: 180 100% 20%;
-    --sidebar-ring: 180 100% 50%;
-  }
-
-  /* Apply dark theme styles directly */
-  .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 180 100% 50%;
-    --primary-foreground: 180 100% 10%;
-    --secondary: 300 100% 50%;
-    --secondary-foreground: 300 100% 10%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 300 100% 70%;
-    --accent-foreground: 0 0% 5%;
-    --destructive: 0 70% 55%; /* Slightly adjusted destructive */
-    --destructive-foreground: 0 0% 98%;
-    --border: 180 100% 30%;
-    --input: 0 0% 15%;
-    --ring: 180 100% 50%;
-    --chart-1: 180 100% 50%;
-    --chart-2: 300 100% 50%;
-    --chart-3: 120 100% 50%;
-    --chart-4: 60 100% 50%;
-    --chart-5: 30 100% 50%;
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 180 100% 50%;
-    --sidebar-primary-foreground: 180 100% 10%;
-    --sidebar-accent: 300 100% 70%;
-    --sidebar-accent-foreground: 0 0% 5%;
-    --sidebar-border: 180 100% 20%;
-    --sidebar-ring: 180 100% 50%;
-  }
+    :root {
+        --radius: 1rem; /* Base radius */
+         /* Default Chart Colors (can be overridden by themes) */
+        --chart-1: 180 100% 50%; /* Default Neon Cyan */
+        --chart-2: 300 100% 50%; /* Default Neon Magenta */
+        --chart-3: 120 100% 50%; /* Default Neon Green */
+        --chart-4: 60 100% 50%; /* Default Neon Yellow */
+        --chart-5: 30 100% 50%; /* Default Neon Orange */
+    }
 }
 
+/* Define theme-specific variables inside theme classes */
+@layer base {
+    /* --- Default Theme: Cyberpunk Cyan (Matches initial setup) --- */
+    .dark, /* Apply to default dark mode */
+    .dark .theme-cyberpunk-cyan /* Apply explicitly */ {
+        --background: 0 0% 0%; /* Black */
+        --foreground: 0 0% 95%; /* Near White */
+        --card: 0 0% 7%; /* Dark Gray */
+        --card-foreground: 0 0% 95%;
+        --popover: 0 0% 7%;
+        --popover-foreground: 0 0% 95%;
+        --primary: 180 100% 50%; /* Neon Cyan */
+        --primary-foreground: 180 100% 10%; /* Dark Cyan */
+        --secondary: 300 100% 50%; /* Neon Magenta */
+        --secondary-foreground: 300 100% 10%; /* Dark Magenta */
+        --muted: 0 0% 15%;
+        --muted-foreground: 0 0% 60%;
+        --accent: 300 100% 70%; /* Brighter Magenta */
+        --accent-foreground: 0 0% 5%;
+        --destructive: 0 84.2% 60.2%; /* Default Red */
+        --destructive-foreground: 0 0% 98%;
+        --border: 180 100% 30%; /* Darker Cyan border */
+        --input: 0 0% 15%;
+        --ring: 180 100% 50%; /* Neon Cyan ring */
+        /* Sidebar variables for this theme */
+        --sidebar-background: 0 0% 5%;
+        --sidebar-foreground: 0 0% 85%;
+        --sidebar-primary: 180 100% 50%;
+        --sidebar-primary-foreground: 180 100% 10%;
+        --sidebar-accent: 300 100% 70%;
+        --sidebar-accent-foreground: 0 0% 5%;
+        --sidebar-border: 180 100% 20%;
+        --sidebar-ring: 180 100% 50%;
+        /* Chart colors for this theme (can match defaults or be specific) */
+        --chart-1: 180 100% 50%;
+        --chart-2: 300 100% 50%;
+        --chart-3: 120 100% 50%;
+        --chart-4: 60 100% 50%;
+        --chart-5: 30 100% 50%;
+    }
+
+    /* --- Vaporwave Pink Theme --- */
+    .dark .theme-vaporwave-pink {
+        --background: 270 30% 5%; /* Deep purple */
+        --foreground: 300 100% 95%; /* Light Pink */
+        --card: 270 25% 12%; /* Darker purple */
+        --card-foreground: 300 100% 95%;
+        --popover: 270 25% 12%;
+        --popover-foreground: 300 100% 95%;
+        --primary: 300 100% 65%; /* Bright Pink */
+        --primary-foreground: 300 100% 15%; /* Dark Pink */
+        --secondary: 180 100% 60%; /* Teal */
+        --secondary-foreground: 180 100% 10%; /* Dark Teal */
+        --muted: 270 20% 20%;
+        --muted-foreground: 270 15% 65%;
+        --accent: 180 100% 75%; /* Lighter Teal */
+        --accent-foreground: 270 30% 5%;
+        --destructive: 0 80% 65%; /* Red */
+        --destructive-foreground: 0 0% 98%;
+        --border: 300 100% 40%; /* Medium Pink border */
+        --input: 270 20% 20%;
+        --ring: 300 100% 65%; /* Bright Pink ring */
+        /* Sidebar variables */
+        --sidebar-background: 270 30% 8%;
+        --sidebar-foreground: 300 100% 90%;
+        --sidebar-primary: 300 100% 65%;
+        --sidebar-primary-foreground: 300 100% 15%;
+        --sidebar-accent: 180 100% 75%;
+        --sidebar-accent-foreground: 270 30% 5%;
+        --sidebar-border: 300 100% 30%;
+        --sidebar-ring: 300 100% 65%;
+        /* Chart colors */
+        --chart-1: 300 100% 65%; /* Pink */
+        --chart-2: 180 100% 60%; /* Teal */
+        --chart-3: 210 100% 60%; /* Blue */
+        --chart-4: 45 100% 55%;  /* Gold */
+        --chart-5: 270 80% 70%;  /* Lavender */
+    }
+
+    /* --- Matrix Green Theme --- */
+    .dark .theme-matrix-green {
+        --background: 120 10% 2%; /* Very dark green-black */
+        --foreground: 120 100% 85%; /* Bright Green */
+        --card: 120 15% 7%; /* Dark green */
+        --card-foreground: 120 100% 85%;
+        --popover: 120 15% 7%;
+        --popover-foreground: 120 100% 85%;
+        --primary: 120 100% 50%; /* Matrix Green */
+        --primary-foreground: 120 100% 5%; /* Very dark green */
+        --secondary: 0 0% 60%; /* Medium Gray */
+        --secondary-foreground: 0 0% 10%; /* Dark Gray */
+        --muted: 120 10% 15%;
+        --muted-foreground: 120 20% 55%;
+        --accent: 120 100% 70%; /* Lighter Green */
+        --accent-foreground: 120 100% 5%;
+        --destructive: 0 75% 55%; /* Red */
+        --destructive-foreground: 0 0% 98%;
+        --border: 120 100% 25%; /* Darker Green border */
+        --input: 120 10% 15%;
+        --ring: 120 100% 50%; /* Matrix Green ring */
+        /* Sidebar variables */
+        --sidebar-background: 120 10% 4%;
+        --sidebar-foreground: 120 100% 80%;
+        --sidebar-primary: 120 100% 50%;
+        --sidebar-primary-foreground: 120 100% 5%;
+        --sidebar-accent: 120 100% 70%;
+        --sidebar-accent-foreground: 120 100% 5%;
+        --sidebar-border: 120 100% 15%;
+        --sidebar-ring: 120 100% 50%;
+        /* Chart colors */
+        --chart-1: 120 100% 50%; /* Green */
+        --chart-2: 110 90% 55%;  /* Lime Green */
+        --chart-3: 0 0% 70%;     /* Gray */
+        --chart-4: 140 70% 45%;  /* Darker Green */
+        --chart-5: 90 80% 50%;   /* Olive Green */
+    }
+
+     /* --- Outrun Sunset Theme --- */
+    .dark .theme-outrun-sunset {
+        --background: 250 50% 10%; /* Deep Blue/Purple */
+        --foreground: 30 100% 90%; /* Pale Orange */
+        --card: 250 40% 18%; /* Darker Blue/Purple */
+        --card-foreground: 30 100% 90%;
+        --popover: 250 40% 18%;
+        --popover-foreground: 30 100% 90%;
+        --primary: 330 100% 60%; /* Hot Pink */
+        --primary-foreground: 330 100% 10%; /* Dark Pink */
+        --secondary: 30 100% 55%; /* Orange */
+        --secondary-foreground: 30 100% 10%; /* Dark Orange */
+        --muted: 250 30% 25%;
+        --muted-foreground: 250 20% 60%;
+        --accent: 50 100% 60%; /* Yellow */
+        --accent-foreground: 250 50% 10%;
+        --destructive: 0 80% 60%; /* Red */
+        --destructive-foreground: 0 0% 98%;
+        --border: 330 100% 40%; /* Medium Pink border */
+        --input: 250 30% 25%;
+        --ring: 330 100% 60%; /* Hot Pink ring */
+        /* Sidebar variables */
+        --sidebar-background: 250 50% 12%;
+        --sidebar-foreground: 30 100% 85%;
+        --sidebar-primary: 330 100% 60%;
+        --sidebar-primary-foreground: 330 100% 10%;
+        --sidebar-accent: 50 100% 60%;
+        --sidebar-accent-foreground: 250 50% 10%;
+        --sidebar-border: 330 100% 30%;
+        --sidebar-ring: 330 100% 60%;
+        /* Chart colors */
+        --chart-1: 330 100% 60%; /* Pink */
+        --chart-2: 30 100% 55%;  /* Orange */
+        --chart-3: 50 100% 60%;  /* Yellow */
+        --chart-4: 190 100% 60%; /* Cyan */
+        --chart-5: 270 80% 70%;  /* Purple */
+    }
+}
+
+
+/* Global styles applied regardless of theme */
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border; /* Apply border color from theme */
   }
   body {
     @apply bg-background text-foreground;
-    /* Apply a subtle texture or pattern if desired */
+    /* Optional: Apply a subtle texture or pattern if desired */
     /* background-image: url('/path/to/cyberpunk-texture.png'); */
   }
 
-  /* Add neon glow effect to focus states */
+  /* Add neon glow effect to focus states based on theme variables */
   *:focus-visible {
-    @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+    @apply ring-2 ring-ring ring-offset-2 ring-offset-background;
     box-shadow: 0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--secondary));
   }
 
-  /* Custom scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+  /* Custom scrollbar styling using theme variables */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
 
-::-webkit-scrollbar-track {
-  background: hsl(var(--background));
-}
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
 
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.5);
-  border-radius: 10px;
-  border: 1px solid hsl(var(--background));
-}
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.5);
+    border-radius: 10px;
+    border: 1px solid hsl(var(--background));
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary));
-}
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary));
+  }
 
-::-webkit-scrollbar-corner {
-  background: hsl(var(--background));
-}
+  ::-webkit-scrollbar-corner {
+    background: hsl(var(--background));
+  }
 
-/* Apply styles for Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--primary) / 0.5) hsl(var(--background));
-}
-
-
+  /* Apply styles for Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.5) hsl(var(--background));
+  }
 }
 
 /* Add sr-only utility class */
@@ -150,4 +234,11 @@
     white-space: nowrap;
     border-width: 0;
   }
+  /* Utility for inner card glow */
+  .glow-border-inner {
+     box-shadow: inset 0 0 3px hsl(var(--primary) / 0.4), inset 0 0 5px hsl(var(--secondary) / 0.3);
+  }
+   .glow-border {
+     box-shadow: 0 0 5px hsl(var(--primary) / 0.5), 0 0 8px hsl(var(--secondary) / 0.4);
+   }
 }
