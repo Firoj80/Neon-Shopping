@@ -9,26 +9,24 @@ import type { ProcessedExpenseData } from '@/components/charts/expense-chart';
 import { CategoryPieChart } from '@/components/charts/category-pie-chart';
 import type { CategoryData } from '@/components/charts/category-pie-chart';
 import { useAppContext } from '@/context/app-context';
+import type { Category } from '@/context/app-context'; // Import Category type
 import { subDays, format, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon } from 'lucide-react'; // Added icons
+import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { itemCategories } from '@/config/categories';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
+import { ChartConfig } from '@/components/ui/chart'; // Import ChartConfig for dynamic config
 
-// Define Chart types
-type TrendChartType = 'line' | 'bar'; // For Expense Trend
-type CategoryChartType = 'pie' | 'bar'; // For Category Breakdown (Added bar option)
-
-
+type TrendChartType = 'line' | 'bar';
+type CategoryChartType = 'pie' | 'bar';
 type TimePeriodPreset = '7d' | '30d' | '90d' | 'custom';
-type CategoryFilter = string; // 'all' or specific category name
+type CategoryFilter = string; // 'all' or specific category ID
 
 export default function StatsPage() {
     const { state, formatCurrency, isLoading } = useAppContext();
     const [trendChartType, setTrendChartType] = useState<TrendChartType>('line');
-    const [categoryChartType, setCategoryChartType] = useState<CategoryChartType>('pie'); // Default to pie
+    const [categoryChartType, setCategoryChartType] = useState<CategoryChartType>('pie');
     const [timePeriodPreset, setTimePeriodPreset] = useState<TimePeriodPreset>('30d');
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -51,12 +49,12 @@ export default function StatsPage() {
             case '30d': default: startDate = startOfDay(subDays(now, 29)); break;
         }
         setDateRange({ from: startDate, to: endDate });
-    }, [timePeriodPreset]);
+    }, [timePeriodPreset]); // Removed dateRange dependency to prevent loop on custom selection
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
         if (newRange?.from && newRange?.to) {
-           setTimePeriodPreset('custom');
+           setTimePeriodPreset('custom'); // Switch to custom if dates are manually changed
         }
     };
 
@@ -68,7 +66,7 @@ export default function StatsPage() {
         const endDate = endOfDay(dateRange.to);
 
         return state.shoppingList.filter(item => {
-            if (!item.checked) return false; // Crucial: Only analyze purchased items
+            if (!item.checked) return false;
 
             const itemDate = new Date(item.dateAdded);
             const isWithinDate = isWithinInterval(itemDate, { start: startDate, end: endDate });
@@ -115,6 +113,7 @@ export default function StatsPage() {
              total,
            }))
           .sort((a, b) => {
+              // Find original date strings to sort correctly
               const dateAStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === a.date)?.[0];
               const dateBStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === b.date)?.[0];
               if (!dateAStr || !dateBStr) return 0;
@@ -125,29 +124,51 @@ export default function StatsPage() {
 
     }, [filteredItems, dateRange]);
 
+
      // Process data for Category Breakdown (Pie or Bar)
      const processedCategoryData = useMemo(() => {
-         const categoryTotals: Record<string, number> = {};
+         const categoryTotals: Record<string, { total: number; name: string }> = {}; // Store name along with total
 
          filteredItems.forEach(item => {
-             if (!categoryTotals[item.category]) {
-                 categoryTotals[item.category] = 0;
+             const categoryId = item.category;
+             const categoryName = state.categories.find(c => c.id === categoryId)?.name || 'Uncategorized';
+             if (!categoryTotals[categoryId]) {
+                 categoryTotals[categoryId] = { total: 0, name: categoryName };
              }
-             categoryTotals[item.category] += item.quantity * item.price;
+             categoryTotals[categoryId].total += item.quantity * item.price;
          });
 
-         const totalSpent = Object.values(categoryTotals).reduce((sum, total) => sum + total, 0);
+         const totalSpent = Object.values(categoryTotals).reduce((sum, catData) => sum + catData.total, 0);
          if (totalSpent === 0) return [];
 
+         // Transform data for the chart components
          const categoryData: CategoryData[] = Object.entries(categoryTotals)
-             .map(([category, total]) => ({
-                 category,
-                 total,
+             .map(([_, catData]) => ({
+                 category: catData.name, // Use category name for display
+                 total: catData.total,
              }))
-             .sort((a, b) => b.total - a.total); // Sort by total descending for both chart types
+             .sort((a, b) => b.total - a.total); // Sort by total descending
 
          return categoryData;
-     }, [filteredItems]);
+     }, [filteredItems, state.categories]);
+
+     // Dynamically generate chart config for categories based on context
+     const dynamicChartConfig = useMemo(() => {
+        const config: ChartConfig = { total: { label: "Total Spend", color: "hsl(var(--primary))" } };
+        const availableColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(150 100% 50%)", "hsl(270 100% 60%)", "hsl(30 100% 50%)", "hsl(210 100% 60%)", "hsl(330 100% 60%)"];
+        let colorIndex = 0;
+
+        state.categories.forEach(cat => {
+          config[cat.name] = { // Use category name as key
+            label: cat.name,
+            color: availableColors[colorIndex % availableColors.length],
+          };
+          colorIndex++;
+        });
+        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" }; // Add fallback
+
+        return config;
+     }, [state.categories]);
 
 
      const summaryStats = useMemo(() => {
@@ -177,6 +198,11 @@ export default function StatsPage() {
         return <StatsPageSkeleton />;
     }
 
+     // Helper to get category name for display
+     const getCategoryName = (categoryId: string): string => {
+        return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
+     };
+
     const getFilterLabel = () => {
         let dateLabel = '';
          if (timePeriodPreset !== 'custom' && dateRange?.from && dateRange?.to) {
@@ -191,7 +217,7 @@ export default function StatsPage() {
              dateLabel = 'Select Dates';
          }
 
-        const categoryLabel = selectedCategory === 'all' ? '' : ` (${selectedCategory})`;
+        const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
         return `${dateLabel}${categoryLabel}`;
     };
 
@@ -247,11 +273,12 @@ export default function StatsPage() {
                                     <SelectGroup>
                                         <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Category</SelectLabel>
                                         <SelectItem value="all" className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">All Categories</SelectItem>
-                                        {itemCategories.map((category) => (
-                                            <SelectItem key={category} value={category} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
-                                                {category}
+                                        {state.categories.map((category) => (
+                                            <SelectItem key={category.id} value={category.id} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
+                                                {category.name}
                                             </SelectItem>
                                         ))}
+                                        {state.categories.length === 0 && <SelectItem value="none" disabled>No categories defined</SelectItem>}
                                     </SelectGroup>
                                  </ScrollArea>
                             </SelectContent>
@@ -327,7 +354,7 @@ export default function StatsPage() {
                         <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
                              <Button
                                 variant={trendChartType === 'line' ? 'secondary' : 'ghost'}
-                                 size="icon" // Use icon size for consistency
+                                 size="icon"
                                 onClick={() => setTrendChartType('line')}
                                 className={`h-7 w-7 ${trendChartType === 'line' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
                                 aria-label="Show as Line Chart"
@@ -343,10 +370,11 @@ export default function StatsPage() {
                      </CardHeader>
                      <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
                         {processedTrendData.length > 0 ? (
-                            <ExpenseChart data={processedTrendData} chartType={trendChartType} /> // Pass trendChartType
+                             // Pass dynamicChartConfig to ExpenseChart
+                            <ExpenseChart data={processedTrendData} chartType={trendChartType} chartConfig={dynamicChartConfig} />
                         ) : (
                             <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
-                                <p className="text-muted-foreground text-center text-sm">No expense data available.</p>
+                                <p className="text-muted-foreground text-center text-sm">No expense data available for the selected filters.</p>
                             </div>
                         )}
                     </CardContent>
@@ -381,15 +409,15 @@ export default function StatsPage() {
                      <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
                          {processedCategoryData.length > 0 ? (
                              categoryChartType === 'pie' ? (
-                                 <CategoryPieChart data={processedCategoryData} />
+                                 // Pass dynamicChartConfig to CategoryPieChart
+                                 <CategoryPieChart data={processedCategoryData} chartConfig={dynamicChartConfig} />
                              ) : (
-                                 // Placeholder for future Category Bar Chart component
-                                 <ExpenseChart data={processedCategoryData.map(d => ({ date: d.category, total: d.total }))} chartType="bar" keyPrefix="category" />
-                                 // <CategoryBarChart data={processedCategoryData} />
+                                 // Pass dynamicChartConfig to ExpenseChart for category bar view
+                                 <ExpenseChart data={processedCategoryData.map(d => ({ date: d.category, total: d.total }))} chartType="bar" keyPrefix="category" chartConfig={dynamicChartConfig}/>
                              )
                          ) : (
                              <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
-                                 <p className="text-muted-foreground text-center text-sm">No spending by category.</p>
+                                 <p className="text-muted-foreground text-center text-sm">No spending by category for the selected filters.</p>
                              </div>
                          )}
                      </CardContent>
@@ -465,3 +493,5 @@ const StatsPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
+
+    

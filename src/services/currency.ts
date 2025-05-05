@@ -18,17 +18,49 @@ export interface Currency {
 }
 
 /**
- * Asynchronously retrieves the user's current currency based on their location.
+ * Asynchronously retrieves the user's likely currency based on browser settings or a fallback.
+ * Note: Browser-based detection can be unreliable. A more robust solution might involve
+ * an IP geolocation API call on the server-side or during initial load.
  *
- * @returns A promise that resolves to a Currency object.
+ * @returns A promise that resolves to a Currency object or null if detection fails.
  */
-export async function getUserCurrency(): Promise<Currency> {
-  // TODO: Implement this by calling an API.
-  return {
-    code: 'USD',
-    symbol: '$',
-    name: 'US Dollar',
-  };
+export async function getUserCurrency(): Promise<Currency | null> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.language) {
+      // Attempt to infer currency from browser language settings (basic approach)
+      const language = navigator.language.toLowerCase();
+      // Very simplified mapping - a real implementation needs a comprehensive library/API
+      if (language.includes('en-us')) return { code: 'USD', symbol: '$', name: 'US Dollar' };
+      if (language.includes('en-gb')) return { code: 'GBP', symbol: '£', name: 'British Pound' };
+      if (language.includes('en-ca')) return { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' };
+      if (language.includes('en-au')) return { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' };
+      if (language.startsWith('de')) return { code: 'EUR', symbol: '€', name: 'Euro' };
+      if (language.startsWith('fr')) return { code: 'EUR', symbol: '€', name: 'Euro' };
+      if (language.startsWith('es')) return { code: 'EUR', symbol: '€', name: 'Euro' };
+       if (language.includes('hi') || language.includes('en-in') ) return { code: 'INR', symbol: '₹', name: 'Indian Rupee' };
+      // Add more mappings as needed...
+    }
+
+     // Placeholder/Fallback: IP Geolocation (requires an API call - this is just a comment)
+     // try {
+     //   const response = await fetch('YOUR_GEOLOCATION_API_ENDPOINT');
+     //   const data = await response.json();
+     //   const countryCode = data.country_code; // Example property
+     //   const currency = mapCountryCodeToCurrency(countryCode); // Implement this mapping
+     //   if (currency) return currency;
+     // } catch (geoError) {
+     //   console.error("Geolocation API call failed:", geoError);
+     // }
+
+
+    // Fallback to default if detection fails
+    console.warn("Could not reliably detect user currency based on browser language.");
+    return null; // Return null to indicate detection failure
+
+  } catch (error) {
+    console.error("Error getting user currency:", error);
+    return null; // Return null on error
+  }
 }
 
 /**
@@ -77,3 +109,5 @@ export async function getSupportedCurrencies(): Promise<Currency[]> {
      // Add more currencies as needed...
   ].sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
 }
+
+    

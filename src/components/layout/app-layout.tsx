@@ -1,32 +1,46 @@
 
 "use client";
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import {
-  LayoutGrid,
-  HelpCircle,
-  Mail,
-  ShieldCheck,
-  FileText,
-  Star,
-  Menu,
-  DollarSign,
-  X, // Ensure X is imported
-  History,
-  BarChart3,
-  Wallet,
   ShoppingCart,
-  Store, // Use Store icon for More Apps
-  Banknote, // Use Banknote for Currency
+  LayoutGrid as Dashboard, // Alias LayoutGrid to Dashboard
+  History,
+  Settings,
+  Info as InfoIcon, // Alias Info to InfoIcon
+  Mail,
+  ShieldCheck as Policy, // Alias ShieldCheck to Policy
+  FileText as Article, // Alias FileText to Article
+  Star,
+  Store as Apps, // Alias Store to Apps
+  Menu,
+  X,
+  DollarSign,
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSidebar, SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+// Temporarily remove AdMob related imports
+// import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
+import dynamic from 'next/dynamic';
 
 
-const APP_NAME = "Neon Shopping List";
+// Dynamically import AdInitializer to ensure it only runs client-side
+// Temporarily disable dynamic import as well
+// const AdInitializer = dynamic(() => import('@/components/admob/ad-initializer').then(mod => mod.AdInitializer), {
+//   ssr: false,
+// });
+
+// AdComponent placeholder
+const AdComponent = () => {
+    // Render nothing, or a placeholder div if needed for layout
+    // return <div className="admob-placeholder h-16 bg-gray-800 text-center text-xs text-gray-500 flex items-center justify-center">Ad Placeholder</div>;
+     return null;
+};
+
+const APP_NAME = "Neon Shopping List"; // Consistent App Name
 
 // --- Mobile Header Component ---
 const MobileHeader = () => {
@@ -54,7 +68,7 @@ const MobileHeader = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <Wallet className="w-6 h-6" />
+         <DollarSign className="w-5 h-5" /> {/* Updated Icon */}
         <span className="font-bold">{APP_NAME}</span> {/* Use consistent app name */}
       </Link>
 
@@ -71,82 +85,109 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
   const router = useRouter();
 
-  const mainMenuItems = [
+  // Updated Menu Items
+  const menuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: BarChart3 },
+    { href: '/stats', label: 'Dashboard', icon: Dashboard },
     { href: '/history', label: 'History', icon: History },
-    { href: '/currency', label: 'Currency', icon: Banknote } // Updated icon
-  ];
-
-  const helpMenuItems = [
-    { href: '/about', label: 'About Us', icon: HelpCircle },
+    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/about', label: 'About Us', icon: InfoIcon },
     { href: '/contact', label: 'Contact Us', icon: Mail },
-    { href: '/privacy', label: 'Privacy Policy', icon: ShieldCheck },
-    { href: '/terms', label: 'Terms of Service', icon: FileText },
+    { href: '/privacy', label: 'Privacy Policy', icon: Policy },
+    { href: '/terms', label: 'Terms of Service', icon: Article },
     { href: '/rate', label: 'Rate App', icon: Star },
-    { href: '/more-apps', label: 'More Apps', icon: Store }, // Updated icon
+    { href: '/more-apps', label: 'More Apps', icon: Apps },
   ];
 
-  const handleLinkClick = (item: { href: string }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-    event.preventDefault(); // Prevent default link behavior initially
+   // AdMob Interstitial Trigger Routes (keep for reference, but won't trigger now)
+   const interstitialTriggerRoutes = ['/stats', '/history', '/currency']; // Updated to '/currency'
 
-    // Close mobile sidebar if open
+  const handleLinkClick = async (item: { href: string }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+     event.preventDefault(); // Prevent default link behavior initially
+
+     // Close mobile sidebar if open
     if (isMobile) {
       setOpenMobile(false);
     }
-    router.push(item.href);
+
+    // Temporarily disable interstitial logic
+    // Check if the clicked route should trigger an interstitial ad
+    //  if (interstitialTriggerRoutes.includes(item.href)) {
+    //    console.log(`Interstitial triggered for: ${item.href}`);
+    //    try {
+    //      await showPreparedInterstitialAd(); // Attempt to show the ad
+    //    } catch (error) {
+    //      console.error("Error showing interstitial ad on click:", error);
+    //    } finally {
+    //      // Navigate regardless of whether the ad showed or not
+    //      router.push(item.href);
+    //    }
+    //  } else {
+       // Navigate directly for other routes
+       router.push(item.href);
+    //  }
   };
+
+  // Apply hover styles dynamically using CSS group hover and data attributes if possible,
+  // or manage hover state with React if more complex effects are needed.
+  const menuItemClasses = cn(
+     "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm", // Adjusted gap and padding
+     "border border-primary/30 hover:border-white", // Neon cyan border, white on hover
+     "transition-all duration-300 ease-in-out", // Smooth transitions
+     "hover:text-white hover:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // White glow on hover
+     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // Focus glow
+     "[&_svg]:size-5 [&_svg]:shrink-0", // Icon size adjusted
+     "[&_span:last-child]:truncate" // Truncate text
+   );
+
+
+   const activeItemClasses = cn(
+     "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary/0.8)]", // Active state cyan glow
+     "hover:text-white hover:border-white hover:shadow-[0_0_15px_3px_theme(colors.white/0.7),0_0_5px_theme(colors.white/0.9)]" // Intensified white glow on hover when active
+   );
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <Sidebar className="hidden md:flex md:flex-col">
+       {/* AdMob Banner Placement */}
+       <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
+         {/* Render the AdComponent which will handle AdMob logic */}
+         <AdComponent />
+       </div>
+
+       {/* Desktop Sidebar */}
+       <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-            <Wallet className="w-6 h-6" />
-            <span className="font-bold">{APP_NAME}</span> {/* Use consistent app name */}
+             <DollarSign className="w-5 h-5" /> {/* Updated Icon */}
+            <span className="font-bold">{APP_NAME}</span> {/* Ensure this name is consistent */}
           </Link>
         </SidebarHeader>
-        <SidebarContent className="p-2 flex-grow flex flex-col overflow-y-auto">
-          <SidebarMenu className="flex-grow">
-            {mainMenuItems.map((item) => (
+        <SidebarContent className="p-2 flex flex-col"> {/* Use flex-col */}
+          {/* Combined Menu Items */}
+          <SidebarMenu className="flex-grow space-y-1.5"> {/* Adjusted spacing */}
+            {menuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
                   isActive={pathname === item.href}
                   tooltip={item.label}
+                   className={cn(
+                     menuItemClasses, // Base classes
+                     pathname === item.href && activeItemClasses // Active state classes
+                   )}
                 >
                   <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+                    <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                    <span className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
-          <div className="p-2 shrink-0 border-t border-sidebar-border mt-auto">
-            <SidebarMenu>
-              {helpMenuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </div>
+
         </SidebarContent>
         <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
-          <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
+          <p className="text-xs text-muted-foreground text-center">v1.0.0</p> {/* You might want to update the version dynamically */}
         </SidebarFooter>
       </Sidebar>
 
@@ -156,7 +197,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileHeader />
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20"> {/* Added bottom padding */}
           {children}
         </main>
       </SidebarInset>

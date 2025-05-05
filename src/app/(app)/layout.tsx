@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export default function AppAreaLayout({
@@ -5,7 +6,9 @@ export default function AppAreaLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // This layout can be used for elements common to the main app sections
-  // like /list, /stats, /settings. For now, it just passes children through.
+  // This layout is now simpler, just passing children through.
+  // Settings-specific logic will be handled within the Settings page itself.
   return <>{children}</>;
 }
+
+    

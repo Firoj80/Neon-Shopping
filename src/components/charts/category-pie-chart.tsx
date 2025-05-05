@@ -1,14 +1,8 @@
+
 "use client"
 import React from "react"
 import { Pie, PieChart, ResponsiveContainer, Cell } from "recharts"
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import {
   ChartConfig,
   ChartContainer,
@@ -20,32 +14,18 @@ import {
 import { useAppContext } from '@/context/app-context';
 
 export interface CategoryData {
-  category: string;
+  category: string; // Category name
   total: number;
-  // fill: string; // Let the chart component handle the fill based on config
 }
 
 interface CategoryPieChartProps {
   data: CategoryData[];
+  chartConfig: ChartConfig; // Accept dynamic chart config
 }
 
-// Define chart config mapping categories to colors (reuse/extend from expense-chart if possible)
-const chartConfig = {
-  total: { label: "Total" }, // Default label if needed
-  Grocery: { label: "Grocery", color: "hsl(var(--chart-1))" },
-  Electronics: { label: "Electronics", color: "hsl(var(--chart-2))" },
-  Home: { label: "Home", color: "hsl(var(--chart-3))" },
-  Beauty: { label: "Beauty", color: "hsl(var(--chart-4))" },
-  Health: { label: "Health", color: "hsl(var(--chart-5))" },
-  Fitness: { label: "Fitness", color: "hsl(150 100% 50%)" },
-  Sports: { label: "Sports", color: "hsl(270 100% 60%)" },
-  Clothing: { label: "Clothing", color: "hsl(30 100% 50%)" },
-  Books: { label: "Books", color: "hsl(210 100% 60%)" },
-  Gifts: { label: "Gifts", color: "hsl(330 100% 60%)" },
-  Other: { label: "Other", color: "hsl(0 0% 70%)" },
-} satisfies ChartConfig
+// Removed static chartConfig here, will use the prop instead
 
-export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ data }) => {
+export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ data, chartConfig }) => {
     const { formatCurrency } = useAppContext();
 
   const totalValue = React.useMemo(() => {
@@ -54,8 +34,8 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ data }) => {
 
   return (
      <ChartContainer
-        config={chartConfig}
-        className="mx-auto aspect-square h-[250px] sm:h-[300px]" // Adjust size as needed
+        config={chartConfig} // Use the passed config
+        className="mx-auto aspect-square h-[250px] sm:h-[300px]"
       >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -63,19 +43,20 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ data }) => {
               cursor={false}
               content={
                 <ChartTooltipContent
-                    hideLabel // Label inside pie is better
-                    formatter={(value, name) => `${chartConfig[name as keyof typeof chartConfig]?.label}: ${formatCurrency(value as number)}`}
-                    className="!bg-card/80 backdrop-blur-sm !border-secondary/50" // Style tooltip
+                    hideLabel
+                     // Use category name for lookup in dynamic config
+                    formatter={(value, name) => `${chartConfig[name as keyof typeof chartConfig]?.label || name}: ${formatCurrency(value as number)}`}
+                    className="!bg-card/80 backdrop-blur-sm !border-secondary/50"
                  />}
             />
             <Pie
               data={data}
               dataKey="total"
-              nameKey="category"
-              innerRadius={60} // Make it a donut chart
+              nameKey="category" // Use category name as the key
+              innerRadius={60}
               outerRadius={80}
               strokeWidth={5}
-              labelLine={false} // Hide default label lines
+              labelLine={false}
               label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
                   const RADIAN = Math.PI / 180;
                   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -83,14 +64,13 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ data }) => {
                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
                   const percentage = (percent * 100).toFixed(0);
 
-                   // Don't show label if percentage is too small
                    if (parseInt(percentage) < 5) return null;
 
                   return (
                   <text
                     x={x}
                     y={y}
-                    fill="hsl(var(--foreground))" // Use foreground color
+                    fill="hsl(var(--foreground))"
                     textAnchor={x > cx ? 'start' : 'end'}
                     dominantBaseline="central"
                     className="text-[10px] font-medium fill-foreground"
@@ -100,20 +80,23 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({ data }) => {
                   );
               }}
             >
-               {/* Define Cell colors based on category */}
-               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={chartConfig[entry.category as keyof typeof chartConfig]?.color || "hsl(var(--muted))"} />
-               ))}
+               {/* Define Cell colors based on category name using dynamic config */}
+               {data.map((entry, index) => {
+                   // Use category name for lookup, fallback to Uncategorized color
+                   const color = chartConfig[entry.category as keyof typeof chartConfig]?.color || chartConfig.Uncategorized?.color || "hsl(var(--muted))";
+                   return <Cell key={`cell-${index}`} fill={color} />;
+               })}
             </Pie>
-             {/* Add Legend */}
               <ChartLegend
-                content={<ChartLegendContent nameKey="category" className="text-xs flex-wrap justify-center" />} // Use flex-wrap for many categories
-                verticalAlign="bottom"
-                align="center"
-                wrapperStyle={{ paddingBottom: '0px', paddingTop: '10px' }} // Adjust spacing
+                 content={<ChartLegendContent nameKey="category" className="text-xs flex-wrap justify-center" />} // Use category name
+                 verticalAlign="bottom"
+                 align="center"
+                 wrapperStyle={{ paddingBottom: '0px', paddingTop: '10px' }}
                 />
           </PieChart>
         </ResponsiveContainer>
       </ChartContainer>
   )
 }
+
+    

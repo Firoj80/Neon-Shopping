@@ -3,17 +3,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useAppContext } from '@/context/app-context';
-import type { ShoppingListItem } from '@/context/app-context';
+import type { ShoppingListItem, Category } from '@/context/app-context'; // Import Category type
 import { subDays, format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { History, Filter, Layers, CalendarDays, Tag, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
-import { itemCategories } from '@/config/categories';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
@@ -27,12 +25,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 
-type CategoryFilter = string; // 'all' or specific category name
+type CategoryFilter = string; // 'all' or specific category ID
 type SortOption = 'dateDesc' | 'dateAsc' | 'priceDesc' | 'priceAsc';
 
 export default function HistoryPage() {
     const { state, dispatch, formatCurrency, isLoading } = useAppContext();
-    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
+    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all'); // Default to 'all'
     const [sortOption, setSortOption] = useState<SortOption>('dateDesc');
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -55,7 +53,7 @@ export default function HistoryPage() {
             });
         }
 
-        // Category Filter
+        // Category Filter (using category ID)
         if (selectedCategory !== 'all') {
             items = items.filter(item => item.category === selectedCategory);
         }
@@ -84,9 +82,6 @@ export default function HistoryPage() {
 
      const confirmDelete = () => {
         if (itemToDelete) {
-          // Note: Deleting from history also removes it from the main list if needed.
-          // Consider if you want separate history or just filtering the main list.
-          // This implementation assumes deletion removes it permanently.
           dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete });
           setItemToDelete(null); // Close dialog
         }
@@ -96,12 +91,17 @@ export default function HistoryPage() {
         return <HistoryPageSkeleton />;
     }
 
+    // Helper to get category name for display
+    const getCategoryName = (categoryId: string): string => {
+      return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
+    };
+
     const getFilterLabel = () => {
         let dateLabel = 'All Time';
          if (dateRange?.from && dateRange?.to) {
              dateLabel = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`;
          }
-        const categoryLabel = selectedCategory === 'all' ? '' : ` (${selectedCategory})`;
+        const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
         return `${dateLabel}${categoryLabel}`;
     };
 
@@ -112,7 +112,7 @@ export default function HistoryPage() {
             </h1>
 
             {/* Filter & Sort Section */}
-            <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm"> {/* Sticky filters */}
+            <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm">
                 <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                     <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2">
                         <Filter className="h-4 w-4" /> Filters & Sort
@@ -140,11 +140,12 @@ export default function HistoryPage() {
                                     <SelectGroup>
                                         <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Category</SelectLabel>
                                         <SelectItem value="all" className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">All Categories</SelectItem>
-                                        {itemCategories.map((category) => (
-                                            <SelectItem key={category} value={category} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
-                                                {category}
+                                        {state.categories.map((category) => (
+                                            <SelectItem key={category.id} value={category.id} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
+                                                {category.name}
                                             </SelectItem>
                                         ))}
+                                        {state.categories.length === 0 && <SelectItem value="none" disabled>No categories defined</SelectItem>}
                                     </SelectGroup>
                                 </ScrollArea>
                             </SelectContent>
@@ -177,12 +178,12 @@ export default function HistoryPage() {
                     {historyItems.length > 0 ? (
                         <div className="flex flex-col gap-2 pb-4">
                             {historyItems.map((item) => (
-                                <HistoryItemCard key={item.id} item={item} formatCurrency={formatCurrency} onDelete={handleDeleteItem} />
+                                <HistoryItemCard key={item.id} item={item} formatCurrency={formatCurrency} onDelete={handleDeleteItem} getCategoryName={getCategoryName}/>
                             ))}
                         </div>
                     ) : (
                         <div className="flex items-center justify-center h-full text-center py-10">
-                            <p className="text-muted-foreground">No purchase history found for the selected filters.</p>
+                            <p className="text-muted-foreground">No purchase history found for the selected filters ({getFilterLabel()}).</p>
                         </div>
                     )}
                 </ScrollArea>
@@ -215,11 +216,13 @@ interface HistoryItemCardProps {
     item: ShoppingListItem;
     formatCurrency: (amount: number) => string;
     onDelete: (id: string) => void;
+    getCategoryName: (id: string) => string; // Add function to get category name
 }
 
-const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency, onDelete }) => {
+const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency, onDelete, getCategoryName }) => {
   const purchaseDate = format(new Date(item.dateAdded), 'MMM d, yyyy');
   const totalItemPrice = item.price * item.quantity;
+  const categoryName = getCategoryName(item.category); // Get category name
 
   return (
     <Card className="rounded-lg shadow-sm p-3 w-full border-secondary/20 bg-card/70 hover:border-secondary/40 transition-colors duration-200">
@@ -232,7 +235,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
             <span>Price: {formatCurrency(item.price)}</span>
             <span className="font-medium text-neonText/80">Total: {formatCurrency(totalItemPrice)}</span>
             <Badge variant="secondary" className="py-0.5 px-1.5 text-xs bg-secondary/20 text-secondary border-secondary/30">
-              <Tag className="h-3 w-3 mr-1" />{item.category}
+              <Tag className="h-3 w-3 mr-1" />{categoryName} {/* Display category name */}
             </Badge>
           </div>
         </div>
@@ -304,3 +307,5 @@ const HistoryPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
+
+    
