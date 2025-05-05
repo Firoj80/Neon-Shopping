@@ -75,7 +75,7 @@ export default function ShoppingListPage() {
   );
 
   const CardSkeleton = () => (
-    <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse">
+    <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse shadow-neon">
         <div className="flex items-center mb-2">
             <Skeleton className="h-5 w-5 rounded mr-3 shrink-0" />
             <div className="flex-grow space-y-1.5">
@@ -123,38 +123,43 @@ export default function ShoppingListPage() {
 
 
   return (
-    <div className="flex flex-col h-full space-y-4">
-        <BudgetPanel />
+    // Use flex-col and h-full to allow content scrolling within the main area
+    <div className="flex flex-col h-full">
 
-        <Tabs defaultValue="current" className="flex-grow flex flex-col">
-             {/* Tabs Header */}
-             <TabsList className="grid w-full grid-cols-2 mb-4 bg-card border border-primary/20 shadow-sm">
-                 <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
-                     <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
-                 </TabsTrigger>
-                 <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
-                     <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
-                 </TabsTrigger>
-             </TabsList>
+        {/* Sticky Header Section */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-4">
+            <BudgetPanel />
+             <Tabs defaultValue="current" className="w-full"> {/* Tabs component now inside sticky part, but only TabsList shown */}
+                 <TabsList className="grid w-full grid-cols-2 mb-0 bg-card border border-primary/20 shadow-sm"> {/* Removed mb-4 */}
+                     <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
+                         <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
+                     </TabsTrigger>
+                     <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
+                         <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
+                     </TabsTrigger>
+                 </TabsList>
 
-             {/* Tabs Content Area */}
-             <div className="flex-grow overflow-hidden">
-                 <ScrollArea className="h-full pr-1">
-                     <TabsContent value="current">
-                         {renderItemList(currentItems, "No current items. Add some!")}
-                     </TabsContent>
-                     <TabsContent value="purchased">
-                         {renderItemList(purchasedItems, "No items purchased yet.")}
-                     </TabsContent>
-                 </ScrollArea>
-             </div>
-        </Tabs>
+                 {/* Scrollable Content Area - MUST be outside the sticky div */}
+                 {/* The Tabs component wraps the content, but the TabsList is visually sticky above */}
+                 <div className="flex-grow overflow-hidden mt-4"> {/* Added margin-top */}
+                     <ScrollArea className="h-full pr-1">
+                         <TabsContent value="current" className="mt-0"> {/* Removed default margin */}
+                             {renderItemList(currentItems, "No current items. Add some!")}
+                         </TabsContent>
+                         <TabsContent value="purchased" className="mt-0"> {/* Removed default margin */}
+                             {renderItemList(purchasedItems, "No items purchased yet.")}
+                         </TabsContent>
+                     </ScrollArea>
+                 </div>
+             </Tabs>
+        </div>
 
-         {/* Floating Action Button */}
+
+         {/* Floating Action Button - Stays fixed */}
          <Button
             onClick={handleAddItemClick}
             size="lg"
-            className="fixed bottom-[calc(4rem+1.5rem)] right-6 md:bottom-8 md:right-8 z-10 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-6 md:bottom-8 md:right-8 z-20 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
           >
              <PlusCircle className="h-6 w-6" />

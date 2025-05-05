@@ -4,7 +4,8 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react" // Only need PanelLeft here now
+import { PanelLeft, X } from "lucide-react" // Import X icon
+import { motion, AnimatePresence } from "framer-motion" // Import Framer Motion
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -147,7 +148,6 @@ const SidebarProvider = React.forwardRef<
             }
             className={cn(
               // Ensure the provider wrapper itself doesn't add layout styles unless necessary
-              // "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
               className
             )}
             ref={ref}
@@ -805,4 +805,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-

@@ -8,8 +8,7 @@ import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
 import ClientOnly from '@/components/client-only'; // Import ClientOnly
-import { AdInitializer } from '@/components/admob/ad-initializer'; // Import AdInitializer
-
+// Removed AdInitializer import as AdMob was removed
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -39,10 +38,11 @@ export default function RootLayout({
              <AppLayout>
               {children}
              </AppLayout>
-             {/* Render AdInitializer within ClientOnly to ensure it runs client-side */}
+             {/*
              <ClientOnly>
                 <AdInitializer />
              </ClientOnly>
+             */}
           </SidebarProvider>
           <Toaster />
         </Providers>

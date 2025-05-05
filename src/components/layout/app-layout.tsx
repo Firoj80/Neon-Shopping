@@ -1,3 +1,4 @@
+
 "use client";
 import React from 'react';
 import Link from 'next/link';
@@ -15,33 +16,27 @@ import {
   Menu,
   X,
   ShoppingBag, // New icon for Shopping
-  Wallet
+  DollarSign // Changed from Wallet to DollarSign for Currency
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
-import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer'; // Import the function
+import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+// Removed AdMob imports as it was removed
 import dynamic from 'next/dynamic';
 
-// Dynamically import AdComponent to ensure it only runs client-side
-// const AdComponent = dynamic(() => import('@/components/admob/ad-component'), {
-//   ssr: false, // Ensure this component is only loaded on the client-side
-// });
-
-// AdComponent placeholder (if AdMob is temporarily removed or needs client-side handling)
+// Placeholder for AdComponent if needed later
 const AdComponent = () => {
     // Render a fixed placeholder for the banner ad at the bottom
     return (
-      <div className="fixed bottom-0 left-0 right-0 h-16 bg-black/80 border-t border-primary/30 flex items-center justify-center text-xs text-muted-foreground z-40">
-        {/* Ad Banner Placeholder */}
+      <div className="fixed bottom-0 left-0 right-0 h-16 bg-black/80 border-t border-primary/30 flex items-center justify-center text-xs text-muted-foreground z-40 pointer-events-none">
+        {/* Ad Banner Placeholder - Consider removing if ads are definitely not coming back */}
       </div>
     );
 };
 
-
-const APP_NAME = "Neon Shopping List"; // Updated App Name
+const APP_NAME = "Neon Shopping"; // Updated App Name
 
 // --- Mobile Header Component ---
 const MobileHeader = () => {
@@ -69,7 +64,7 @@ const MobileHeader = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-         <ShoppingCart className="w-6 h-6" /> {/* Use ShoppingBag icon */}
+         <ShoppingCart className="w-6 h-6" /> {/* Use ShoppingCart icon */}
         <span className="font-bold">{APP_NAME}</span> {/* Use consistent app name */}
       </Link>
 
@@ -86,15 +81,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
   const router = useRouter();
 
-  // AdMob Interstitial Trigger Routes
-  const interstitialTriggerRoutes = ['/stats', '/history', '/currency']; // Updated '/settings'
+  // AdMob Interstitial Trigger Routes (Keep for reference, but functionality removed)
+  const interstitialTriggerRoutes = ['/stats', '/history', '/currency'];
 
   // Menu Items & Icons
   const menuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: Dashboard },
     { href: '/history', label: 'History', icon: History },
-    { href: '/currency', label: 'Currency', icon: Wallet }, // Changed to Settings
+    { href: '/currency', label: 'Currency', icon: DollarSign }, // Changed icon
+    { href: '/settings', label: 'Settings', icon: Settings },
     { href: '/about', label: 'About Us', icon: InfoIcon },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: Policy },
@@ -112,21 +108,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       setOpenMobile(false);
     }
 
-    // Check if the clicked route should trigger an interstitial ad
-     if (interstitialTriggerRoutes.includes(item.href)) {
-       console.log(`Interstitial triggered for: ${item.href}`);
-       try {
-         await showPreparedInterstitialAd(); // Attempt to show the ad
-       } catch (error) {
-         console.error("Error showing interstitial ad on click:", error);
-       } finally {
-         // Navigate regardless of whether the ad showed or not
-         router.push(item.href);
-       }
-     } else {
-       // Navigate directly for other routes
-       router.push(item.href);
-     }
+    // Interstitial Ad Logic (Removed, kept conditional for reference)
+    // if (interstitialTriggerRoutes.includes(item.href)) {
+    //   console.log(`Interstitial triggered for: ${item.href}`);
+    //   try {
+    //     await showPreparedInterstitialAd(); // Attempt to show the ad
+    //   } catch (error) {
+    //     console.error("Error showing interstitial ad on click:", error);
+    //   } finally {
+    //     router.push(item.href);
+    //   }
+    // } else {
+    // Navigate directly
+    router.push(item.href);
+    // }
   };
 
 
@@ -147,15 +142,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
    );
 
   return (
-    <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
-       {/* AdMob Banner Placement (Placeholder) */}
-       <AdComponent />
+    <>
+       {/* AdMob Banner Placement (Placeholder - Can be removed if ads won't be re-added) */}
+       {/* <AdComponent /> */}
 
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-             <ShoppingCart className="w-6 h-6" /> {/* Use ShoppingBag icon */}
+             <ShoppingCart className="w-6 h-6" /> {/* Use ShoppingCart icon */}
             <span className="font-bold">{APP_NAME}</span> {/* Ensure this name is consistent */}
           </Link>
         </SidebarHeader>
@@ -194,8 +189,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileHeader />
 
         {/* Content */}
-         {/* Add padding-bottom to avoid content being hidden by the fixed banner */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-20"> {/* Adjusted bottom padding */}
+         {/* Adjusted padding-bottom to avoid content being hidden by potential fixed elements (like the ad placeholder) */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-4"> {/* Reduced bottom padding */}
           {children}
         </main>
       </SidebarInset>
