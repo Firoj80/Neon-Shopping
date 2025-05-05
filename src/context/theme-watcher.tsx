@@ -1,36 +1,39 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react'; // Added useState
-import { useAppContext } from './app-context';
+import React, { useEffect, useState, useContext } from 'react';
+import { AppContext } from './app-context'; // Import AppContext directly
 import { defaultTheme } from '@/config/themes';
 
 interface ThemeWatcherProps {
-  // Pass ReactNode directly, ThemeWatcher will handle applying the class
-  // to the <html> tag but doesn't need to pass the class name down explicitly
-  // if the layout structure relies on the <html> class.
   children: React.ReactNode;
 }
 
 export const ThemeWatcher: React.FC<ThemeWatcherProps> = ({ children }) => {
-  const { state, isLoading } = useAppContext(); // Get loading state
-  const [isMounted, setIsMounted] = useState(false); // Track mount state
+  const context = useContext(AppContext); // Use useContext with the imported AppContext
+  const isLoading = context?.isLoading ?? true; // Handle context possibly being undefined initially
+  const themeId = context?.state?.theme || defaultTheme.id; // Fallback to default if state or theme is undefined
 
-  // Determine theme ID safely, only after loading and mounting
-  const themeId = (!isLoading && isMounted && state?.theme) ? state.theme : defaultTheme.id;
-  const themeClassName = `theme-${themeId}`;
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true); // Component has mounted
+    setIsMounted(true); // Indicate component has mounted client-side
   }, []);
 
   // Effect to apply the theme class to the <html> element
   useEffect(() => {
-    // Only run this effect if mounted to ensure client-side execution
+    // Only run if mounted and context is loaded to ensure client-side execution
     if (!isMounted || isLoading) return;
 
+    const themeClassName = `theme-${themeId}`;
     const htmlElement = document.documentElement;
-    // Remove previous theme classes
+
+    // Ensure 'dark' class is present first
+    if (!htmlElement.classList.contains('dark')) {
+      htmlElement.classList.add('dark');
+    }
+
+    // Remove previous theme classes if they differ from the current one
     let themeRemoved = false;
     htmlElement.className.split(' ').forEach(cls => {
       if (cls.startsWith('theme-') && cls !== themeClassName) {
@@ -38,18 +41,17 @@ export const ThemeWatcher: React.FC<ThemeWatcherProps> = ({ children }) => {
         themeRemoved = true;
       }
     });
-    // Add the current theme class
+
+    // Add the current theme class if it's not present or if another was removed
     if (!htmlElement.classList.contains(themeClassName) || themeRemoved) {
+      console.log("Applying theme class:", themeClassName); // Debug log
       htmlElement.classList.add(themeClassName);
-    }
-    // Add the 'dark' class consistently if it's not already there
-    if (!htmlElement.classList.contains('dark')) {
-        htmlElement.classList.add('dark');
+    } else {
+      console.log("Theme class already applied:", themeClassName); // Debug log
     }
 
-  }, [themeClassName, isMounted, isLoading]); // Depend on themeClassName, mount status, and loading status
+  }, [themeId, isMounted, isLoading]); // Re-run when themeId, mount status, or loading status changes
 
   // Render children directly. The theme class is applied to the <html> tag.
   return <>{children}</>;
 };
-

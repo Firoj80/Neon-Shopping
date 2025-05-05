@@ -6,7 +6,7 @@
 /* Define base variables that might not change between themes */
 @layer base {
     :root {
-        --radius: 1rem; /* Base radius */
+        --radius: 0.5rem; /* Base radius */
          /* Default Chart Colors (can be overridden by themes) */
         --chart-1: 180 100% 50%; /* Default Neon Cyan */
         --chart-2: 300 100% 50%; /* Default Neon Magenta */
@@ -14,13 +14,10 @@
         --chart-4: 60 100% 50%; /* Default Neon Yellow */
         --chart-5: 30 100% 50%; /* Default Neon Orange */
     }
-}
-
-/* Define theme-specific variables inside theme classes */
-@layer base {
-    /* --- Default Theme: Cyberpunk Cyan (Matches initial setup) --- */
-    .dark, /* Apply to default dark mode */
-    .dark .theme-cyberpunk-cyan /* Apply explicitly */ {
+     /* Apply default dark theme variables directly to :root and .dark */
+     /* This ensures they are the base styles */
+    :root,
+    .dark {
         --background: 0 0% 0%; /* Black */
         --foreground: 0 0% 95%; /* Near White */
         --card: 0 0% 7%; /* Dark Gray */
@@ -40,7 +37,7 @@
         --border: 180 100% 30%; /* Darker Cyan border */
         --input: 0 0% 15%;
         --ring: 180 100% 50%; /* Neon Cyan ring */
-        /* Sidebar variables for this theme */
+        /* Sidebar variables for default theme */
         --sidebar-background: 0 0% 5%;
         --sidebar-foreground: 0 0% 85%;
         --sidebar-primary: 180 100% 50%;
@@ -49,7 +46,48 @@
         --sidebar-accent-foreground: 0 0% 5%;
         --sidebar-border: 180 100% 20%;
         --sidebar-ring: 180 100% 50%;
-        /* Chart colors for this theme (can match defaults or be specific) */
+        /* Chart colors for default theme */
+        --chart-1: 180 100% 50%;
+        --chart-2: 300 100% 50%;
+        --chart-3: 120 100% 50%;
+        --chart-4: 60 100% 50%;
+        --chart-5: 30 100% 50%;
+    }
+}
+
+
+/* Define theme-specific overrides */
+@layer base {
+    /* --- Cyberpunk Cyan Theme (Explicitly set to override default) --- */
+    .dark .theme-cyberpunk-cyan {
+        /* Re-declare variables if they are the same as default, ensures specificity */
+        --background: 0 0% 0%;
+        --foreground: 0 0% 95%;
+        --card: 0 0% 7%;
+        --card-foreground: 0 0% 95%;
+        --popover: 0 0% 7%;
+        --popover-foreground: 0 0% 95%;
+        --primary: 180 100% 50%;
+        --primary-foreground: 180 100% 10%;
+        --secondary: 300 100% 50%;
+        --secondary-foreground: 300 100% 10%;
+        --muted: 0 0% 15%;
+        --muted-foreground: 0 0% 60%;
+        --accent: 300 100% 70%;
+        --accent-foreground: 0 0% 5%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 180 100% 30%;
+        --input: 0 0% 15%;
+        --ring: 180 100% 50%;
+        --sidebar-background: 0 0% 5%;
+        --sidebar-foreground: 0 0% 85%;
+        --sidebar-primary: 180 100% 50%;
+        --sidebar-primary-foreground: 180 100% 10%;
+        --sidebar-accent: 300 100% 70%;
+        --sidebar-accent-foreground: 0 0% 5%;
+        --sidebar-border: 180 100% 20%;
+        --sidebar-ring: 180 100% 50%;
         --chart-1: 180 100% 50%;
         --chart-2: 300 100% 50%;
         --chart-3: 120 100% 50%;
@@ -197,17 +235,17 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: hsl(var(--background) / 0.5); /* Semi-transparent track */
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.5);
+    background: hsl(var(--primary) / 0.7); /* Theme primary color thumb */
     border-radius: 10px;
-    border: 1px solid hsl(var(--background));
+    border: 1px solid hsl(var(--background)/0.8); /* Add a subtle border */
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary));
+    background: hsl(var(--primary)); /* Brighter on hover */
   }
 
   ::-webkit-scrollbar-corner {
@@ -217,7 +255,7 @@
   /* Apply styles for Firefox */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary) / 0.5) hsl(var(--background));
+    scrollbar-color: hsl(var(--primary) / 0.7) hsl(var(--background) / 0.5);
   }
 }
 

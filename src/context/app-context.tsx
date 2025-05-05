@@ -54,6 +54,7 @@ interface AppState {
   shoppingList: ShoppingListItem[];
   categories: Category[];
   theme: string; // Store the ID of the selected theme
+  isPremium: boolean; // Add isPremium flag
 }
 
 type Action =
@@ -68,7 +69,8 @@ type Action =
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } } // Update category action
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } } // Remove category action
   | { type: 'SET_THEME'; payload: string } // Add theme action (payload is theme ID)
-  | { type: 'LOAD_STATE'; payload: Partial<AppState> };
+  | { type: 'LOAD_STATE'; payload: Partial<AppState> }
+  | { type: 'SET_PREMIUM'; payload: boolean }; // Add premium action
 
 interface AppContextProps {
   state: AppState;
@@ -94,9 +96,11 @@ const initialState: AppState = {
   shoppingList: [],
   categories: DEFAULT_CATEGORIES,
   theme: defaultTheme.id, // Initialize with the default theme ID
+  isPremium: false, // Default premium status
 };
 
 const LOCAL_STORAGE_KEY = 'neonShoppingListState_v4'; // Increment version for theme change
+const USER_ID_KEY = 'neonShoppingUserId_v1'; // Separate key for user ID
 
 // Helper to calculate spent amount based on checked items added *today*
 const calculateTodaysSpent = (list: ShoppingListItem[], todayDate: Date): number => {
@@ -217,6 +221,10 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = { ...state, theme: action.payload };
       break;
     }
+     case 'SET_PREMIUM': {
+      newState = { ...state, isPremium: action.payload };
+      break;
+    }
     case 'LOAD_STATE': {
       const loadedList = action.payload.shoppingList || initialState.shoppingList;
       const loadedBudget = action.payload.budget || initialState.budget;
@@ -225,12 +233,14 @@ function appReducer(state: AppState, action: Action): AppState {
                                   ? action.payload.categories
                                   : DEFAULT_CATEGORIES;
       const loadedTheme = action.payload.theme || initialState.theme; // Load theme
-      const loadedUserId = action.payload.userId || initialState.userId; // Load userId
+      const loadedUserId = action.payload.userId || state.userId; // Use existing state userId as fallback
+      const loadedIsPremium = action.payload.isPremium ?? initialState.isPremium; // Load premium status
+
 
       const initialSpent = calculateTodaysSpent(loadedList, todayDate);
 
       newState = {
-        userId: loadedUserId,
+        userId: loadedUserId, // Assign loaded userId
         currency: loadedCurrency,
         budget: {
           limit: loadedBudget.limit,
@@ -240,6 +250,7 @@ function appReducer(state: AppState, action: Action): AppState {
         shoppingList: loadedList,
         categories: loadedCategories,
         theme: loadedTheme, // Assign loaded theme
+        isPremium: loadedIsPremium, // Assign loaded premium status
       };
       break;
     }
@@ -250,7 +261,10 @@ function appReducer(state: AppState, action: Action): AppState {
   // Persist state changes AFTER calculating new state
   if (action.type !== 'LOAD_STATE' && typeof window !== 'undefined') {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newState));
+      // Save the main state (excluding userId, which is stored separately)
+      const stateToSave = { ...newState };
+      delete (stateToSave as Partial<AppState>).userId; // Don't save userId in the main state object
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
     } catch (error) {
       console.error("Failed to save state to localStorage:", error);
     }
@@ -260,99 +274,99 @@ function appReducer(state: AppState, action: Action): AppState {
 }
 
 // --- Context & Provider ---
-const AppContext = createContext<AppContextProps | undefined>(undefined);
+// Export the context object itself
+export const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isLoading, setIsLoading] = useState(true);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Effect 1: Load initial state from localStorage
+  // Effect 1: Load initial state from localStorage and manage userId
   useEffect(() => {
     let isMounted = true;
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      let loadedStateFromStorage: Partial<AppState> = {};
-      try {
-         // Check for existing user ID
-         let userId = localStorage.getItem('user_id');
-         if (!userId) {
-           userId = uuidv4(); // Generate if not found
-           localStorage.setItem('user_id', userId);
-         }
+    const loadInitialData = () => {
+        setIsLoading(true);
+        let loadedStateFromStorage: Partial<AppState> = {};
+        let userId: string | null = null;
 
-        const savedStateRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedStateRaw) {
-          try {
-            const parsedState = JSON.parse(savedStateRaw);
-            if (typeof parsedState === 'object' && parsedState !== null) {
-              loadedStateFromStorage = {
-                userId: parsedState.userId || userId, // Use loaded ID or the one just checked/generated
-                currency: parsedState.currency,
-                budget: parsedState.budget,
-                shoppingList: Array.isArray(parsedState.shoppingList) ? parsedState.shoppingList : undefined,
-                categories: Array.isArray(parsedState.categories) ? parsedState.categories : undefined,
-                theme: parsedState.theme, // Load theme
-              };
+        try {
+            // Get or generate User ID
+            userId = localStorage.getItem(USER_ID_KEY);
+            if (!userId) {
+                userId = uuidv4(); // Generate if not found
+                localStorage.setItem(USER_ID_KEY, userId);
+                console.log("Generated new user ID:", userId);
+            } else {
+                console.log("Loaded existing user ID:", userId);
             }
-          } catch (e) {
-            console.error("Failed to parse saved state:", e);
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-             loadedStateFromStorage.userId = userId; // Ensure userId is set even if state parsing fails
-          }
-        } else {
-           loadedStateFromStorage.userId = userId; // Ensure userId is set if no saved state
-        }
 
-        if (isMounted) {
-          // Ensure defaults if none loaded
-          if (!loadedStateFromStorage.categories || loadedStateFromStorage.categories.length === 0) {
-             loadedStateFromStorage.categories = DEFAULT_CATEGORIES;
-          }
-           if (!loadedStateFromStorage.currency) {
-             loadedStateFromStorage.currency = defaultCurrency;
-           }
-           if (!loadedStateFromStorage.theme) {
-             loadedStateFromStorage.theme = defaultTheme.id; // Set default theme if none loaded
-           }
+            // Get saved state
+            const savedStateRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedStateRaw) {
+                try {
+                    const parsedState = JSON.parse(savedStateRaw);
+                    if (typeof parsedState === 'object' && parsedState !== null) {
+                        loadedStateFromStorage = {
+                            currency: parsedState.currency,
+                            budget: parsedState.budget,
+                            shoppingList: Array.isArray(parsedState.shoppingList) ? parsedState.shoppingList : undefined,
+                            categories: Array.isArray(parsedState.categories) ? parsedState.categories : undefined,
+                            theme: parsedState.theme,
+                            isPremium: parsedState.isPremium,
+                        };
+                    }
+                } catch (e) {
+                    console.error("Failed to parse saved state, resetting:", e);
+                    localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted state
+                }
+            }
 
-          dispatch({ type: 'LOAD_STATE', payload: loadedStateFromStorage });
-          setIsHydrated(true);
-        }
-
-      } catch (error) {
-        console.error("Failed to load initial data:", error);
-        if (isMounted) {
-           let userId = localStorage.getItem('user_id') || uuidv4(); // Get or generate userId on error too
-           if (!localStorage.getItem('user_id')) localStorage.setItem('user_id', userId);
-
-           // Ensure defaults on error
-           loadedStateFromStorage.userId = userId;
-           if (!loadedStateFromStorage.categories || loadedStateFromStorage.categories.length === 0) {
-             loadedStateFromStorage.categories = DEFAULT_CATEGORIES;
-           }
+            // Ensure defaults if none loaded
+            if (!loadedStateFromStorage.categories || loadedStateFromStorage.categories.length === 0) {
+                loadedStateFromStorage.categories = DEFAULT_CATEGORIES;
+            }
             if (!loadedStateFromStorage.currency) {
-              loadedStateFromStorage.currency = defaultCurrency;
+                loadedStateFromStorage.currency = defaultCurrency;
             }
-             if (!loadedStateFromStorage.theme) {
-               loadedStateFromStorage.theme = defaultTheme.id;
+            if (!loadedStateFromStorage.theme) {
+                loadedStateFromStorage.theme = defaultTheme.id; // Set default theme if none loaded
+            }
+             if (loadedStateFromStorage.isPremium === undefined) {
+                 loadedStateFromStorage.isPremium = false; // Default premium status
              }
-           dispatch({ type: 'LOAD_STATE', payload: loadedStateFromStorage });
-           setIsHydrated(true);
+
+            if (isMounted) {
+                dispatch({ type: 'LOAD_STATE', payload: { ...loadedStateFromStorage, userId } }); // Load with the correct userId
+                setIsHydrated(true);
+                console.log("State loaded successfully.");
+            }
+
+        } catch (error) {
+            console.error("Failed to load initial data:", error);
+             if (isMounted) {
+                 // Try to ensure userId is still set even on error
+                 let finalUserId = userId || localStorage.getItem(USER_ID_KEY) || uuidv4();
+                 if (!localStorage.getItem(USER_ID_KEY)) localStorage.setItem(USER_ID_KEY, finalUserId);
+
+                 // Load defaults on error
+                 dispatch({ type: 'LOAD_STATE', payload: { userId: finalUserId } }); // Load minimal state with ID
+                 setIsHydrated(true);
+             }
+        } finally {
+            if (isMounted) {
+                setIsLoading(false);
+            }
         }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
     };
 
     loadInitialData();
 
     return () => {
-      isMounted = false;
+        isMounted = false;
     };
-  }, []);
+}, []); // Run only once on mount
+
 
   // Effect 2: Check for daily budget reset
   useEffect(() => {
