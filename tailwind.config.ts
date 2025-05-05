@@ -62,7 +62,8 @@ export default {
   			}
   		},
       boxShadow: {
-        neon: '0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--secondary))',
+        neon: '0 0 6px hsl(var(--primary) / 0.7), 0 0 10px hsl(var(--secondary) / 0.5)', // Adjusted default neon glow
+        'neon-lg': '0 0 10px hsl(var(--primary)), 0 0 18px hsl(var(--secondary) / 0.8)', // Larger neon glow for hover/emphasis
       },
   		borderRadius: {
         // Use the radius variable defined in globals.css
