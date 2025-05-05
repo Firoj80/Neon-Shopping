@@ -75,22 +75,22 @@ export default function ShoppingListPage() {
   );
 
   const CardSkeleton = () => (
-    <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse shadow-neon">
-        <div className="flex items-center mb-2">
+     <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse shadow-neon glow-border-inner">
+        <div className="flex items-center">
             <Skeleton className="h-5 w-5 rounded mr-3 shrink-0" />
-            <div className="flex-grow space-y-1.5">
+             <div className="flex-grow min-w-0">
                 <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
+                <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-1.5">
+                   <Skeleton className="h-3 w-1/6" />
+                   <Skeleton className="h-3 w-1/4" />
+                   <Skeleton className="h-3 w-1/5" />
+                   <Skeleton className="h-4 w-1/5 rounded-full" />
+                </div>
             </div>
-             <div className="flex space-x-1 ml-auto shrink-0">
+           <div className="flex space-x-1 ml-auto shrink-0">
              <Skeleton className="h-6 w-6 rounded-md" />
              <Skeleton className="h-6 w-6 rounded-md" />
            </div>
-        </div>
-        <div className="flex justify-between text-xs mt-1">
-             <Skeleton className="h-3 w-1/5" />
-             <Skeleton className="h-3 w-1/5" />
-             <Skeleton className="h-3 w-1/4" />
         </div>
     </Card>
   );
@@ -100,7 +100,7 @@ export default function ShoppingListPage() {
 
   const renderItemList = (items: ShoppingListItem[], emptyMessage: string) => (
      isLoading ? (
-         <div className="flex flex-col gap-2 pb-32 md:pb-24">
+         <div className="flex flex-col gap-2 pb-4"> {/* Adjusted padding */}
             {renderSkeletons()}
          </div>
     ) : items.length === 0 ? (
@@ -108,7 +108,7 @@ export default function ShoppingListPage() {
             <p className="text-muted-foreground">{emptyMessage}</p>
         </div>
     ) : (
-        <div className="flex flex-col gap-2 pb-32 md:pb-24">
+        <div className="flex flex-col gap-2 pb-4"> {/* Adjusted padding */}
             {items.map((item) => (
                 <ItemCard
                 key={item.id}
@@ -129,8 +129,8 @@ export default function ShoppingListPage() {
         {/* Sticky Header Section */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-4">
             <BudgetPanel />
-             <Tabs defaultValue="current" className="w-full"> {/* Tabs component now inside sticky part, but only TabsList shown */}
-                 <TabsList className="grid w-full grid-cols-2 mb-0 bg-card border border-primary/20 shadow-sm"> {/* Removed mb-4 */}
+             <Tabs defaultValue="current" className="w-full"> {/* Keep Tabs wrapping everything */}
+                 <TabsList className="grid w-full grid-cols-2 mb-0 bg-card border border-primary/20 shadow-sm glow-border-inner"> {/* TabsList inside sticky */}
                      <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
                          <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
                      </TabsTrigger>
@@ -139,10 +139,9 @@ export default function ShoppingListPage() {
                      </TabsTrigger>
                  </TabsList>
 
-                 {/* Scrollable Content Area - MUST be outside the sticky div */}
-                 {/* The Tabs component wraps the content, but the TabsList is visually sticky above */}
+                 {/* Scrollable Content Area - Must be outside the sticky div, but inside Tabs */}
                  <div className="flex-grow overflow-hidden mt-4"> {/* Added margin-top */}
-                     <ScrollArea className="h-full pr-1">
+                     <ScrollArea className="h-[calc(100vh-200px)] pr-1"> {/* Adjust height calc as needed */}
                          <TabsContent value="current" className="mt-0"> {/* Removed default margin */}
                              {renderItemList(currentItems, "No current items. Add some!")}
                          </TabsContent>
@@ -178,7 +177,7 @@ export default function ShoppingListPage() {
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-             <AlertDialogContent>
+             <AlertDialogContent className="glow-border">
                 <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
