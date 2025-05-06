@@ -6,8 +6,11 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers'; // Combined providers
 import { AppLayout } from '@/components/layout/app-layout';
-// Removed ThemeWatcher import: import { ThemeWatcher } from '@/context/theme-watcher';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
+// Removed ThemeWatcher import: import { ThemeWatcher } from '@/context/theme-watcher';
+import { AdInitializer } from '@/components/admob/ad-initializer'; // Import AdInitializer
+import ClientOnly from '@/components/client-only'; // Import ClientOnly
+
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -33,14 +36,16 @@ export default function RootLayout({
             )}
         >
           <Providers>
-            {/* Removed ThemeWatcher wrapper */}
-            {/* <ThemeWatcher> */}
-             <SidebarProvider>
-                <AppLayout>
-                    {children}
-                </AppLayout>
-             </SidebarProvider>
-            {/* </ThemeWatcher> */}
+             {/* Removed ThemeWatcher wrapper */}
+               <SidebarProvider>
+                  <AppLayout>
+                      {children}
+                  </AppLayout>
+               </SidebarProvider>
+                {/* Initialize AdMob once at the root level */}
+                <ClientOnly>
+                    <AdInitializer />
+                </ClientOnly>
             <Toaster />
           </Providers>
          </body>
