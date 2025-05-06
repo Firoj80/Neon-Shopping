@@ -4,3 +4,4 @@ export default function Home() {
   // Redirect to the main shopping list page
   redirect('/list');
 }
+
