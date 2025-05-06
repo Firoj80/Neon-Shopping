@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist_Mono } from 'next/font/google'; // Using Mono for a more cyberpunk feel
 import './globals.css';
@@ -5,8 +6,9 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers'; // Combined providers
 import { AppLayout } from '@/components/layout/app-layout';
-// Removed theme watcher import: import { ThemeWatcher } from '@/context/theme-watcher';
+import { ThemeWatcher } from '@/context/theme-watcher';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
+// Removed AdMob imports
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -24,7 +26,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Apply 'dark' class directly, as the theme system is removed
     <html lang="en" className="dark" suppressHydrationWarning>
         <body
             className={cn(
@@ -33,12 +34,13 @@ export default function RootLayout({
             )}
         >
           <Providers>
-            {/* Removed ThemeWatcher wrapper */}
+            <ThemeWatcher>
              <SidebarProvider>
                 <AppLayout>
                     {children}
                 </AppLayout>
              </SidebarProvider>
+            </ThemeWatcher>
             <Toaster />
           </Providers>
          </body>

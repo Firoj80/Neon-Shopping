@@ -16,13 +16,14 @@ import {
   Menu,
   X,
   Palette, // Added Palette for Theme
+  DollarSign,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
-
+import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+// Removed AdMob imports as integration is removed
 
 // --- Mobile Header Component ---
 const MobileHeader = () => {
@@ -51,7 +52,7 @@ const MobileHeader = () => {
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
         <ShoppingCart className="w-6 h-6" /> {/* Use Cart icon */}
-        <span className="font-bold text-neonText">Neon Shopping</span> {/* Use neonText */}
+        <span className="font-bold text-neonText">Neon Shopping</span> {/* Updated App Name */}
       </Link>
 
       {/* Placeholder to balance header */}
@@ -66,7 +67,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
   const router = useRouter();
-
 
   // Menu Items & Icons - Updated list and icons
   const menuItems = [
@@ -97,9 +97,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
    const menuItemClasses = cn(
      "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm", // Adjusted gap and padding
-     "border border-primary/30 hover:border-white glow-border", // Added glow-border class
+     "border border-transparent hover:border-white hover:bg-primary/10 glow-border-hover", // Removed default border, added hover glow border
      "transition-all duration-300 ease-in-out", // Smooth transitions
-     "hover:text-white hover:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // White glow on hover
      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // Focus glow
      "[&_svg]:size-5 [&_svg]:shrink-0", // Icon size adjusted
      "[&_span:last-child]:truncate" // Truncate text
@@ -107,18 +106,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
 
    const activeItemClasses = cn(
-     "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary/0.8)]", // Active state cyan glow
+     "bg-primary/20 text-primary font-medium border border-primary shadow-[0_0_10px_theme(colors.primary/0.8)]", // Active state cyan glow and border
      "hover:text-white hover:border-white hover:shadow-[0_0_15px_3px_theme(colors.white/0.7),0_0_5px_theme(colors.white/0.9)]" // Intensified white glow on hover when active
    );
 
   return (
-    <>
-       {/* AdMob Placeholder */}
-       {/* Consider using ClientOnly if AdComponent relies on client-side checks */}
-       {/* <AdComponent /> */}
-       <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-background/50 flex items-center justify-center text-xs text-muted-foreground z-40 border-t border-border/20 glow-border">
-            Ad Placeholder
-       </div>
+    <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
+       {/* Removed AdComponent as AdMob integration is removed */}
 
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
@@ -165,10 +159,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Content */}
         {/* Adjusted padding-bottom to avoid content being hidden by the fixed ad placeholder */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(50px+1rem)]"> {/* Adjusted bottom padding */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[1rem]"> {/* Reset bottom padding */}
           {children}
         </main>
       </SidebarInset>
     </>
   );
 }
+

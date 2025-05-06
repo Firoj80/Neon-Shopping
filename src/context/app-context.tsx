@@ -1,9 +1,10 @@
+
 "use client";
 import type React from 'react';
 import { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import { format, startOfDay, isSameDay } from 'date-fns';
-// Removed theme imports: import { themes, defaultTheme } from '@/config/themes';
-import { v4 as uuidv4 } from 'uuid';
+import { themes, defaultTheme } from '@/config/themes';
+import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
 
 // --- Types ---
 export interface Currency {
@@ -33,15 +34,20 @@ export interface ShoppingListItem {
   dateAdded: number; // Timestamp
 }
 
-// Removed Theme type definition
+export interface Theme {
+  id: string;
+  name: string;
+  className: string;
+  previewColor: string;
+}
 
 interface AppState {
-  userId: string;
+  userId: string; // Add userId
   currency: Currency;
   budget: BudgetItem;
   shoppingList: ShoppingListItem[];
   categories: Category[];
-  // Removed theme state: theme: string;
+  theme: string;
   isPremium: boolean; // Add isPremium flag
 }
 
@@ -56,7 +62,7 @@ type Action =
   | { type: 'ADD_CATEGORY'; payload: { name: string } } // Add category action
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } } // Update category action
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } } // Remove category action
-  // Removed theme action: | { type: 'SET_THEME'; payload: string }
+  | { type: 'SET_THEME'; payload: string }
   | { type: 'LOAD_STATE'; payload: Partial<AppState> }
   | { type: 'SET_PREMIUM'; payload: boolean }; // Add premium action
 
@@ -83,7 +89,7 @@ const initialState: AppState = {
   budget: { limit: 0, spent: 0, lastSetDate: null },
   shoppingList: [],
   categories: DEFAULT_CATEGORIES,
-  // Removed theme state: theme: defaultTheme.id, // Initialize with the default theme ID
+  theme: defaultTheme.id, // Initialize with the default theme ID
   isPremium: false, // Default premium status
 };
 
@@ -205,7 +211,10 @@ function appReducer(state: AppState, action: Action): AppState {
         newState.budget.spent = calculateTodaysSpent(newState.shoppingList, todayDate);
         break;
     }
-     // Removed SET_THEME case
+    case 'SET_THEME': {
+      newState = { ...state, theme: action.payload };
+      break;
+    }
      case 'SET_PREMIUM': {
       newState = { ...state, isPremium: action.payload };
       break;
@@ -218,7 +227,7 @@ function appReducer(state: AppState, action: Action): AppState {
       const loadedCategories = action.payload.categories && action.payload.categories.length > 0
                                   ? action.payload.categories
                                   : DEFAULT_CATEGORIES;
-      // Removed theme loading
+      const loadedTheme = action.payload.theme || defaultTheme.id; // Load theme
       const loadedIsPremium = action.payload.isPremium ?? initialState.isPremium; // Load premium status
 
       const initialSpent = calculateTodaysSpent(loadedList, todayDate);
@@ -233,7 +242,7 @@ function appReducer(state: AppState, action: Action): AppState {
         },
         shoppingList: loadedList,
         categories: loadedCategories,
-        // Removed theme state
+        theme: loadedTheme, // Assign loaded theme
         isPremium: loadedIsPremium, // Assign loaded premium status
       };
       break;
@@ -247,7 +256,12 @@ function appReducer(state: AppState, action: Action): AppState {
     try {
       // Save the main state (excluding userId, which is stored separately)
       const stateToSave = { ...newState };
-      delete (stateToSave as Partial<AppState>).userId; // Don't save userId in the main state object
+      // Save user ID separately if it's being set/updated
+      if (newState.userId && newState.userId !== state.userId) {
+        localStorage.setItem(USER_ID_KEY, newState.userId);
+      }
+      // Remove userId before saving the main state object
+      delete (stateToSave as Partial<AppState>).userId;
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
     } catch (error) {
       console.error("Failed to save state to localStorage:", error);
@@ -296,7 +310,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             budget: parsedState.budget,
                             shoppingList: Array.isArray(parsedState.shoppingList) ? parsedState.shoppingList : undefined,
                             categories: Array.isArray(parsedState.categories) ? parsedState.categories : undefined,
-                            // Removed theme loading
+                            theme: parsedState.theme, // Load theme
                             isPremium: parsedState.isPremium,
                         };
                     }
@@ -313,7 +327,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!loadedStateFromStorage.currency) {
                 loadedStateFromStorage.currency = defaultCurrency;
             }
-            // Removed default theme setting
+            if (!loadedStateFromStorage.theme) {
+                loadedStateFromStorage.theme = defaultTheme.id; // Default theme
+            }
              if (loadedStateFromStorage.isPremium === undefined) {
                  loadedStateFromStorage.isPremium = false; // Default premium status
              }
