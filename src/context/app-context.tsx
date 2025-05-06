@@ -3,7 +3,7 @@
 import type React from 'react';
 import { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import { format, startOfDay, isSameDay } from 'date-fns';
-import { themes, defaultTheme } from '@/config/themes';
+// Removed theme imports: import { themes, defaultTheme } from '@/config/themes';
 import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
 
 // --- Types ---
@@ -34,12 +34,13 @@ export interface ShoppingListItem {
   dateAdded: number; // Timestamp
 }
 
-export interface Theme {
-  id: string;
-  name: string;
-  className: string;
-  previewColor: string;
-}
+// Removed Theme type definition
+// export interface Theme {
+//   id: string;
+//   name: string;
+//   className: string;
+//   previewColor: string;
+// }
 
 interface AppState {
   userId: string; // Add userId
@@ -47,7 +48,7 @@ interface AppState {
   budget: BudgetItem;
   shoppingList: ShoppingListItem[];
   categories: Category[];
-  theme: string;
+  // Removed theme from state: theme: string;
   isPremium: boolean; // Add isPremium flag
 }
 
@@ -62,7 +63,7 @@ type Action =
   | { type: 'ADD_CATEGORY'; payload: { name: string } } // Add category action
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } } // Update category action
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } } // Remove category action
-  | { type: 'SET_THEME'; payload: string }
+  // Removed SET_THEME action: | { type: 'SET_THEME'; payload: string }
   | { type: 'LOAD_STATE'; payload: Partial<AppState> }
   | { type: 'SET_PREMIUM'; payload: boolean }; // Add premium action
 
@@ -89,11 +90,11 @@ const initialState: AppState = {
   budget: { limit: 0, spent: 0, lastSetDate: null },
   shoppingList: [],
   categories: DEFAULT_CATEGORIES,
-  theme: defaultTheme.id, // Initialize with the default theme ID
+  // Removed theme from initial state: theme: defaultTheme.id,
   isPremium: false, // Default premium status
 };
 
-const LOCAL_STORAGE_KEY = 'neonShoppingListState_v5'; // Increment version again due to state structure change
+const LOCAL_STORAGE_KEY = 'neonShoppingAppState_v6'; // Increment version for state structure change
 const USER_ID_KEY = 'neonShoppingUserId_v1'; // Separate key for user ID
 
 // Helper to calculate spent amount based on checked items added *today*
@@ -125,13 +126,12 @@ function appReducer(state: AppState, action: Action): AppState {
       break;
     }
     case 'RESET_DAILY_BUDGET': {
-       // Preserve the existing limit if resetting, but recalculate spent
       newState = {
         ...state,
         budget: {
-          ...state.budget, // Keep existing limit and lastSetDate
-          spent: calculateTodaysSpent(state.shoppingList, todayDate), // Recalculate spent for today
-          lastSetDate: action.payload.today, // Update lastSetDate to today to prevent immediate re-reset
+          ...state.budget,
+          spent: calculateTodaysSpent(state.shoppingList, todayDate),
+          lastSetDate: action.payload.today,
         }
       };
       break;
@@ -139,7 +139,7 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'ADD_SHOPPING_ITEM': {
       const newItem: ShoppingListItem = {
         ...action.payload,
-        id: uuidv4(), // Use uuid for consistency
+        id: uuidv4(),
         dateAdded: Date.now(),
       };
       newState = { ...state, shoppingList: [newItem, ...state.shoppingList] };
@@ -178,7 +178,7 @@ function appReducer(state: AppState, action: Action): AppState {
     }
     case 'ADD_CATEGORY': {
         const newCategory: Category = {
-            id: uuidv4(), // Use uuid for consistency
+            id: uuidv4(),
             name: action.payload.name,
         };
         newState = { ...state, categories: [...state.categories, newCategory] };
@@ -195,57 +195,55 @@ function appReducer(state: AppState, action: Action): AppState {
         const { categoryId, reassignToId } = action.payload;
         const remainingCategories = state.categories.filter(cat => cat.id !== categoryId);
 
-        // If items need reassignment, update them
         let updatedShoppingList = state.shoppingList;
         if (reassignToId) {
             updatedShoppingList = state.shoppingList.map(item =>
                 item.category === categoryId ? { ...item, category: reassignToId } : item
             );
         } else {
-             // If no reassignment ID provided (maybe category had no items), filter out items associated with deleted category? Or set to 'uncategorized'? Let's remove them for now if not reassigned. Could add an 'uncategorized' logic later.
              updatedShoppingList = state.shoppingList.filter(item => item.category !== categoryId);
         }
 
         newState = { ...state, categories: remainingCategories, shoppingList: updatedShoppingList };
-        // Recalculate budget spent as list might have changed
         newState.budget.spent = calculateTodaysSpent(newState.shoppingList, todayDate);
         break;
     }
-    case 'SET_THEME': {
-      newState = { ...state, theme: action.payload };
-      break;
-    }
+    // Removed SET_THEME case
+    // case 'SET_THEME': {
+    //   newState = { ...state, theme: action.payload };
+    //   break;
+    // }
      case 'SET_PREMIUM': {
       newState = { ...state, isPremium: action.payload };
       break;
     }
     case 'LOAD_STATE': {
-      const loadedUserId = action.payload.userId || state.userId; // Load userId first
-      const loadedList = action.payload.shoppingList || initialState.shoppingList;
-      const loadedBudget = action.payload.budget || initialState.budget;
-      const loadedCurrency = action.payload.currency || initialState.currency;
-      const loadedCategories = action.payload.categories && action.payload.categories.length > 0
-                                  ? action.payload.categories
-                                  : DEFAULT_CATEGORIES;
-      const loadedTheme = action.payload.theme || defaultTheme.id; // Load theme
-      const loadedIsPremium = action.payload.isPremium ?? initialState.isPremium; // Load premium status
+        const loadedUserId = action.payload.userId || state.userId || uuidv4(); // Ensure userId is always set
+        const loadedList = action.payload.shoppingList || initialState.shoppingList;
+        const loadedBudget = action.payload.budget || initialState.budget;
+        const loadedCurrency = action.payload.currency || initialState.currency;
+        const loadedCategories = action.payload.categories && action.payload.categories.length > 0
+                                    ? action.payload.categories
+                                    : DEFAULT_CATEGORIES;
+        // Removed theme loading: const loadedTheme = action.payload.theme || defaultTheme.id;
+        const loadedIsPremium = action.payload.isPremium ?? initialState.isPremium;
 
-      const initialSpent = calculateTodaysSpent(loadedList, todayDate);
+        const initialSpent = calculateTodaysSpent(loadedList, todayDate);
 
-      newState = {
-        userId: loadedUserId, // Assign loaded userId
-        currency: loadedCurrency,
-        budget: {
-          limit: loadedBudget.limit,
-          spent: initialSpent,
-          lastSetDate: loadedBudget.lastSetDate,
-        },
-        shoppingList: loadedList,
-        categories: loadedCategories,
-        theme: loadedTheme, // Assign loaded theme
-        isPremium: loadedIsPremium, // Assign loaded premium status
-      };
-      break;
+        newState = {
+            userId: loadedUserId, // Assign loaded/generated userId
+            currency: loadedCurrency,
+            budget: {
+                limit: loadedBudget.limit,
+                spent: initialSpent,
+                lastSetDate: loadedBudget.lastSetDate,
+            },
+            shoppingList: loadedList,
+            categories: loadedCategories,
+            // Removed theme loading: theme: loadedTheme,
+            isPremium: loadedIsPremium,
+        };
+        break;
     }
     default:
       newState = state;
@@ -254,13 +252,15 @@ function appReducer(state: AppState, action: Action): AppState {
   // Persist state changes AFTER calculating new state
   if (action.type !== 'LOAD_STATE' && typeof window !== 'undefined') {
     try {
-      // Save the main state (excluding userId, which is stored separately)
       const stateToSave = { ...newState };
-      // Save user ID separately if it's being set/updated
-      if (newState.userId && newState.userId !== state.userId) {
-        localStorage.setItem(USER_ID_KEY, newState.userId);
+      // Save user ID separately if it's being set/updated or if it wasn't present before
+      if (stateToSave.userId && stateToSave.userId !== state.userId) {
+        localStorage.setItem(USER_ID_KEY, stateToSave.userId);
+      } else if (!localStorage.getItem(USER_ID_KEY) && stateToSave.userId) {
+         localStorage.setItem(USER_ID_KEY, stateToSave.userId);
       }
-      // Remove userId before saving the main state object
+
+      // Remove userId before saving the main state object to avoid duplication
       delete (stateToSave as Partial<AppState>).userId;
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
     } catch (error) {
@@ -273,15 +273,15 @@ function appReducer(state: AppState, action: Action): AppState {
 
 // --- Context & Provider ---
 // Export the context object itself
-export const AppContext = createContext<AppContextProps | undefined>(undefined);
+const AppContext = createContext<AppContextProps | undefined>(undefined); // Keep context creation
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isLoading, setIsLoading] = useState(true);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Effect 1: Load initial state from localStorage and manage userId
-  useEffect(() => {
+ // Effect 1: Load initial state from localStorage and manage userId
+ useEffect(() => {
     let isMounted = true;
     const loadInitialData = () => {
         setIsLoading(true);
@@ -305,12 +305,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 try {
                     const parsedState = JSON.parse(savedStateRaw);
                     if (typeof parsedState === 'object' && parsedState !== null) {
+                        // Load only the relevant parts, excluding userId as it's loaded separately
                         loadedStateFromStorage = {
                             currency: parsedState.currency,
                             budget: parsedState.budget,
                             shoppingList: Array.isArray(parsedState.shoppingList) ? parsedState.shoppingList : undefined,
                             categories: Array.isArray(parsedState.categories) ? parsedState.categories : undefined,
-                            theme: parsedState.theme, // Load theme
+                            // Removed theme loading: theme: parsedState.theme,
                             isPremium: parsedState.isPremium,
                         };
                     }
@@ -327,9 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!loadedStateFromStorage.currency) {
                 loadedStateFromStorage.currency = defaultCurrency;
             }
-            if (!loadedStateFromStorage.theme) {
-                loadedStateFromStorage.theme = defaultTheme.id; // Default theme
-            }
+            // Removed theme default: if (!loadedStateFromStorage.theme) { loadedStateFromStorage.theme = defaultTheme.id; }
              if (loadedStateFromStorage.isPremium === undefined) {
                  loadedStateFromStorage.isPremium = false; // Default premium status
              }
@@ -373,17 +372,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const todayString = format(today, 'yyyy-MM-dd');
       const lastSetDate = state.budget.lastSetDate ? new Date(state.budget.lastSetDate + 'T00:00:00') : null; // Ensure time is start of day
 
-      // Reset only if lastSetDate is not null AND it's not the same as today
       if (lastSetDate && !isSameDay(today, lastSetDate)) {
         console.log("Budget last set date is not today. Resetting daily budget spent calculation.");
         dispatch({ type: 'RESET_DAILY_BUDGET', payload: { today: todayString } });
       } else if (!lastSetDate) {
-         // If lastSetDate is null (first run or data cleared), set it to today but don't change spent/limit yet
          console.log("Budget last set date is null. Setting it to today.");
          dispatch({ type: 'RESET_DAILY_BUDGET', payload: { today: todayString } });
       }
     }
-  }, [isLoading, isHydrated, state.budget.lastSetDate]); // Only depends on these
+  }, [isLoading, isHydrated, state.budget.lastSetDate]);
 
   const formatCurrency = useCallback((amount: number): string => {
     try {

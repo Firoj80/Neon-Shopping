@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -12,7 +13,7 @@ import { getSupportedCurrencies, getUserCurrency } from '@/services/currency'; /
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X } from 'lucide-react'; // Removed Palette, Check
+import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +25,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-// Removed theme imports: import { themes } from '@/config/themes';
 import { cn } from '@/lib/utils';
 
 // Default categories (can be moved to config if needed)
@@ -63,10 +63,9 @@ export default function SettingsPage() {
         const currencies = await getSupportedCurrencies();
         setSupportedCurrencies(currencies);
 
-        // Only attempt auto-detection if no currency is set in the context/localStorage
         if (!state.currency.code) {
           console.log("Attempting currency auto-detection...");
-          detectedCurrency = await getUserCurrency(); // Fetch based on location/browser
+          detectedCurrency = await getUserCurrency();
           if (detectedCurrency && currencies.some(c => c.code === detectedCurrency!.code)) {
              console.log("Auto-detected currency:", detectedCurrency);
             dispatch({ type: 'SET_CURRENCY', payload: detectedCurrency });
@@ -77,8 +76,6 @@ export default function SettingsPage() {
             });
           } else {
              console.log("Auto-detection failed or detected currency not supported. Using default.");
-              // If detection fails or currency not supported, keep the default (USD)
-              // No toast needed here, the user will see the default USD selected.
           }
         }
       } catch (error) {
@@ -143,7 +140,6 @@ export default function SettingsPage() {
         toast({ title: "Error", description: "Category name cannot be empty.", variant: "destructive" });
         return;
     }
-    // Check if name already exists (excluding the current one being edited)
      if (categories.some(cat => cat.id !== id && cat.name.toLowerCase() === editingCategoryName.trim().toLowerCase())) {
          toast({ title: "Error", description: "Category name already exists.", variant: "destructive" });
          return;
@@ -162,7 +158,6 @@ export default function SettingsPage() {
 
    const handleDeleteCategoryClick = (category: Category) => {
     setCategoryToDelete(category);
-    // Set default reassign category (if possible, avoid self-reassignment)
     const availableCategories = categories.filter(c => c.id !== category.id);
     setReassignCategoryId(availableCategories.length > 0 ? availableCategories[0].id : '');
    };
@@ -170,12 +165,11 @@ export default function SettingsPage() {
    const confirmDeleteCategory = () => {
     if (!categoryToDelete) return;
 
-    // Check if items exist with this category
     const itemsWithCategory = state.shoppingList.filter(item => item.category === categoryToDelete.id);
 
     if (itemsWithCategory.length > 0 && !reassignCategoryId) {
       toast({ title: "Reassignment Required", description: "Please select a category to reassign items to before deleting.", variant: "destructive" });
-      return; // Prevent deletion if items exist and no reassignment selected
+      return;
     }
 
     dispatch({
@@ -187,8 +181,6 @@ export default function SettingsPage() {
     setReassignCategoryId('');
     toast({ title: "Success", description: "Category deleted." });
    };
-
-   // --- Removed Theme Logic ---
 
    const isLoading = contextLoading || isLoadingCurrencies;
 
@@ -208,18 +200,15 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
 
-      {/* --- Removed Theme Settings Card --- */}
-
       {/* --- Currency Settings --- */}
       <Card className="bg-card border-primary/30 shadow-neon glow-border">
         <CardHeader>
            <CardTitle className="text-secondary flex items-center gap-2">
              <Banknote className="h-5 w-5" /> Currency
            </CardTitle>
-          <CardDescription>Select the currency for displaying prices and budget.</CardDescription>
+          <CardDescription className="text-muted-foreground">Select the currency for displaying prices and budget.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Manual Selection Dropdown */}
+        <CardContent className="space-y-4 glow-border-inner p-4">
           <div className="grid gap-2">
              <Label htmlFor="currency-select" className="text-neonText/80">Select Currency</Label>
              <Select
@@ -229,11 +218,11 @@ export default function SettingsPage() {
             >
                <SelectTrigger
                 id="currency-select"
-                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary"
+                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary glow-border-inner"
               >
                 <SelectValue placeholder={state.currency.code ? `${state.currency.name} (${state.currency.symbol})` : "Select a currency"} />
               </SelectTrigger>
-              <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border" position="popper">
+              <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner" position="popper">
                 <ScrollArea className="h-full">
                   <SelectGroup>
                     <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Currencies</SelectLabel>
@@ -263,9 +252,9 @@ export default function SettingsPage() {
            <CardTitle className="text-primary flex items-center gap-2">
              <Layers className="h-5 w-5" /> Categories
            </CardTitle>
-          <CardDescription>Manage your shopping item categories.</CardDescription>
+          <CardDescription className="text-muted-foreground">Manage your shopping item categories.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 glow-border-inner p-4">
           {/* Add New Category Form */}
           <form onSubmit={handleAddCategory} className="flex items-end gap-2">
             <div className="flex-grow grid gap-1.5">
@@ -275,7 +264,7 @@ export default function SettingsPage() {
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="e.g., Clothing"
-                    className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary"
+                    className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
                 />
             </div>
             <Button type="submit" size="icon" className="bg-primary text-primary-foreground h-10 w-10 shrink-0 glow-border-inner">
@@ -291,22 +280,22 @@ export default function SettingsPage() {
                  <Card className="p-0 border-border/30 glow-border-inner"> {/* Inner card for list */}
                     <ul className="divide-y divide-border/30">
                         {categories.map((category) => (
-                        <li key={category.id} className="flex items-center justify-between p-2 hover:bg-muted/10">
+                        <li key={category.id} className="flex items-center justify-between p-2 hover:bg-muted/10 glow-border-inner">
                             {editingCategoryId === category.id ? (
                              // Edit Mode
                              <div className="flex-grow flex items-center gap-2">
                                  <Input
                                     value={editingCategoryName}
                                     onChange={(e) => setEditingCategoryName(e.target.value)}
-                                    className="h-8 flex-grow border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary"
+                                    className="h-8 flex-grow border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
                                     autoFocus
                                     onKeyDown={(e) => e.key === 'Enter' && handleSaveEditCategory(category.id)}
                                   />
-                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:bg-green-900/30" onClick={() => handleSaveEditCategory(category.id)}>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:bg-green-900/30 glow-border-inner" onClick={() => handleSaveEditCategory(category.id)}>
                                      <Save className="h-4 w-4" />
                                      <span className="sr-only">Save</span>
                                  </Button>
-                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/30" onClick={handleCancelEdit}>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/30 glow-border-inner" onClick={handleCancelEdit}>
                                      <X className="h-4 w-4" />
                                       <span className="sr-only">Cancel</span>
                                  </Button>
@@ -316,13 +305,13 @@ export default function SettingsPage() {
                              <>
                                  <span className="text-sm text-neonText">{category.name}</span>
                                  <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-400 hover:bg-blue-900/30" onClick={() => handleStartEditCategory(category)}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-400 hover:bg-blue-900/30 glow-border-inner" onClick={() => handleStartEditCategory(category)}>
                                         <Edit className="h-4 w-4" />
                                          <span className="sr-only">Edit</span>
                                     </Button>
                                      <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-900/30" onClick={() => handleDeleteCategoryClick(category)}>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-900/30 glow-border-inner" onClick={() => handleDeleteCategoryClick(category)}>
                                                 <Trash2 className="h-4 w-4" />
                                                 <span className="sr-only">Delete</span>
                                             </Button>
@@ -369,11 +358,11 @@ export default function SettingsPage() {
                      >
                          <SelectTrigger
                             id="reassign-category"
-                            className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary"
+                            className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
                           >
                              <SelectValue placeholder={categoriesForReassignment.length > 0 ? "Select a category..." : "No other categories available"} />
                          </SelectTrigger>
-                         <SelectContent className="bg-card border-primary/80 text-neonText glow-border">
+                         <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
                              {categoriesForReassignment.map((cat) => (
                                  <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
                                     {cat.name}
@@ -387,7 +376,7 @@ export default function SettingsPage() {
             <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
                  onClick={confirmDeleteCategory}
-                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
                  disabled={state.shoppingList.some(item => item.category === categoryToDelete?.id) && !reassignCategoryId && categoriesForReassignment.length > 0} // Disable if reassignment needed but not selected
                 >
                 <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -405,19 +394,16 @@ const SettingsPageSkeleton: React.FC = () => (
   <div className="space-y-6 animate-pulse">
     <Skeleton className="h-8 w-1/4" /> {/* Title */}
 
-    {/* Removed Theme Skeleton */}
-
     {/* Currency Skeleton */}
     <Card className="bg-card border-border/20 shadow-md glow-border">
       <CardHeader>
         <Skeleton className="h-6 w-1/5 mb-1" /> {/* Card Title */}
         <Skeleton className="h-4 w-3/4" /> {/* Card Description */}
       </CardHeader>
-      <CardContent className="space-y-4">
-         {/* Removed Auto-Detect Button Skeleton */}
+      <CardContent className="space-y-4 glow-border-inner p-4">
          <div className="grid gap-2">
             <Skeleton className="h-4 w-1/4" /> {/* Label */}
-            <Skeleton className="h-10 w-full rounded-md" /> {/* Select Trigger */}
+            <Skeleton className="h-10 w-full rounded-md glow-border-inner" /> {/* Select Trigger */}
             <Skeleton className="h-3 w-2/3 mt-1" /> {/* Hint text Skeleton */}
         </div>
       </CardContent>
@@ -429,14 +415,14 @@ const SettingsPageSkeleton: React.FC = () => (
             <Skeleton className="h-6 w-1/4 mb-1" /> {/* Card Title */}
             <Skeleton className="h-4 w-1/2" /> {/* Card Description */}
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 glow-border-inner p-4">
             {/* Add Category Skeleton */}
              <div className="flex items-end gap-2">
                 <div className="flex-grow grid gap-1.5">
                     <Skeleton className="h-3 w-1/3" /> {/* Label */}
-                    <Skeleton className="h-10 w-full rounded-md" /> {/* Input */}
+                    <Skeleton className="h-10 w-full rounded-md glow-border-inner" /> {/* Input */}
                 </div>
-                <Skeleton className="h-10 w-10 rounded-md shrink-0" /> {/* Add Button */}
+                <Skeleton className="h-10 w-10 rounded-md shrink-0 glow-border-inner" /> {/* Add Button */}
             </div>
             {/* Category List Skeleton */}
             <div className="space-y-2 pt-4">
@@ -444,11 +430,11 @@ const SettingsPageSkeleton: React.FC = () => (
                  <Card className="p-0 border-border/30 glow-border-inner"> {/* Inner card skeleton */}
                     <ul className="divide-y divide-border/30">
                         {[1, 2, 3].map(i => (
-                            <li key={i} className="flex items-center justify-between p-2">
+                            <li key={i} className="flex items-center justify-between p-2 glow-border-inner">
                                 <Skeleton className="h-4 w-2/5" />
                                 <div className="flex items-center gap-1">
-                                    <Skeleton className="h-7 w-7 rounded-md" />
-                                    <Skeleton className="h-7 w-7 rounded-md" />
+                                    <Skeleton className="h-7 w-7 rounded-md glow-border-inner" />
+                                    <Skeleton className="h-7 w-7 rounded-md glow-border-inner" />
                                 </div>
                             </li>
                         ))}

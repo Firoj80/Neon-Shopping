@@ -6,9 +6,8 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers'; // Combined providers
 import { AppLayout } from '@/components/layout/app-layout';
-import { ThemeWatcher } from '@/context/theme-watcher';
+// Removed ThemeWatcher import: import { ThemeWatcher } from '@/context/theme-watcher';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
-// Removed AdMob imports
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
@@ -34,13 +33,14 @@ export default function RootLayout({
             )}
         >
           <Providers>
-            <ThemeWatcher>
+            {/* Removed ThemeWatcher wrapper */}
+            {/* <ThemeWatcher> */}
              <SidebarProvider>
                 <AppLayout>
                     {children}
                 </AppLayout>
              </SidebarProvider>
-            </ThemeWatcher>
+            {/* </ThemeWatcher> */}
             <Toaster />
           </Providers>
          </body>
