@@ -16,6 +16,9 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)', 'sans-serif'], // Use Inter as the default sans-serif font
+      },
       colors: {
         // Map Tailwind color names to CSS variables defined in globals.css
         border: "hsl(var(--border))",

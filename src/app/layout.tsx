@@ -1,6 +1,5 @@
-
 import type { Metadata } from 'next';
-import { GeistMono } from 'geist/font/mono';
+import { Inter } from 'next/font/google'; // Import Inter font
 import { cn } from '@/lib/utils';
 import './globals.css';
 import { Providers } from './providers'; // Import Providers
@@ -9,13 +8,14 @@ import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProv
 import { Toaster } from "@/components/ui/toaster";
 import ClientOnly from '@/components/client-only'; // Import ClientOnly
 
-const geistMono = GeistMono({
-  variable: '--font-geist-mono',
+// Use Inter font
+const inter = Inter({
+  variable: '--font-inter', // Set a CSS variable
   subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: 'Neon Shopping', // Updated App Name
+  title: 'Neon Shopping',
   description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
 };
 
@@ -26,20 +26,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+        {/* Apply the font variable */}
         <body
             className={cn(
-            geistMono.variable,
-            'font-mono antialiased min-h-screen flex flex-col bg-background', // Ensure background covers full height
+            inter.variable, // Apply the Inter font variable
+            'font-sans antialiased min-h-screen flex flex-col bg-background', // Use font-sans
             )}
         >
           <Providers>
-               <SidebarProvider>
+              <SidebarProvider>
                   <AppLayout>
                       {children}
                   </AppLayout>
-               </SidebarProvider>
-                {/* AdInitializer removed */}
-            <Toaster />
+                  <Toaster />
+             </SidebarProvider>
           </Providers>
          </body>
      </html>
