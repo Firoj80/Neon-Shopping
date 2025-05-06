@@ -1,6 +1,5 @@
-
 'use client';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import {
   ShoppingCart,
@@ -15,20 +14,18 @@ import {
   Store as Apps,
   Menu,
   X,
-  DollarSign, // Keeping DollarSign for Currency
+  Palette, // Icon for themes
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Adjusted path
-import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer'; // Correct path
-import ClientOnly from '@/components/client-only'; // Import ClientOnly
-import { Capacitor } from '@capacitor/core'; // Import Capacitor
+import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+// Removed AdMob imports: import { showPreparedInterstitialAd, prepareInterstitialAd } from '@/components/admob/ad-initializer';
+import dynamic from 'next/dynamic';
 
-// Dynamically import AdInitializer (handles banner display)
-import { AdInitializer } from '@/components/admob/ad-initializer';
 
+// Removed AdComponent dynamic import
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
@@ -54,7 +51,6 @@ const MobileHeader: React.FC = () => {
         <span className="sr-only">Toggle Sidebar</span>
       </Button>
 
-
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
          <ShoppingCart className="w-6 h-6" /> {/* Use Cart icon */}
@@ -77,9 +73,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
    // Menu Items & Icons
    const menuItems = [
      { href: '/list', label: 'Shopping List', icon: ShoppingCart, triggerAd: false },
-     { href: '/stats', label: 'Dashboard', icon: Dashboard, triggerAd: true }, // Ad on Dashboard
-     { href: '/history', label: 'History', icon: History, triggerAd: true },   // Ad on History
-     { href: '/settings', label: 'Settings', icon: Settings, triggerAd: true }, // Ad on Settings
+     { href: '/stats', label: 'Dashboard', icon: Dashboard, triggerAd: false }, // Ad trigger removed
+     { href: '/history', label: 'History', icon: History, triggerAd: false },   // Ad trigger removed
+     { href: '/settings', label: 'Settings', icon: Settings, triggerAd: false }, // Ad trigger removed
      { href: '/about', label: 'About Us', icon: InfoIcon, triggerAd: false },
      { href: '/contact', label: 'Contact Us', icon: Mail, triggerAd: false },
      { href: '/privacy', label: 'Privacy Policy', icon: Policy, triggerAd: false },
@@ -92,18 +88,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const handleLinkClick = async (item: { href: string; triggerAd: boolean }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
      event.preventDefault(); // Prevent default link behavior initially
 
-     // Show interstitial ad only if configured, on native, and plugin is ready
-     if (item.triggerAd && Capacitor.isNativePlatform()) {
-       try {
-         // Attempt to show the ad - the function inside ad-initializer handles readiness checks
-         await showPreparedInterstitialAd();
-         // Optional small delay after showing ad (might help ensure navigation happens after ad closes)
-         await new Promise(resolve => setTimeout(resolve, 100));
-       } catch (error) {
-         console.error("Error showing interstitial or user closed it:", error);
-         // Continue navigation even if the ad fails to show or is closed.
-       }
-     }
+     // Removed interstitial ad logic
 
      // Close mobile sidebar if open
     if (isMobile) {
@@ -130,12 +115,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
    );
 
   return (
-    <>
-       {/* AdMob Banner Initialization (only runs logic on native) */}
-        <ClientOnly>
-            <AdInitializer />
-        </ClientOnly>
-
+    <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
+       {/* AdMob Banner Placement Removed */}
 
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
@@ -183,11 +164,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Content */}
          {/* Adjusted padding-bottom to account for potential fixed AdMob banner */}
          {/* Using env(safe-area-inset-bottom) for better compatibility with notches/home indicators */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(50px+1.5rem+env(safe-area-inset-bottom))] md:pb-[calc(50px+2rem+env(safe-area-inset-bottom))]"> {/* Increased bottom padding */}
+         {/* Removing specific padding for AdMob */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {children}
         </main>
       </SidebarInset>
     </>
   );
 }
-    

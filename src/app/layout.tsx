@@ -1,18 +1,15 @@
 
 import type { Metadata } from 'next';
-import { Geist_Mono } from 'next/font/google'; // Using Mono for a more cyberpunk feel
-import './globals.css';
+import { GeistMono } from 'geist/font/mono';
 import { cn } from '@/lib/utils';
-import { Toaster } from "@/components/ui/toaster";
-import { Providers } from './providers'; // Combined providers
+import './globals.css';
+import { Providers } from './providers'; // Import Providers
 import { AppLayout } from '@/components/layout/app-layout';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
-// Removed ThemeWatcher import: import { ThemeWatcher } from '@/context/theme-watcher';
-import { AdInitializer } from '@/components/admob/ad-initializer'; // Import AdInitializer
+import { Toaster } from "@/components/ui/toaster";
 import ClientOnly from '@/components/client-only'; // Import ClientOnly
 
-
-const geistMono = Geist_Mono({
+const geistMono = GeistMono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 });
@@ -36,16 +33,12 @@ export default function RootLayout({
             )}
         >
           <Providers>
-             {/* Removed ThemeWatcher wrapper */}
                <SidebarProvider>
                   <AppLayout>
                       {children}
                   </AppLayout>
                </SidebarProvider>
-                {/* Initialize AdMob once at the root level */}
-                <ClientOnly>
-                    <AdInitializer />
-                </ClientOnly>
+                {/* AdInitializer removed */}
             <Toaster />
           </Providers>
          </body>
