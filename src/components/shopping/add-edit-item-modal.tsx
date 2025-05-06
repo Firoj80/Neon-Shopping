@@ -93,14 +93,14 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[90vw] max-w-md bg-card border-primary/40 shadow-neon rounded-lg">
+      <DialogContent className="w-[90vw] max-w-md bg-card border-primary/40 shadow-neon rounded-lg glow-border"> {/* Added glow-border */}
         <DialogHeader>
           <DialogTitle className="text-primary text-lg sm:text-xl">{itemData ? 'Edit Item' : 'Add New Item'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 p-4 sm:p-6">
           {/* Name Input */}
           <div className="grid gap-2">
-            <Label htmlFor="name" className="text-neonText/80">Name</Label>
+            <Label htmlFor="name" className="text-neonText/80">Name</Label> {/* Apply neonText */}
             <Input
               id="name"
               {...register('name')}
@@ -112,7 +112,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
           {/* Quantity & Price Inputs */}
           <div className="grid grid-cols-2 gap-4">
              <div className="grid gap-2">
-                <Label htmlFor="quantity" className="text-neonText/80">Quantity</Label>
+                <Label htmlFor="quantity" className="text-neonText/80">Quantity</Label> {/* Apply neonText */}
                 <Input
                     id="quantity"
                     type="number"
@@ -124,7 +124,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                 {errors.quantity && <p className="text-red-500 text-xs">{errors.quantity.message}</p>}
             </div>
              <div className="grid gap-2">
-                <Label htmlFor="price" className="text-neonText/80">Price (each)</Label>
+                <Label htmlFor="price" className="text-neonText/80">Price (each)</Label> {/* Apply neonText */}
                 <Input
                     id="price"
                     type="number"
@@ -139,7 +139,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
           </div>
           {/* Category Select */}
           <div className="grid gap-2">
-            <Label htmlFor="category" className="text-neonText/80">Category</Label>
+            <Label htmlFor="category" className="text-neonText/80">Category</Label> {/* Apply neonText */}
              <Controller
                 name="category"
                 control={control}
@@ -157,7 +157,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                         <SelectValue placeholder={categories.length > 0 ? "Select a category" : "No categories available"} />
                         </SelectTrigger>
                          <SelectContent
-                            className="bg-card border-primary/80 text-neonText"
+                            className="bg-card border-primary/80 text-neonText glow-border" /* Added glow-border */
                             position="popper"
                             sideOffset={5}
                          >
@@ -194,5 +194,3 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
     </Dialog>
   );
 };
-
-    

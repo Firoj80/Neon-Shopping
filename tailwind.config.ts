@@ -70,6 +70,8 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        // Add neon text color
+        neonText: 'hsl(var(--neon-text))',
       },
       borderRadius: {
         lg: "var(--radius)",

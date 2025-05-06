@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -110,7 +111,7 @@ export default function ShoppingListPage() {
          </div>
     ) : items.length === 0 ? (
          <div className="flex items-center justify-center h-full text-center py-10">
-            <p className="text-muted-foreground">{emptyMessage}</p>
+            <p className="text-muted-foreground text-neonText">{emptyMessage}</p> {/* Apply neonText */}
         </div>
     ) : (
         <div className="flex flex-col gap-2 pb-4"> {/* Adjusted padding */}
@@ -135,32 +136,29 @@ export default function ShoppingListPage() {
             <BudgetPanel />
              {/* Only render Tabs on the client */}
             <ClientOnly>
-                <Tabs defaultValue="current" className="flex flex-col">
-                    <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner">
-                        <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
-                            <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
-                        </TabsTrigger>
-                        <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
-                            <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
-                        </TabsTrigger>
-                    </TabsList>
-
-                    {/* Scrollable Content Area */}
-                    <div className="flex-grow overflow-hidden mt-4"> {/* Added margin-top */}
-                        {/* We need to wrap the ScrollArea in a container that takes up the remaining space */}
-                        {/* Calculate height dynamically based on viewport and sticky header height */}
-                        <ScrollArea className="h-[calc(100vh-220px)] pr-1"> {/* Adjust height calc as needed */}
-                            <TabsContent value="current" className="mt-0"> {/* Removed default margin */}
-                                {renderItemList(currentItems, "No current items. Add some!")}
-                            </TabsContent>
-                            <TabsContent value="purchased" className="mt-0"> {/* Removed default margin */}
-                                {renderItemList(purchasedItems, "No items purchased yet.")}
-                            </TabsContent>
-                        </ScrollArea>
-                    </div>
-                </Tabs>
+                <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner">
+                    <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
+                        <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
+                        <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
+                    </TabsTrigger>
+                </TabsList>
             </ClientOnly>
         </div>
+
+         {/* Scrollable Content Area */}
+        <div className="flex-grow overflow-y-auto"> {/* Removed mt-4 to connect scroll area to sticky tabs */}
+            <ClientOnly>
+                 <TabsContent value="current" className="mt-0 pt-2"> {/* Added padding-top */}
+                    {renderItemList(currentItems, "No current items. Add some!")}
+                 </TabsContent>
+                 <TabsContent value="purchased" className="mt-0 pt-2"> {/* Added padding-top */}
+                    {renderItemList(purchasedItems, "No items purchased yet.")}
+                 </TabsContent>
+            </ClientOnly>
+        </div>
+
 
          {/* Floating Action Button - Stays fixed */}
          <Button

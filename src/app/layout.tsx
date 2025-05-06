@@ -28,7 +28,8 @@ export default function RootLayout({
   return (
     // ThemeWatcher applies the theme class dynamically to the <html> tag
     // We need html/body tags here for ThemeWatcher to target documentElement
-    <html lang="en" className="dark" suppressHydrationWarning>
+    // Remove manual 'dark' class here, let ThemeWatcher handle it.
+    <html lang="en" suppressHydrationWarning>
         <body
             className={cn(
             geistMono.variable,
@@ -37,7 +38,6 @@ export default function RootLayout({
         >
           <Providers>
             <ThemeWatcher>
-               {/* Wrap AppLayout with SidebarProvider */}
                <SidebarProvider>
                   <AppLayout>
                       {children}

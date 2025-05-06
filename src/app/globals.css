@@ -14,10 +14,9 @@
         --chart-4: 60 100% 50%; /* Default Neon Yellow */
         --chart-5: 30 100% 50%; /* Default Neon Orange */
     }
-     /* Apply default dark theme variables directly to :root and .dark */
+     /* Apply default dark theme variables directly to .dark or :root if always dark */
      /* This ensures they are the base styles */
-    :root,
-    .dark {
+    .dark { /* Target .dark explicitly */
         --background: 0 0% 0%; /* Black */
         --foreground: 0 0% 95%; /* Near White */
         --card: 0 0% 7%; /* Dark Gray */
@@ -52,6 +51,8 @@
         --chart-3: 120 100% 50%;
         --chart-4: 60 100% 50%;
         --chart-5: 30 100% 50%;
+        /* Added Neon Text variable */
+        --neon-text: 0 0% 90%;
     }
 }
 
@@ -59,27 +60,29 @@
 /* Define theme-specific overrides */
 @layer base {
     /* --- Cyberpunk Cyan Theme (Explicitly set to override default) --- */
+    /* Needs to be applied to a parent element, e.g., <html class="dark theme-cyberpunk-cyan"> */
     .dark .theme-cyberpunk-cyan {
-        /* Re-declare variables if they are the same as default, ensures specificity */
+        /* Base styles */
         --background: 0 0% 0%;
         --foreground: 0 0% 95%;
         --card: 0 0% 7%;
         --card-foreground: 0 0% 95%;
         --popover: 0 0% 7%;
         --popover-foreground: 0 0% 95%;
-        --primary: 180 100% 50%;
+        --primary: 180 100% 50%; /* Neon Cyan */
         --primary-foreground: 180 100% 10%;
-        --secondary: 300 100% 50%;
+        --secondary: 300 100% 50%; /* Neon Magenta */
         --secondary-foreground: 300 100% 10%;
         --muted: 0 0% 15%;
         --muted-foreground: 0 0% 60%;
-        --accent: 300 100% 70%;
+        --accent: 300 100% 70%; /* Brighter Magenta */
         --accent-foreground: 0 0% 5%;
         --destructive: 0 84.2% 60.2%;
         --destructive-foreground: 0 0% 98%;
-        --border: 180 100% 30%;
+        --border: 180 100% 30%; /* Darker Cyan border */
         --input: 0 0% 15%;
-        --ring: 180 100% 50%;
+        --ring: 180 100% 50%; /* Neon Cyan ring */
+        /* Sidebar */
         --sidebar-background: 0 0% 5%;
         --sidebar-foreground: 0 0% 85%;
         --sidebar-primary: 180 100% 50%;
@@ -88,11 +91,14 @@
         --sidebar-accent-foreground: 0 0% 5%;
         --sidebar-border: 180 100% 20%;
         --sidebar-ring: 180 100% 50%;
+        /* Charts */
         --chart-1: 180 100% 50%;
         --chart-2: 300 100% 50%;
         --chart-3: 120 100% 50%;
         --chart-4: 60 100% 50%;
         --chart-5: 30 100% 50%;
+        /* Neon Text */
+        --neon-text: 0 0% 90%;
     }
 
     /* --- Vaporwave Pink Theme --- */
@@ -131,6 +137,8 @@
         --chart-3: 210 100% 60%; /* Blue */
         --chart-4: 45 100% 55%;  /* Gold */
         --chart-5: 270 80% 70%;  /* Lavender */
+        /* Neon Text */
+        --neon-text: 300 100% 92%;
     }
 
     /* --- Matrix Green Theme --- */
@@ -169,6 +177,8 @@
         --chart-3: 0 0% 70%;     /* Gray */
         --chart-4: 140 70% 45%;  /* Darker Green */
         --chart-5: 90 80% 50%;   /* Olive Green */
+        /* Neon Text */
+        --neon-text: 120 100% 80%;
     }
 
      /* --- Outrun Sunset Theme --- */
@@ -207,6 +217,8 @@
         --chart-3: 50 100% 60%;  /* Yellow */
         --chart-4: 190 100% 60%; /* Cyan */
         --chart-5: 270 80% 70%;  /* Purple */
+        /* Neon Text */
+        --neon-text: 30 100% 88%;
     }
 }
 
@@ -279,4 +291,8 @@
    .glow-border {
      box-shadow: 0 0 5px hsl(var(--primary) / 0.5), 0 0 8px hsl(var(--secondary) / 0.4);
    }
+   /* Utility for neon text */
+  .text-neonText {
+    color: hsl(var(--neon-text)); /* Use the theme-specific neon text variable */
+  }
 }

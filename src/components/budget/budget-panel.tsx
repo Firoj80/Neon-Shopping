@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,7 +95,7 @@ export const BudgetPanel: React.FC = () => {
 
   return (
     // Card is full width by default due to parent flex/grid layout
-    <Card className="w-full bg-card border-primary/30 shadow-neon mb-4 sm:mb-6">
+    <Card className="w-full bg-card border-primary/30 shadow-neon glow-border mb-4 sm:mb-6"> {/* Added glow-border */}
        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 sm:pb-3 sm:pt-4 sm:px-6">
         <div className="flex items-center gap-2">
              <Wallet className="h-5 w-5 text-primary" />
@@ -109,7 +110,7 @@ export const BudgetPanel: React.FC = () => {
                             ({budgetDateLabel})
                         </span>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs bg-popover text-popover-foreground border-primary/30">
+                    <TooltipContent side="bottom" className="text-xs bg-popover text-popover-foreground border-primary/30 glow-border"> {/* Added glow-border */}
                         Budget set for {budgetDateLabel}. Resets daily.
                     </TooltipContent>
                 </Tooltip>
@@ -123,7 +124,7 @@ export const BudgetPanel: React.FC = () => {
                 <span className="sr-only">Edit Budget</span>
               </Button>
           </DialogTrigger>
-          <DialogContent className="w-[90vw] max-w-md sm:max-w-sm bg-card border-primary/40 shadow-neon rounded-lg">
+          <DialogContent className="w-[90vw] max-w-md sm:max-w-sm bg-card border-primary/40 shadow-neon rounded-lg glow-border"> {/* Added glow-border */}
             <DialogHeader>
               <DialogTitle className="text-primary">Set Daily Budget Limit</DialogTitle>
               <DialogDescription className="text-muted-foreground text-sm pt-1">
@@ -134,7 +135,7 @@ export const BudgetPanel: React.FC = () => {
             <form onSubmit={handleSubmit(handleSaveBudget)}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="limit" className="text-right text-neonText/80 text-xs sm:text-sm">
+                  <Label htmlFor="limit" className="text-right text-neonText/80 text-xs sm:text-sm"> {/* Apply neonText */}
                     Limit ({state.currency.symbol})
                   </Label>
                   <Input
@@ -188,11 +189,11 @@ export const BudgetPanel: React.FC = () => {
          <div className="flex items-center justify-between pt-1 sm:pt-2">
             <div className="flex items-center gap-2 text-sm sm:text-lg font-medium">
                  <Coins className={cn("h-4 w-4 sm:h-5 sm:w-5", isOverBudget ? 'text-destructive' : 'text-green-500')} />
-                <span className={cn(isOverBudget ? 'text-destructive' : 'text-green-400')}>
+                <span className={cn("text-neonText", isOverBudget ? 'text-destructive' : 'text-green-400')}> {/* Apply neonText conditionally */}
                     Remaining Today:
                 </span>
             </div>
-             <div className={`text-base sm:text-xl font-bold ${isOverBudget ? 'text-destructive' : 'text-green-400'}`}>
+             <div className={cn("text-base sm:text-xl font-bold", isOverBudget ? 'text-destructive' : 'text-green-400')}> {/* Apply theme colors */}
                 {/* Format remaining currency */}
                 {formatCurrency(remaining)}
             </div>
@@ -211,7 +212,7 @@ export const BudgetPanel: React.FC = () => {
 
 const BudgetPanelSkeleton: React.FC = () => {
   return (
-    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-4 sm:mb-6">
+    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-4 sm:mb-6 glow-border"> {/* Added glow-border */}
        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4 sm:pb-3 sm:pt-4 sm:px-6">
         <div className="flex items-center gap-2 w-3/5">
             <Skeleton className="h-5 w-5 rounded-full" /> {/* Icon */}

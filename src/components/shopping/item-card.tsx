@@ -4,7 +4,7 @@ import type React from 'react';
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Tag, ShoppingCart } from "lucide-react";
+import { Pencil, Trash2, Tag } from "lucide-react"; // Removed ShoppingCart as it's not used here
 import { cn } from "@/lib/utils";
 import type { ShoppingListItem } from '@/context/app-context';
 import { useAppContext } from '@/context/app-context';
@@ -28,12 +28,11 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onEdit, onDelete }) =>
 
   return (
      <Card className={cn(
-         "rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col py-2 px-3 w-full border-primary/20 hover:border-primary/50", // Adjusted padding
-         item.checked ? "bg-card/60 border-border/10" : "bg-card glow-border-inner" // Added glow to default state
+         "rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center py-2 px-3 w-full border-primary/20 hover:border-primary/50 glow-border-inner", // Use inner glow for non-checked
+         item.checked ? "bg-card/60 border-border/10" : "bg-card"
       )}
       style={{ minHeight: 'auto' }}> {/* Removed fixed minHeight */}
-        <div className="flex items-center">
-           <Checkbox
+        <Checkbox
                 id={`item-${item.id}`}
                 checked={item.checked}
                 onCheckedChange={handleToggleCheck}
@@ -45,7 +44,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onEdit, onDelete }) =>
                 <label
                     htmlFor={`item-${item.id}`}
                     className={cn(
-                        "text-sm font-medium leading-tight cursor-pointer block", // Adjusted leading
+                        "text-sm font-medium leading-tight cursor-pointer block text-neonText", // Adjusted leading & added text-neonText
                         item.checked && "line-through text-muted-foreground"
                     )}
                 >
@@ -83,7 +82,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onEdit, onDelete }) =>
                     <Trash2 className="h-3.5 w-3.5" /> {/* Smaller icon */}
                 </Button>
             </div>
-       </div>
     </Card>
   );
 };

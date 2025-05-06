@@ -4,26 +4,24 @@ import React from 'react';
 import Link from 'next/link';
 import {
   ShoppingCart,
-  LayoutGrid as Dashboard, // Alias LayoutGrid to Dashboard
+  LayoutGrid as Dashboard,
   History,
   Settings,
-  Info as InfoIcon, // Alias Info to InfoIcon
+  Info as InfoIcon,
   Mail,
-  ShieldCheck as Policy, // Alias ShieldCheck to Policy
-  FileText as Article, // Alias FileText to Article
+  ShieldCheck as Policy,
+  FileText as Article,
   Star,
-  Store as Apps, // Alias Store to Apps
+  Store as Apps,
   Menu,
   X,
+  Palette, // Added Palette for Theme
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
-import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer'; // Import the AdMob function
-import { AdInitializer } from '@/components/admob/ad-initializer'; // Import AdInitializer
-import ClientOnly from '@/components/client-only'; // Import ClientOnly
 
 
 // --- Mobile Header Component ---
@@ -53,7 +51,7 @@ const MobileHeader = () => {
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
         <ShoppingCart className="w-6 h-6" /> {/* Use Cart icon */}
-        <span className="font-bold">Neon Shopping</span> {/* Updated App Name */}
+        <span className="font-bold text-neonText">Neon Shopping</span> {/* Use neonText */}
       </Link>
 
       {/* Placeholder to balance header */}
@@ -69,10 +67,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
   const router = useRouter();
 
-  // AdMob Interstitial Trigger Routes
-  const interstitialTriggerRoutes = ['/stats', '/history']; // Removed /currency
 
-  // Menu Items & Icons - Adjusted list and icons
+  // Menu Items & Icons - Updated list and icons
   const menuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: Dashboard },
@@ -87,35 +83,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
 
-  const handleLinkClick = async (item: { href: string }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+  const handleLinkClick = (item: { href: string }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
      event.preventDefault(); // Prevent default link behavior initially
 
      // Close mobile sidebar if open
     if (isMobile) {
       setOpenMobile(false);
     }
-
-    // Interstitial Ad Logic
-    if (interstitialTriggerRoutes.includes(item.href)) {
-      console.log(`Interstitial triggered for: ${item.href}`);
-      try {
-        await showPreparedInterstitialAd(); // Attempt to show the ad
-      } catch (error) {
-        console.error("Error showing interstitial ad on click:", error);
-      } finally {
-        // Wait a tiny bit before navigation to allow ad to potentially show/dismiss
-        setTimeout(() => router.push(item.href), 100);
-      }
-    } else {
       // Navigate directly
       router.push(item.href);
-    }
   };
 
 
    const menuItemClasses = cn(
      "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm", // Adjusted gap and padding
-     "border border-primary/30 hover:border-white", // Neon cyan border, white on hover
+     "border border-primary/30 hover:border-white glow-border", // Added glow-border class
      "transition-all duration-300 ease-in-out", // Smooth transitions
      "hover:text-white hover:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // White glow on hover
      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]", // Focus glow
@@ -130,18 +112,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
    );
 
   return (
-    <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
-       {/* AdMob Banner Placement */}
-       <ClientOnly>
-        <AdInitializer />
-       </ClientOnly>
+    <>
+       {/* AdMob Placeholder */}
+       {/* Consider using ClientOnly if AdComponent relies on client-side checks */}
+       {/* <AdComponent /> */}
+       <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-background/50 flex items-center justify-center text-xs text-muted-foreground z-40 border-t border-border/20 glow-border">
+            Ad Placeholder
+       </div>
 
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
              <ShoppingCart className="w-6 h-6" /> {/* Use ShoppingCart icon */}
-            <span className="font-bold">Neon Shopping</span> {/* Ensure this name is consistent */}
+            <span className="font-bold text-neonText">Neon Shopping</span> {/* Ensure this name is consistent */}
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col"> {/* Use flex-col */}
@@ -160,7 +144,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
                     <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                    <span className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                     {/* Use neonText class for the label text */}
+                    <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -179,13 +164,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileHeader />
 
         {/* Content */}
-        {/* Adjusted padding-bottom to avoid content being hidden by potential fixed elements (like the ad placeholder) */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[70px]"> {/* Increased bottom padding for banner */}
+        {/* Adjusted padding-bottom to avoid content being hidden by the fixed ad placeholder */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(50px+1rem)]"> {/* Adjusted bottom padding */}
           {children}
         </main>
       </SidebarInset>
     </>
   );
 }
-
-    

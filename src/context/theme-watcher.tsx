@@ -2,13 +2,17 @@
 "use client";
 
 import React, { useEffect, useState, useContext } from 'react';
-import { AppContext } from './app-context'; // Import AppContext directly
+import { AppContext } from './app-context'; // Assuming context is defined here
 import { defaultTheme } from '@/config/themes';
 
 interface ThemeWatcherProps {
-  children: React.ReactNode;
+  children: React.ReactNode; // Accept children directly
 }
 
+/**
+ * A client component that watches the theme state from AppContext
+ * and applies the corresponding theme class to the <html> element.
+ */
 export const ThemeWatcher: React.FC<ThemeWatcherProps> = ({ children }) => {
   const context = useContext(AppContext); // Use useContext with the imported AppContext
   const isLoading = context?.isLoading ?? true; // Handle context possibly being undefined initially
