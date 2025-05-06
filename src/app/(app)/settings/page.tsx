@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -8,12 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useAppContext } from '@/context/app-context';
-import type { Currency, Category, Theme } from '@/context/app-context'; // Import types
+import type { Currency, Category } from '@/context/app-context'; // Import types
 import { getSupportedCurrencies, getUserCurrency } from '@/services/currency'; // Import currency functions
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X, Palette, Check } from 'lucide-react'; // Added Palette, Check
+import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X } from 'lucide-react'; // Removed Palette, Check
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { themes } from '@/config/themes'; // Import defined themes
+// Removed theme imports: import { themes } from '@/config/themes';
 import { cn } from '@/lib/utils';
 
 // Default categories (can be moved to config if needed)
@@ -189,11 +188,7 @@ export default function SettingsPage() {
     toast({ title: "Success", description: "Category deleted." });
    };
 
-   // --- Theme Logic ---
-   const handleSelectTheme = (themeId: string) => {
-     dispatch({ type: 'SET_THEME', payload: themeId });
-     toast({ title: "Theme Updated", description: `Theme set to ${themes.find(t => t.id === themeId)?.name || 'Default'}.` });
-   };
+   // --- Removed Theme Logic ---
 
    const isLoading = contextLoading || isLoadingCurrencies;
 
@@ -213,48 +208,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
 
-       {/* --- Theme Settings --- */}
-       <Card className="bg-card border-primary/30 shadow-neon glow-border">
-            <CardHeader>
-                <CardTitle className="text-primary flex items-center gap-2">
-                    <Palette className="h-5 w-5" /> App Theme
-                </CardTitle>
-                <CardDescription>Select your preferred neon theme.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {themes.map((theme) => (
-                    <Card
-                        key={theme.id}
-                        className={cn(
-                            "cursor-pointer p-4 border-2 transition-all glow-border-inner",
-                            state.theme === theme.id ? "border-primary shadow-neon" : "border-muted-foreground/30 hover:border-primary/70",
-                        )}
-                        onClick={() => handleSelectTheme(theme.id)}
-                        role="radio"
-                        aria-checked={state.theme === theme.id}
-                        tabIndex={0} // Make it focusable
-                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                handleSelectTheme(theme.id);
-                            }
-                         }}
-                    >
-                        <CardHeader className="p-0 pb-2 flex flex-row items-center justify-between">
-                            <CardTitle className="text-sm font-medium text-neonText">{theme.name}</CardTitle>
-                             {state.theme === theme.id && <Check className="h-5 w-5 text-primary" />}
-                        </CardHeader>
-                         <CardContent className="p-0">
-                             <p className="text-xs text-muted-foreground mb-3">{theme.description}</p>
-                            <div className="flex gap-2">
-                                <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: `hsl(${theme.colors.primary})` }}></div>
-                                <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: `hsl(${theme.colors.secondary})` }}></div>
-                                <div className="h-8 w-8 rounded-full border border-border" style={{ backgroundColor: `hsl(${theme.colors.accent})` }}></div>
-                            </div>
-                         </CardContent>
-                    </Card>
-                ))}
-            </CardContent>
-       </Card>
+      {/* --- Removed Theme Settings Card --- */}
 
       {/* --- Currency Settings --- */}
       <Card className="bg-card border-primary/30 shadow-neon glow-border">
@@ -451,31 +405,7 @@ const SettingsPageSkeleton: React.FC = () => (
   <div className="space-y-6 animate-pulse">
     <Skeleton className="h-8 w-1/4" /> {/* Title */}
 
-    {/* Theme Skeleton */}
-     <Card className="bg-card border-border/20 shadow-md glow-border">
-        <CardHeader>
-            <Skeleton className="h-6 w-1/5 mb-1" /> {/* Card Title */}
-            <Skeleton className="h-4 w-2/3" /> {/* Card Description */}
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => (
-                 <Card key={i} className="p-4 border-2 border-muted-foreground/30">
-                    <CardHeader className="p-0 pb-2 flex flex-row items-center justify-between">
-                        <Skeleton className="h-5 w-1/2" /> {/* Theme Name */}
-                        {/* Skeleton for Check icon */}
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <Skeleton className="h-3 w-3/4 mb-3" /> {/* Description */}
-                        <div className="flex gap-2">
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
-        </CardContent>
-    </Card>
+    {/* Removed Theme Skeleton */}
 
     {/* Currency Skeleton */}
     <Card className="bg-card border-border/20 shadow-md glow-border">

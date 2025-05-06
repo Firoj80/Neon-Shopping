@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import { Geist_Mono } from 'next/font/google'; // Using Mono for a more cyberpunk feel
 import './globals.css';
@@ -6,8 +5,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers'; // Combined providers
 import { AppLayout } from '@/components/layout/app-layout';
-import { ClientOnly } from '@/components/client-only'; // Import ClientOnly
-import { ThemeWatcher } from '@/context/theme-watcher'; // Import ThemeWatcher
+// Removed theme watcher import: import { ThemeWatcher } from '@/context/theme-watcher';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
 
 const geistMono = Geist_Mono({
@@ -26,10 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // ThemeWatcher applies the theme class dynamically to the <html> tag
-    // We need html/body tags here for ThemeWatcher to target documentElement
-    // Remove manual 'dark' class here, let ThemeWatcher handle it.
-    <html lang="en" suppressHydrationWarning>
+    // Apply 'dark' class directly, as the theme system is removed
+    <html lang="en" className="dark" suppressHydrationWarning>
         <body
             className={cn(
             geistMono.variable,
@@ -37,14 +33,13 @@ export default function RootLayout({
             )}
         >
           <Providers>
-            <ThemeWatcher>
-               <SidebarProvider>
-                  <AppLayout>
-                      {children}
-                  </AppLayout>
-               </SidebarProvider>
-              <Toaster />
-            </ThemeWatcher>
+            {/* Removed ThemeWatcher wrapper */}
+             <SidebarProvider>
+                <AppLayout>
+                    {children}
+                </AppLayout>
+             </SidebarProvider>
+            <Toaster />
           </Providers>
          </body>
      </html>

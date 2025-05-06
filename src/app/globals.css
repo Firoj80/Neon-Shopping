@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,16 +6,15 @@
 @layer base {
     :root {
         --radius: 0.5rem; /* Base radius */
-         /* Default Chart Colors (can be overridden by themes) */
-        --chart-1: 180 100% 50%; /* Default Neon Cyan */
-        --chart-2: 300 100% 50%; /* Default Neon Magenta */
-        --chart-3: 120 100% 50%; /* Default Neon Green */
-        --chart-4: 60 100% 50%; /* Default Neon Yellow */
-        --chart-5: 30 100% 50%; /* Default Neon Orange */
+         /* Chart Colors */
+        --chart-1: 180 100% 50%; /* Neon Cyan */
+        --chart-2: 300 100% 50%; /* Neon Magenta */
+        --chart-3: 120 100% 50%; /* Neon Green */
+        --chart-4: 60 100% 50%; /* Neon Yellow */
+        --chart-5: 30 100% 50%; /* Neon Orange */
     }
-     /* Apply default dark theme variables directly to .dark or :root if always dark */
-     /* This ensures they are the base styles */
-    .dark { /* Target .dark explicitly */
+     /* Apply default cyberpunk-cyan theme variables directly to .dark */
+    .dark {
         --background: 0 0% 0%; /* Black */
         --foreground: 0 0% 95%; /* Near White */
         --card: 0 0% 7%; /* Dark Gray */
@@ -36,7 +34,7 @@
         --border: 180 100% 30%; /* Darker Cyan border */
         --input: 0 0% 15%;
         --ring: 180 100% 50%; /* Neon Cyan ring */
-        /* Sidebar variables for default theme */
+        /* Sidebar variables */
         --sidebar-background: 0 0% 5%;
         --sidebar-foreground: 0 0% 85%;
         --sidebar-primary: 180 100% 50%;
@@ -45,53 +43,7 @@
         --sidebar-accent-foreground: 0 0% 5%;
         --sidebar-border: 180 100% 20%;
         --sidebar-ring: 180 100% 50%;
-        /* Chart colors for default theme */
-        --chart-1: 180 100% 50%;
-        --chart-2: 300 100% 50%;
-        --chart-3: 120 100% 50%;
-        --chart-4: 60 100% 50%;
-        --chart-5: 30 100% 50%;
-        /* Added Neon Text variable */
-        --neon-text: 0 0% 90%;
-    }
-}
-
-
-/* Define theme-specific overrides */
-@layer base {
-    /* --- Cyberpunk Cyan Theme (Explicitly set to override default) --- */
-    /* Needs to be applied to a parent element, e.g., <html class="dark theme-cyberpunk-cyan"> */
-    .dark .theme-cyberpunk-cyan {
-        /* Base styles */
-        --background: 0 0% 0%;
-        --foreground: 0 0% 95%;
-        --card: 0 0% 7%;
-        --card-foreground: 0 0% 95%;
-        --popover: 0 0% 7%;
-        --popover-foreground: 0 0% 95%;
-        --primary: 180 100% 50%; /* Neon Cyan */
-        --primary-foreground: 180 100% 10%;
-        --secondary: 300 100% 50%; /* Neon Magenta */
-        --secondary-foreground: 300 100% 10%;
-        --muted: 0 0% 15%;
-        --muted-foreground: 0 0% 60%;
-        --accent: 300 100% 70%; /* Brighter Magenta */
-        --accent-foreground: 0 0% 5%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 180 100% 30%; /* Darker Cyan border */
-        --input: 0 0% 15%;
-        --ring: 180 100% 50%; /* Neon Cyan ring */
-        /* Sidebar */
-        --sidebar-background: 0 0% 5%;
-        --sidebar-foreground: 0 0% 85%;
-        --sidebar-primary: 180 100% 50%;
-        --sidebar-primary-foreground: 180 100% 10%;
-        --sidebar-accent: 300 100% 70%;
-        --sidebar-accent-foreground: 0 0% 5%;
-        --sidebar-border: 180 100% 20%;
-        --sidebar-ring: 180 100% 50%;
-        /* Charts */
+        /* Chart colors */
         --chart-1: 180 100% 50%;
         --chart-2: 300 100% 50%;
         --chart-3: 120 100% 50%;
@@ -100,128 +52,9 @@
         /* Neon Text */
         --neon-text: 0 0% 90%;
     }
-
-    /* --- Vaporwave Pink Theme --- */
-    .dark .theme-vaporwave-pink {
-        --background: 270 30% 5%; /* Deep purple */
-        --foreground: 300 100% 95%; /* Light Pink */
-        --card: 270 25% 12%; /* Darker purple */
-        --card-foreground: 300 100% 95%;
-        --popover: 270 25% 12%;
-        --popover-foreground: 300 100% 95%;
-        --primary: 300 100% 65%; /* Bright Pink */
-        --primary-foreground: 300 100% 15%; /* Dark Pink */
-        --secondary: 180 100% 60%; /* Teal */
-        --secondary-foreground: 180 100% 10%; /* Dark Teal */
-        --muted: 270 20% 20%;
-        --muted-foreground: 270 15% 65%;
-        --accent: 180 100% 75%; /* Lighter Teal */
-        --accent-foreground: 270 30% 5%;
-        --destructive: 0 80% 65%; /* Red */
-        --destructive-foreground: 0 0% 98%;
-        --border: 300 100% 40%; /* Medium Pink border */
-        --input: 270 20% 20%;
-        --ring: 300 100% 65%; /* Bright Pink ring */
-        /* Sidebar variables */
-        --sidebar-background: 270 30% 8%;
-        --sidebar-foreground: 300 100% 90%;
-        --sidebar-primary: 300 100% 65%;
-        --sidebar-primary-foreground: 300 100% 15%;
-        --sidebar-accent: 180 100% 75%;
-        --sidebar-accent-foreground: 270 30% 5%;
-        --sidebar-border: 300 100% 30%;
-        --sidebar-ring: 300 100% 65%;
-        /* Chart colors */
-        --chart-1: 300 100% 65%; /* Pink */
-        --chart-2: 180 100% 60%; /* Teal */
-        --chart-3: 210 100% 60%; /* Blue */
-        --chart-4: 45 100% 55%;  /* Gold */
-        --chart-5: 270 80% 70%;  /* Lavender */
-        /* Neon Text */
-        --neon-text: 300 100% 92%;
-    }
-
-    /* --- Matrix Green Theme --- */
-    .dark .theme-matrix-green {
-        --background: 120 10% 2%; /* Very dark green-black */
-        --foreground: 120 100% 85%; /* Bright Green */
-        --card: 120 15% 7%; /* Dark green */
-        --card-foreground: 120 100% 85%;
-        --popover: 120 15% 7%;
-        --popover-foreground: 120 100% 85%;
-        --primary: 120 100% 50%; /* Matrix Green */
-        --primary-foreground: 120 100% 5%; /* Very dark green */
-        --secondary: 0 0% 60%; /* Medium Gray */
-        --secondary-foreground: 0 0% 10%; /* Dark Gray */
-        --muted: 120 10% 15%;
-        --muted-foreground: 120 20% 55%;
-        --accent: 120 100% 70%; /* Lighter Green */
-        --accent-foreground: 120 100% 5%;
-        --destructive: 0 75% 55%; /* Red */
-        --destructive-foreground: 0 0% 98%;
-        --border: 120 100% 25%; /* Darker Green border */
-        --input: 120 10% 15%;
-        --ring: 120 100% 50%; /* Matrix Green ring */
-        /* Sidebar variables */
-        --sidebar-background: 120 10% 4%;
-        --sidebar-foreground: 120 100% 80%;
-        --sidebar-primary: 120 100% 50%;
-        --sidebar-primary-foreground: 120 100% 5%;
-        --sidebar-accent: 120 100% 70%;
-        --sidebar-accent-foreground: 120 100% 5%;
-        --sidebar-border: 120 100% 15%;
-        --sidebar-ring: 120 100% 50%;
-        /* Chart colors */
-        --chart-1: 120 100% 50%; /* Green */
-        --chart-2: 110 90% 55%;  /* Lime Green */
-        --chart-3: 0 0% 70%;     /* Gray */
-        --chart-4: 140 70% 45%;  /* Darker Green */
-        --chart-5: 90 80% 50%;   /* Olive Green */
-        /* Neon Text */
-        --neon-text: 120 100% 80%;
-    }
-
-     /* --- Outrun Sunset Theme --- */
-    .dark .theme-outrun-sunset {
-        --background: 250 50% 10%; /* Deep Blue/Purple */
-        --foreground: 30 100% 90%; /* Pale Orange */
-        --card: 250 40% 18%; /* Darker Blue/Purple */
-        --card-foreground: 30 100% 90%;
-        --popover: 250 40% 18%;
-        --popover-foreground: 30 100% 90%;
-        --primary: 330 100% 60%; /* Hot Pink */
-        --primary-foreground: 330 100% 10%; /* Dark Pink */
-        --secondary: 30 100% 55%; /* Orange */
-        --secondary-foreground: 30 100% 10%; /* Dark Orange */
-        --muted: 250 30% 25%;
-        --muted-foreground: 250 20% 60%;
-        --accent: 50 100% 60%; /* Yellow */
-        --accent-foreground: 250 50% 10%;
-        --destructive: 0 80% 60%; /* Red */
-        --destructive-foreground: 0 0% 98%;
-        --border: 330 100% 40%; /* Medium Pink border */
-        --input: 250 30% 25%;
-        --ring: 330 100% 60%; /* Hot Pink ring */
-        /* Sidebar variables */
-        --sidebar-background: 250 50% 12%;
-        --sidebar-foreground: 30 100% 85%;
-        --sidebar-primary: 330 100% 60%;
-        --sidebar-primary-foreground: 330 100% 10%;
-        --sidebar-accent: 50 100% 60%;
-        --sidebar-accent-foreground: 250 50% 10%;
-        --sidebar-border: 330 100% 30%;
-        --sidebar-ring: 330 100% 60%;
-        /* Chart colors */
-        --chart-1: 330 100% 60%; /* Pink */
-        --chart-2: 30 100% 55%;  /* Orange */
-        --chart-3: 50 100% 60%;  /* Yellow */
-        --chart-4: 190 100% 60%; /* Cyan */
-        --chart-5: 270 80% 70%;  /* Purple */
-        /* Neon Text */
-        --neon-text: 30 100% 88%;
-    }
 }
 
+/* Removed theme-specific overrides as the theme system is removed */
 
 /* Global styles applied regardless of theme */
 @layer base {
@@ -293,6 +126,6 @@
    }
    /* Utility for neon text */
   .text-neonText {
-    color: hsl(var(--neon-text)); /* Use the theme-specific neon text variable */
+    color: hsl(var(--neon-text)); /* Use the neon text variable */
   }
 }

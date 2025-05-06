@@ -1,9 +1,8 @@
-
 "use client";
 import type React from 'react';
 import { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import { format, startOfDay, isSameDay } from 'date-fns';
-import { themes, defaultTheme } from '@/config/themes'; // Import themes and default theme
+// Removed theme imports: import { themes, defaultTheme } from '@/config/themes';
 import { v4 as uuidv4 } from 'uuid';
 
 // --- Types ---
@@ -34,18 +33,7 @@ export interface ShoppingListItem {
   dateAdded: number; // Timestamp
 }
 
-// Define Theme type based on themes.ts structure
-export interface Theme {
-  id: string;
-  name: string;
-  description: string;
-  colors: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    // Add other relevant theme colors if needed
-  };
-}
+// Removed Theme type definition
 
 interface AppState {
   userId: string;
@@ -53,7 +41,7 @@ interface AppState {
   budget: BudgetItem;
   shoppingList: ShoppingListItem[];
   categories: Category[];
-  theme: string; // Store the ID of the selected theme
+  // Removed theme state: theme: string;
   isPremium: boolean; // Add isPremium flag
 }
 
@@ -68,7 +56,7 @@ type Action =
   | { type: 'ADD_CATEGORY'; payload: { name: string } } // Add category action
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } } // Update category action
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } } // Remove category action
-  | { type: 'SET_THEME'; payload: string } // Add theme action (payload is theme ID)
+  // Removed theme action: | { type: 'SET_THEME'; payload: string }
   | { type: 'LOAD_STATE'; payload: Partial<AppState> }
   | { type: 'SET_PREMIUM'; payload: boolean }; // Add premium action
 
@@ -95,11 +83,11 @@ const initialState: AppState = {
   budget: { limit: 0, spent: 0, lastSetDate: null },
   shoppingList: [],
   categories: DEFAULT_CATEGORIES,
-  theme: defaultTheme.id, // Initialize with the default theme ID
+  // Removed theme state: theme: defaultTheme.id, // Initialize with the default theme ID
   isPremium: false, // Default premium status
 };
 
-const LOCAL_STORAGE_KEY = 'neonShoppingListState_v4'; // Increment version for theme change
+const LOCAL_STORAGE_KEY = 'neonShoppingListState_v5'; // Increment version again due to state structure change
 const USER_ID_KEY = 'neonShoppingUserId_v1'; // Separate key for user ID
 
 // Helper to calculate spent amount based on checked items added *today*
@@ -145,7 +133,7 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'ADD_SHOPPING_ITEM': {
       const newItem: ShoppingListItem = {
         ...action.payload,
-        id: crypto.randomUUID(),
+        id: uuidv4(), // Use uuid for consistency
         dateAdded: Date.now(),
       };
       newState = { ...state, shoppingList: [newItem, ...state.shoppingList] };
@@ -184,7 +172,7 @@ function appReducer(state: AppState, action: Action): AppState {
     }
     case 'ADD_CATEGORY': {
         const newCategory: Category = {
-            id: crypto.randomUUID(),
+            id: uuidv4(), // Use uuid for consistency
             name: action.payload.name,
         };
         newState = { ...state, categories: [...state.categories, newCategory] };
@@ -217,25 +205,21 @@ function appReducer(state: AppState, action: Action): AppState {
         newState.budget.spent = calculateTodaysSpent(newState.shoppingList, todayDate);
         break;
     }
-     case 'SET_THEME': {
-      newState = { ...state, theme: action.payload };
-      break;
-    }
+     // Removed SET_THEME case
      case 'SET_PREMIUM': {
       newState = { ...state, isPremium: action.payload };
       break;
     }
     case 'LOAD_STATE': {
+      const loadedUserId = action.payload.userId || state.userId; // Load userId first
       const loadedList = action.payload.shoppingList || initialState.shoppingList;
       const loadedBudget = action.payload.budget || initialState.budget;
       const loadedCurrency = action.payload.currency || initialState.currency;
       const loadedCategories = action.payload.categories && action.payload.categories.length > 0
                                   ? action.payload.categories
                                   : DEFAULT_CATEGORIES;
-      const loadedTheme = action.payload.theme || initialState.theme; // Load theme
-      const loadedUserId = action.payload.userId || state.userId; // Use existing state userId as fallback
+      // Removed theme loading
       const loadedIsPremium = action.payload.isPremium ?? initialState.isPremium; // Load premium status
-
 
       const initialSpent = calculateTodaysSpent(loadedList, todayDate);
 
@@ -249,7 +233,7 @@ function appReducer(state: AppState, action: Action): AppState {
         },
         shoppingList: loadedList,
         categories: loadedCategories,
-        theme: loadedTheme, // Assign loaded theme
+        // Removed theme state
         isPremium: loadedIsPremium, // Assign loaded premium status
       };
       break;
@@ -312,7 +296,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             budget: parsedState.budget,
                             shoppingList: Array.isArray(parsedState.shoppingList) ? parsedState.shoppingList : undefined,
                             categories: Array.isArray(parsedState.categories) ? parsedState.categories : undefined,
-                            theme: parsedState.theme,
+                            // Removed theme loading
                             isPremium: parsedState.isPremium,
                         };
                     }
@@ -329,9 +313,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!loadedStateFromStorage.currency) {
                 loadedStateFromStorage.currency = defaultCurrency;
             }
-            if (!loadedStateFromStorage.theme) {
-                loadedStateFromStorage.theme = defaultTheme.id; // Set default theme if none loaded
-            }
+            // Removed default theme setting
              if (loadedStateFromStorage.isPremium === undefined) {
                  loadedStateFromStorage.isPremium = false; // Default premium status
              }
