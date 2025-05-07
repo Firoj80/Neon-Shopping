@@ -35,14 +35,15 @@ export default function RootLayout({
         >
           <Providers>
               <SidebarProvider>
+                <ClientOnly> {/* Wrap AppLayout with ClientOnly */}
                   <AppLayout>
                       {children}
                   </AppLayout>
-                  <Toaster />
+                </ClientOnly>
+                <Toaster />
              </SidebarProvider>
           </Providers>
          </body>
      </html>
   );
 }
-
