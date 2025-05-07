@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { useAppContext } from '@/context/app-context';
 import type { ShoppingListItem, Category } from '@/context/app-context'; // Import Category type
 import { subDays, format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { History, Filter, Layers, CalendarDays, Tag, Trash2 } from 'lucide-react';
+import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
@@ -38,10 +37,14 @@ export default function HistoryPage() {
         const startDate = startOfDay(subDays(endDate, 29)); // Default to last 30 days
         return { from: startDate, to: endDate };
     });
+    const [selectedListId, setSelectedListId] = useState<string | null>(state.selectedListId || null); // List Filter
 
     // Filter and sort items based on selections
     const historyItems = useMemo(() => {
         let items = state.shoppingList.filter(item => item.checked); // Only purchased items
+         if (selectedListId !== null) {
+            items = items.filter(item => item.listId === selectedListId); // List Filter
+        }
 
         // Date Range Filter
         if (dateRange?.from && dateRange?.to) {
@@ -70,7 +73,7 @@ export default function HistoryPage() {
         });
 
         return items;
-    }, [state.shoppingList, dateRange, selectedCategory, sortOption]);
+    }, [state.shoppingList, dateRange, selectedCategory, sortOption, selectedListId]);
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
@@ -97,12 +100,14 @@ export default function HistoryPage() {
     };
 
     const getFilterLabel = () => {
-        let dateLabel = 'All Time';
-         if (dateRange?.from && dateRange?.to) {
-             dateLabel = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`;
-         }
-        const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
-        return `${dateLabel}${categoryLabel}`;
+      let dateLabel = 'All Time';
+       if (dateRange?.from && dateRange?.to) {
+           dateLabel = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`;
+       }
+      const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
+      const listName = selectedListId === null ? 'All Lists' : state.lists.find(list => list.id === selectedListId)?.name || 'Unknown List';
+
+      return `${listName} | ${dateLabel}${categoryLabel}`;
     };
 
     return (
@@ -111,66 +116,84 @@ export default function HistoryPage() {
                 <History className="h-6 w-6" /> Purchase History
             </h1>
 
-            {/* Filter & Sort Section - Made Sticky */}
-            <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border-inner"> {/* Sticky classes added */}
-                <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                    <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2">
-                        <Filter className="h-4 w-4" /> Filters & Sort
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
-                    {/* Date Range Picker */}
-                    <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
-                        <DateRangePicker
-                            range={dateRange}
-                            onRangeChange={handleDateRangeChange}
-                            triggerClassName="w-full justify-start text-left font-normal text-xs sm:text-sm"
-                            align="start"
-                        />
-                    </div>
-                    {/* Category Selector */}
-                    <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                        <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
-                            <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
-                                <Layers className="h-4 w-4 mr-2 opacity-70" />
-                                <SelectValue placeholder="Filter by category" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner" position="popper">
-                                <ScrollArea className="h-full">
-                                    <SelectGroup>
-                                        <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Category</SelectLabel>
-                                        <SelectItem value="all" className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">All Categories</SelectItem>
-                                        {state.categories.map((category) => (
-                                            <SelectItem key={category.id} value={category.id} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                        {state.categories.length === 0 && <SelectItem value="none" disabled>No categories defined</SelectItem>}
-                                    </SelectGroup>
-                                </ScrollArea>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     {/* Sort Selector */}
-                     <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                        <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
-                            <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary text-xs sm:text-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
-                                <SelectValue placeholder="Sort by..." />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-secondary/80 text-neonText glow-border-inner" position="popper">
-                                <SelectGroup>
-                                     <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Sort Order</SelectLabel>
-                                    <SelectItem value="dateDesc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Date (Newest First)</SelectItem>
-                                    <SelectItem value="dateAsc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Date (Oldest First)</SelectItem>
-                                    <SelectItem value="priceDesc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Total Price (High-Low)</SelectItem>
-                                    <SelectItem value="priceAsc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Total Price (Low-High)</SelectItem>
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-            </Card>
+              {/* Filter & Sort Section - Made Sticky */}
+              <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border-inner"> {/* Sticky classes added */}
+                  <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
+                      <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2">
+                          <Filter className="h-4 w-4" /> Filters & Sort
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
+                      {/*List Selector*/}
+                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
+                           <Select value={selectedListId || 'all'} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
+                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
+                                  <WalletCards className="h-4 w-4 mr-2 opacity-70" />
+                                 <SelectValue placeholder="Select Shopping List" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-card border-secondary/80 text-neonText glow-border-inner">
+                                  <SelectGroup>
+                                      <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Shopping List</SelectLabel>
+                                      <SelectItem value="all" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">All Lists</SelectItem>
+                                      {state.lists.map((list) => (
+                                          <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
+                                      ))}
+                                  </SelectGroup>
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      {/* Date Range Picker */}
+                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
+                          <DateRangePicker
+                              range={dateRange}
+                              onRangeChange={handleDateRangeChange}
+                              triggerClassName="w-full justify-start text-left font-normal text-xs sm:text-sm"
+                              align="start"
+                          />
+                      </div>
+                      {/* Category Selector */}
+                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
+                          <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
+                              <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
+                                  <Layers className="h-4 w-4 mr-2 opacity-70" />
+                                  <SelectValue placeholder="Filter by category" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner" position="popper">
+                                  <ScrollArea className="h-full">
+                                      <SelectGroup>
+                                          <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Category</SelectLabel>
+                                          <SelectItem value="all" className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">All Categories</SelectItem>
+                                          {state.categories.map((category) => (
+                                              <SelectItem key={category.id} value={category.id} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
+                                                  {category.name}
+                                              </SelectItem>
+                                          ))}
+                                          {state.categories.length === 0 && <SelectItem value="none" disabled>No categories defined</SelectItem>}
+                                      </SelectGroup>
+                                  </ScrollArea>
+                              </SelectContent>
+                          </Select>
+                      </div>
+                       {/* Sort Selector */}
+                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
+                          <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
+                              <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary text-xs sm:text-sm">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
+                                  <SelectValue placeholder="Sort by..." />
+                              </SelectTrigger>
+                              <SelectContent className="bg-card border-secondary/80 text-neonText glow-border-inner" position="popper">
+                                  <SelectGroup>
+                                       <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Sort Order</SelectLabel>
+                                      <SelectItem value="dateDesc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Date (Newest First)</SelectItem>
+                                      <SelectItem value="dateAsc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Date (Oldest First)</SelectItem>
+                                      <SelectItem value="priceDesc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Total Price (High-Low)</SelectItem>
+                                      <SelectItem value="priceAsc" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary cursor-pointer py-2 text-xs sm:text-sm">Total Price (Low-High)</SelectItem>
+                                  </SelectGroup>
+                              </SelectContent>
+                          </Select>
+                      </div>
+                  </CardContent>
+              </Card>
 
             {/* History List - Scrollable */}
             <div className="flex-grow overflow-y-auto mt-4"> {/* Added mt-4 and overflow-y-auto */}
@@ -273,9 +296,10 @@ const HistoryPageSkeleton: React.FC = () => (
                 <Skeleton className="h-5 w-1/5" />
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px] rounded-md" />
-                <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
-                <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
             </CardContent>
         </Card>
 
@@ -307,3 +331,4 @@ const HistoryPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
+

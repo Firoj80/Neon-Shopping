@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,7 +8,7 @@ import type { ProcessedExpenseData } from '@/components/charts/expense-chart';
 import { CategoryPieChart } from '@/components/charts/category-pie-chart';
 import type { CategoryData } from '@/components/charts/category-pie-chart';
 import { useAppContext } from '@/context/app-context';
-import type { Category } from '@/context/app-context'; // Import Category type
+import type { Category, List, ShoppingListItem } from '@/context/app-context'; // Import Category type
 import { subDays, format, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon } from 'lucide-react';
@@ -34,6 +33,7 @@ export default function StatsPage() {
         const startDate = startOfDay(subDays(endDate, 29));
         return { from: startDate, to: endDate };
     });
+    const [selectedListId, setSelectedListId] = useState<string | null>(state.selectedListId || null); // List Filter
 
     // Update date range when preset changes
     useEffect(() => {
@@ -67,13 +67,14 @@ export default function StatsPage() {
 
         return state.shoppingList.filter(item => {
             if (!item.checked) return false; // Only purchased items
+            if (selectedListId !== null && item.listId !== selectedListId) return false; // List Filter
 
             const itemDate = new Date(item.dateAdded);
             const isWithinDate = isWithinInterval(itemDate, { start: startDate, end: endDate });
             const isMatchingCategory = selectedCategory === 'all' || item.category === selectedCategory;
             return isWithinDate && isMatchingCategory;
         });
-    }, [state.shoppingList, dateRange, selectedCategory]);
+    }, [state.shoppingList, dateRange, selectedCategory, selectedListId]);
 
 
     // Process data for Line/Bar chart (Expense Trend)
@@ -216,10 +217,6 @@ export default function StatsPage() {
         };
     }, [filteredItems, processedTrendData, dateRange]);
 
-    if (isLoading) {
-        return <StatsPageSkeleton />;
-    }
-
      // Helper to get category name for display
      const getCategoryName = (categoryId: string): string => {
         return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
@@ -227,6 +224,8 @@ export default function StatsPage() {
 
     const getFilterLabel = () => {
         let dateLabel = '';
+        const listName = selectedListId === null ? 'All Lists' : state.lists.find(list => list.id === selectedListId)?.name || 'Unknown List';
+
          if (timePeriodPreset !== 'custom' && dateRange?.from && dateRange?.to) {
              switch (timePeriodPreset) {
                 case '7d': dateLabel = 'Last 7d'; break;
@@ -240,8 +239,18 @@ export default function StatsPage() {
          }
 
         const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
-        return `${dateLabel}${categoryLabel}`;
+        return `${listName} | ${dateLabel}${categoryLabel}`;
     };
+
+    const isLoadingSkeletons = () => {
+      return (
+        <div className="flex flex-col gap-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-6 w-1/3" />
+          ))}
+        </div>
+      );
+    }
 
 
     return (
@@ -256,6 +265,26 @@ export default function StatsPage() {
                     </CardTitle>
                 </CardHeader>
                  <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6">
+
+                    {/* List Selector*/}
+                    <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
+                         <Select value={selectedListId || 'all'} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
+                             <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
+                                <WalletCards className="h-4 w-4 mr-2 opacity-70" />
+                                <SelectValue placeholder="Select Shopping List" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-secondary/80 text-neonText glow-border-inner">
+                                <SelectGroup>
+                                    <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Shopping List</SelectLabel>
+                                    <SelectItem value="all" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">All Lists</SelectItem>
+                                    {state.lists.map((list) => (
+                                        <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     {/* Time Period Preset */}
                     <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
                          <Select value={timePeriodPreset} onValueChange={(value: TimePeriodPreset) => setTimePeriodPreset(value)}>
@@ -454,7 +483,6 @@ export default function StatsPage() {
     );
 }
 
-
 const StatsPageSkeleton: React.FC = () => (
     <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse"> {/* Ensure h-full */}
         <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" /> {/* Title */}
@@ -523,3 +551,4 @@ const StatsPageSkeleton: React.FC = () => (
         </div>
     </div>
 );
+
