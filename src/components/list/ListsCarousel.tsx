@@ -4,10 +4,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '@/context/app-context';
 import type { List } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'; // Removed CardContent, CardFooter
 import { PlusCircle, Trash2, Edit2, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AddEditListModal } from './AddEditListModal'; // Create this modal
+import { AddEditListModal } from './AddEditListModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,8 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const ListsCarousel: React.FC = () => {
-  const { state, dispatch, formatCurrency } = useAppContext();
-  const { lists, selectedListId, shoppingListItems } = state;
+  const { state, dispatch } = useAppContext();
+  const { lists, selectedListId } = state;
   const [isAddEditListModalOpen, setIsAddEditListModalOpen] = useState(false);
   const [editingList, setEditingList] = useState<List | null>(null);
   const [listToDelete, setListToDelete] = useState<List | null>(null);
@@ -36,19 +36,13 @@ export const ListsCarousel: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Scroll to the selected list card when selectedListId changes or lists update
     if (scrollContainerRef.current && selectedListId) {
       const selectedCard = scrollContainerRef.current.querySelector(`[data-list-id="${selectedListId}"]`) as HTMLElement;
       if (selectedCard) {
         const containerRect = scrollContainerRef.current.getBoundingClientRect();
         const cardRect = selectedCard.getBoundingClientRect();
-
-        // Calculate scroll position to center the card if possible, or bring it into view
         let scrollLeft = scrollContainerRef.current.scrollLeft + (cardRect.left - containerRect.left) - (containerRect.width / 2) + (cardRect.width / 2);
-
-        // Ensure scrollLeft is within bounds
         scrollLeft = Math.max(0, Math.min(scrollLeft, scrollContainerRef.current.scrollWidth - containerRect.width));
-
         scrollContainerRef.current.scrollTo({
           left: scrollLeft,
           behavior: 'smooth',
@@ -56,7 +50,6 @@ export const ListsCarousel: React.FC = () => {
       }
     }
   }, [selectedListId, lists]);
-
 
   const handleSelectList = (listId: string) => {
     dispatch({ type: 'SELECT_LIST', payload: listId });
@@ -79,17 +72,16 @@ export const ListsCarousel: React.FC = () => {
   const confirmDeleteList = () => {
     if (listToDelete) {
       dispatch({ type: 'DELETE_LIST', payload: listToDelete.id });
-      // TODO: Firebase - deleteListFromFirestore(listToDelete.id);
       setListToDelete(null);
     }
   };
 
   return (
-    <div className="mb-2"> {/* Reduced mb */}
+    <div className="mb-2">
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto space-x-2 pb-2 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent" // Reduced space-x and pb
-        style={{ scrollbarWidth: 'thin' }} // For Firefox
+        className="flex overflow-x-auto space-x-2 pb-1 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent"
+        style={{ scrollbarWidth: 'thin' }}
       >
         {lists.map((list) => {
           const isSelected = list.id === selectedListId;
@@ -98,50 +90,52 @@ export const ListsCarousel: React.FC = () => {
               key={list.id}
               data-list-id={list.id}
               className={cn(
-                "min-w-[100px] sm:min-w-[120px] flex-shrink-0 cursor-pointer transition-all duration-200 ease-in-out glow-border-inner flex flex-col justify-center items-center", // Made cards thinner and center content
+                "min-w-[100px] max-w-[150px] h-10 flex-shrink-0 cursor-pointer transition-all duration-200 ease-in-out flex items-center justify-between px-3 py-1.5 rounded-md text-sm font-medium",
+                "glow-border-inner",
                 isSelected
-                  ? "border-primary shadow-neon ring-2 ring-primary bg-primary/10 transform scale-105"
-                  : "border-muted-foreground/30 hover:border-secondary hover:bg-secondary/10",
+                  ? "bg-primary/20 text-primary shadow-neon ring-1 ring-primary" // Mimic active tab
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-secondary", // Mimic inactive tab
               )}
               onClick={() => handleSelectList(list.id)}
-              style={{ height: '50px' }} // Set a fixed thinner height
             >
-              <CardHeader className="p-2 pb-0 pt-1 w-full"> {/* Reduced padding */}
-                <div className="flex justify-between items-center">
-                    <CardTitle className={cn("text-xs font-semibold truncate flex-grow", isSelected ? "text-primary" : "text-neonText")}>{list.name}</CardTitle> {/* List name only */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className={cn("h-5 w-5 -mr-1 -mt-0.5 p-0", isSelected ? "text-primary hover:bg-primary/20" : "text-muted-foreground hover:bg-muted/20")}> {/* Smaller icon button */}
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                                <span className="sr-only">List options</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-card border-primary/50 shadow-neon glow-border w-40" align="end" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => handleEditList(list)} className="text-neonText hover:bg-primary/10 focus:bg-primary/20 focus:text-primary">
-                                <Edit2 className="mr-2 h-4 w-4" /> Edit List
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-border/50" />
-                            <DropdownMenuItem onClick={() => handleDeleteList(list)} className="text-destructive hover:bg-destructive/20 focus:bg-destructive/20 focus:text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete List
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-              </CardHeader>
-              {/* Removed CardContent that showed spent/limit */}
+              <CardTitle className={cn(
+                "text-xs font-semibold truncate flex-grow leading-none", // Ensure title doesn't wrap and affect height
+                 isSelected ? "text-primary" : "text-neonText"
+                )}
+              >
+                {list.name}
+              </CardTitle>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className={cn("h-6 w-6 p-0 ml-1 shrink-0", isSelected ? "text-primary hover:bg-primary/20" : "text-muted-foreground hover:bg-muted/20")}>
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                    <span className="sr-only">List options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-card border-primary/50 shadow-neon glow-border w-40" align="end" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={() => handleEditList(list)} className="text-neonText hover:bg-primary/10 focus:bg-primary/20 focus:text-primary cursor-pointer">
+                    <Edit2 className="mr-2 h-4 w-4" /> Edit List
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border/50" />
+                  <DropdownMenuItem onClick={() => handleDeleteList(list)} className="text-destructive hover:bg-destructive/20 focus:bg-destructive/20 focus:text-destructive cursor-pointer">
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete List
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </Card>
           );
         })}
-        <Card
-          className="min-w-[90px] sm:min-w-[100px] flex-shrink-0 flex flex-col items-center justify-center cursor-pointer border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 transition-all duration-200 ease-in-out glow-border-inner" // Made thinner
+        <Button
+          variant="outline"
+          className={cn(
+            "min-w-[90px] h-10 flex-shrink-0 flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium",
+            "border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 text-primary glow-border-inner"
+          )}
           onClick={handleAddNewList}
-          style={{ height: '50px' }} // Match height
         >
-          <CardContent className="p-2 flex flex-col items-center justify-center text-center"> {/* Reduced padding */}
-            <PlusCircle className="h-5 w-5 text-primary mb-0.5" /> {/* Smaller icon */}
-            <span className="text-[10px] sm:text-xs font-medium text-primary">New List</span>
-          </CardContent>
-        </Card>
+          <PlusCircle className="h-4 w-4 mr-1" />
+          <span className="text-xs">New List</span>
+        </Button>
       </div>
 
       <AddEditListModal

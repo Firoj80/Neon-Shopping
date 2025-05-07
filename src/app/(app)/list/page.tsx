@@ -1,13 +1,14 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, ShoppingCart, CheckCircle } from 'lucide-react';
 import { ItemCard } from '@/components/shopping/item-card';
 import { useAppContext } from '@/context/app-context';
-import type { ShoppingListItem as AppShoppingListItem } from '@/context/app-context'; // Renamed to avoid conflict
+import type { ShoppingListItem as AppShoppingListItem } from '@/context/app-context';
 import { AddEditItemModal } from '@/components/shopping/add-edit-item-modal';
-import { BudgetCard } from '@/components/budget/budget-panel'; // Renamed import
-import { ListsCarousel } from '@/components/list/ListsCarousel'; // New component
+import { BudgetCard } from '@/components/budget/budget-panel';
+import { ListsCarousel } from '@/components/list/ListsCarousel';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +35,6 @@ export default function ShoppingListPage() {
 
   const handleAddItemClick = () => {
     if (!selectedListId) {
-        // Optionally, prompt user to select or create a list first
         alert("Please select or create a list before adding items.");
         return;
     }
@@ -54,7 +54,6 @@ export default function ShoppingListPage() {
   const confirmDelete = () => {
     if (itemToDelete) {
       dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete });
-      // TODO: Firebase - deleteItemFromFirestore(itemToDelete);
       setItemToDelete(null);
     }
   };
@@ -71,13 +70,11 @@ export default function ShoppingListPage() {
         type: 'UPDATE_SHOPPING_ITEM',
         payload: { ...editingItem, ...itemData },
       });
-      // TODO: Firebase - updateItemInFirestore({ ...editingItem, ...itemData });
     } else {
       dispatch({
         type: 'ADD_SHOPPING_ITEM',
         payload: { ...itemData, listId: selectedListId, checked: false },
       });
-      // TODO: Firebase - addItemToFirestore({ ...itemData, listId: selectedListId, checked: false });
     }
     setIsAddItemModalOpen(false);
     setEditingItem(null);
@@ -119,7 +116,7 @@ export default function ShoppingListPage() {
   const purchasedItems = useMemo(() => itemsForSelectedList.filter(item => item.checked), [itemsForSelectedList]);
 
   const renderItemList = (items: AppShoppingListItem[], emptyMessage: string) => (
-     isLoading && itemsForSelectedList.length === 0 ? ( // Show skeleton only if loading and no items yet for selected list
+     isLoading && itemsForSelectedList.length === 0 ? (
          <div className="flex flex-col gap-2 pb-4">
             {renderSkeletons()}
          </div>
@@ -141,11 +138,11 @@ export default function ShoppingListPage() {
     )
   );
 
-  if (isLoading && state.lists.length === 0) { // Initial app load skeleton
+  if (isLoading && state.lists.length === 0) {
     return (
         <div className="flex flex-col h-full gap-4">
             <BudgetCardSkeleton />
-            <Skeleton className="h-24 w-full rounded-lg" /> {/* Lists Carousel Skeleton */}
+            <Skeleton className="h-16 w-full rounded-lg" /> {/* Lists Carousel Skeleton - reduced height */}
             <Skeleton className="h-10 w-full rounded-md" /> {/* TabsList Skeleton */}
             <div className="flex-grow overflow-y-auto">
                 {renderSkeletons()}
@@ -157,11 +154,11 @@ export default function ShoppingListPage() {
 
   return (
     <div className="flex flex-col h-full">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pb-0 pt-2"> {/* Reduced pb */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pt-1 pb-0"> {/* Adjusted padding */}
             <BudgetCard />
-            <ListsCarousel />
+            <ListsCarousel /> {/* Removed margin top as spacing is handled by BudgetCard's bottom margin */}
             <ClientOnly>
-                <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-3"> {/* Added mt-3 */}
+                <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2"> {/* Reduced mt */}
                     <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
                         <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
                     </TabsTrigger>
@@ -172,7 +169,7 @@ export default function ShoppingListPage() {
             </ClientOnly>
         </div>
 
-        <div className="flex-grow overflow-y-auto mt-1"> {/* Added mt-1 */}
+        <div className="flex-grow overflow-y-auto mt-1">
           {!selectedListId && !isLoading ? (
             <div className="flex items-center justify-center h-full text-center py-10">
                 <p className="text-muted-foreground text-neonText">Please select or create a shopping list to view items.</p>
@@ -194,7 +191,7 @@ export default function ShoppingListPage() {
             size="lg"
             className="fixed bottom-[calc(50px+1.5rem+env(safe-area-inset-bottom))] right-6 md:bottom-[calc(50px+2rem+env(safe-area-inset-bottom))] md:right-8 z-20 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
-            disabled={!selectedListId || isLoading} // Disable if no list selected or loading
+            disabled={!selectedListId || isLoading}
           >
              <PlusCircle className="h-6 w-6" />
          </Button>
@@ -207,8 +204,6 @@ export default function ShoppingListPage() {
             }}
             onSave={handleSaveItem}
             itemData={editingItem}
-            // Pass selectedListId if your modal needs it directly,
-            // or rely on it being set in the handleSaveItem function from context
             currentListId={selectedListId}
         />
 
@@ -231,3 +226,4 @@ export default function ShoppingListPage() {
     </div>
   );
 }
+

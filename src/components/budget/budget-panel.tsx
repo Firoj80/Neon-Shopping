@@ -8,7 +8,7 @@ import type { List, ShoppingListItem } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Input } from "@/components/ui/input";
 import { Label } from '@/components/ui/label';
-import { Edit2, Wallet, Coins, Info, Tag } from 'lucide-react'; // Added Tag for list name
+import { Edit2, Wallet, Coins } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -24,8 +24,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { format, startOfDay } from 'date-fns'; // Import startOfDay
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { startOfDay, format } from 'date-fns';
 
 const budgetFormSchema = z.object({
     budgetLimit: z.number().min(0, "Budget limit cannot be negative"),
@@ -33,14 +32,32 @@ const budgetFormSchema = z.object({
 
 type BudgetFormData = z.infer<typeof budgetFormSchema>;
 
-// Renamed to BudgetCard to reflect its purpose for a selected list
 export const BudgetCard: React.FC = () => {
   const { state, dispatch, formatCurrency, isLoading } = useAppContext();
   const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [budgetDateLabel, setBudgetDateLabel] = useState('Not Set');
+
 
   const selectedList: List | undefined = useMemo(() => {
     return state.lists.find(list => list.id === state.selectedListId);
   }, [state.lists, state.selectedListId]);
+
+  // Find the current budget for the selected list, or create a default if none exists
+  const budgetForSelectedList = useMemo(() => {
+    if (!selectedList) {
+        // Return a default structure if no list is selected to avoid errors
+        return { listId: null, limit: 0, spent: 0, lastSetDate: null };
+    }
+    // This example assumes budget is directly on the list object.
+    // If budget is managed separately, this logic will need to change.
+    return {
+        listId: selectedList.id,
+        limit: selectedList.budgetLimit,
+        spent: 0, // This will be calculated based on items
+        lastSetDate: null // Assuming this is not tracked per list directly, or needs to be added
+    };
+  }, [selectedList, state.lists, state.selectedListId]);
+
 
   const itemsForSelectedList: ShoppingListItem[] = useMemo(() => {
     if (!selectedList) return [];
@@ -49,13 +66,12 @@ export const BudgetCard: React.FC = () => {
 
   const spentForSelectedList: number = useMemo(() => {
     if (!selectedList) return 0;
-    // Calculate spent amount only for *checked* items in the *selected list*
-    // For daily budget, you might want to filter by dateAdded as well if it's a daily reset
-    const today = startOfDay(new Date());
+    // const today = startOfDay(new Date()); // Not used currently, for daily reset if needed
     return itemsForSelectedList
-      .filter(item => item.checked /* && isSameDay(new Date(item.dateAdded), today) */) // Uncomment for daily reset
+      .filter(item => item.checked)
       .reduce((total, item) => total + (item.price * item.quantity), 0);
   }, [itemsForSelectedList, selectedList]);
+
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<BudgetFormData>({
       resolver: zodResolver(budgetFormSchema),
@@ -69,6 +85,19 @@ export const BudgetCard: React.FC = () => {
         reset({ budgetLimit: selectedList.budgetLimit });
     }
   }, [selectedList, reset]);
+
+   useEffect(() => {
+       if (budgetForSelectedList.lastSetDate) {
+           try {
+               setBudgetDateLabel(format(new Date(budgetForSelectedList.lastSetDate), "MMM d, yyyy"));
+           } catch (e) {
+               console.error("Error formatting budget date:", e);
+               setBudgetDateLabel("Invalid Date");
+           }
+       } else {
+           setBudgetDateLabel('Not Set');
+       }
+   }, [budgetForSelectedList.lastSetDate]);
 
 
   if (isLoading || !selectedList) {
@@ -86,27 +115,23 @@ export const BudgetCard: React.FC = () => {
             type: 'UPDATE_LIST',
             payload: { ...selectedList, budgetLimit: data.budgetLimit }
         });
-        // TODO: Firebase - updateListInFirestore({ ...selectedList, budgetLimit: data.budgetLimit });
       }
       setIsEditingBudget(false);
    };
 
   return (
-    <Card className="w-full bg-card border-primary/30 shadow-neon glow-border mb-2 sm:mb-3"> {/* Reduced mb */}
-       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-1 sm:space-y-0 pb-1 pt-2 px-3 sm:pb-2 sm:pt-3 sm:px-4"> {/* Reduced padding */}
+    <Card className="w-full bg-card border-primary/30 shadow-neon glow-border-inner mb-1 sm:mb-2">
+       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
         <div className="flex items-center gap-2">
-             <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" /> {/* Slightly smaller icon on mobile */}
-             <div className="flex flex-col">
-                <CardTitle className="text-sm sm:text-base font-semibold text-primary leading-tight"> {/* Reduced font size */}
-                    Budget: <span className="text-secondary">{selectedList.name}</span>
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">Manage budget for this list.</p>
-             </div>
+             <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+             <CardTitle className="text-sm sm:text-base font-semibold text-primary leading-tight">
+                 Budget: <span className="text-secondary">{selectedList.name}</span>
+             </CardTitle>
         </div>
 
         <Dialog open={isEditingBudget} onOpenChange={setIsEditingBudget}>
           <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-primary/80 hover:text-primary hover:bg-primary/10 mt-1 sm:mt-0 self-start sm:self-center glow-border-inner text-xs px-2 py-1 h-auto"> {/* Smaller button */}
+              <Button variant="ghost" size="sm" className="text-primary/80 hover:text-primary hover:bg-primary/10 glow-border-inner text-xs px-2 py-1 h-auto">
                 <Edit2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
                 Edit
               </Button>
@@ -149,8 +174,8 @@ export const BudgetCard: React.FC = () => {
           </DialogContent>
         </Dialog>
       </CardHeader>
-       <CardContent className="space-y-2 sm:space-y-3 px-3 pb-3 sm:px-4 sm:pb-4 glow-border-inner"> {/* Reduced padding & spacing */}
-         <div className="space-y-0.5"> {/* Reduced space-y */}
+       <CardContent className="space-y-1 px-3 pb-2 sm:px-4 sm:pb-3 glow-border-inner">
+         <div className="space-y-0.5">
              <div className="flex justify-between items-center text-xs text-muted-foreground">
                  <span>Spent: {formatCurrency(spentForSelectedList)}</span>
                  <span>Limit: {formatCurrency(budgetLimit)}</span>
@@ -158,7 +183,7 @@ export const BudgetCard: React.FC = () => {
             <Progress
                 value={spentPercentage}
                 className={cn(
-                    "h-1.5 sm:h-2 bg-secondary/20 glow-border-inner", // Reduced height
+                    "h-1.5 bg-secondary/20 glow-border-inner",
                      isOverBudget ? "[&>div]:bg-destructive" : "[&>div]:bg-primary"
                 )}
                 aria-label={`${spentPercentage.toFixed(0)}% of budget spent`}
@@ -171,19 +196,19 @@ export const BudgetCard: React.FC = () => {
              </p>
         </div>
 
-         <div className="flex items-center justify-between pt-0.5 sm:pt-1"> {/* Reduced pt */}
-            <div className="flex items-center gap-1.5 text-sm font-medium"> {/* Reduced gap */}
-                 <Coins className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", isOverBudget ? 'text-destructive' : 'text-primary')} /> {/* Slightly smaller icon */}
-                <span className={cn("text-neonText text-xs sm:text-sm")}> {/* Reduced font size */}
+         <div className="flex items-center justify-between pt-0.5">
+            <div className="flex items-center gap-1 text-sm font-medium">
+                 <Coins className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", isOverBudget ? 'text-destructive' : 'text-primary')} />
+                <span className={cn("text-neonText text-xs")}>
                     Remaining:
                 </span>
             </div>
-             <div className={cn("text-sm sm:text-base font-bold", isOverBudget ? 'text-destructive' : 'text-primary')}> {/* Reduced font size */}
+             <div className={cn("text-sm font-bold", isOverBudget ? 'text-destructive' : 'text-primary')}>
                 {formatCurrency(remaining)}
             </div>
          </div>
          {isOverBudget && (
-            <p className="text-xs text-destructive/80 text-right">
+            <p className="text-xs text-destructive/80 text-right -mt-1">
                 Over budget by {formatCurrency(Math.abs(remaining))}
             </p>
          )}
@@ -194,35 +219,34 @@ export const BudgetCard: React.FC = () => {
 
 const BudgetCardSkeleton: React.FC<{ selectedListName?: string }> = ({ selectedListName }) => {
   return (
-    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-2 sm:mb-3 glow-border"> {/* Reduced mb */}
-       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-1 sm:space-y-0 pb-1 pt-2 px-3 sm:pb-2 sm:pt-3 sm:px-4"> {/* Reduced padding */}
+    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-1 sm:mb-2 glow-border">
+       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
         <div className="flex items-center gap-2 w-3/5">
             <Skeleton className="h-5 w-5 rounded-full" />
             <div className="flex flex-col gap-1 w-full">
-                 <Skeleton className="h-4 w-3/4" /> {/* Reduced title skeleton height */}
+                 <Skeleton className="h-4 w-3/4" />
                  <Skeleton className="h-3 w-1/2" />
             </div>
         </div>
-        <Skeleton className="h-7 w-20 rounded-md self-start sm:self-center" /> {/* Reduced button skeleton height */}
+        <Skeleton className="h-7 w-20 rounded-md self-center" />
       </CardHeader>
-       <CardContent className="space-y-2 sm:space-y-3 px-3 pb-3 sm:px-4 sm:pb-4 glow-border-inner"> {/* Reduced padding & spacing */}
-        <div className="space-y-0.5"> {/* Reduced space-y */}
+       <CardContent className="space-y-1 px-3 pb-2 sm:px-4 sm:pb-3 glow-border-inner">
+        <div className="space-y-0.5">
           <div className="flex justify-between items-center">
             <Skeleton className="h-3 w-1/4" />
             <Skeleton className="h-3 w-1/4" />
           </div>
-          <Skeleton className="h-1.5 sm:h-2 w-full rounded-full glow-border-inner" /> {/* Reduced height */}
+          <Skeleton className="h-1.5 w-full rounded-full glow-border-inner" />
           <Skeleton className="h-3 w-1/5 ml-auto" />
         </div>
-         <div className="flex items-center justify-between pt-0.5 sm:pt-1"> {/* Reduced pt */}
-          <div className="flex items-center gap-1.5"> {/* Reduced gap */}
-            <Skeleton className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded-full" /> {/* Reduced icon skeleton */}
-            <Skeleton className="h-3.5 w-1/3 sm:h-4" /> {/* Reduced text skeleton */}
+         <div className="flex items-center justify-between pt-0.5">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-3.5 w-3.5 rounded-full" />
+            <Skeleton className="h-3.5 w-1/3" />
           </div>
-          <Skeleton className="h-4 w-1/4 sm:h-5" /> {/* Reduced amount skeleton */}
+          <Skeleton className="h-4 w-1/4" />
         </div>
       </CardContent>
     </Card>
   );
 };
-
