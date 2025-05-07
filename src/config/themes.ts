@@ -8,7 +8,7 @@ export interface Theme {
   name: string;
   className: string; // CSS class to be applied to the <html> tag
   previewColor: string; // A representative color for UI previews (e.g., primary or accent)
-  variables: {
+  variables: { // These are conceptual here, the actual CSS variables are in globals.css
     background: string; // HSL format: "H S% L%"
     foreground: string;
     card: string;
@@ -48,13 +48,13 @@ export interface Theme {
   };
 }
 
-export const defaultThemeId = 'cyberpunk-cyan';
+export const defaultThemeId = 'cyberpunk-cyan'; // Default theme ID
 
 export const themes: Theme[] = [
   {
     id: 'cyberpunk-cyan',
     name: 'Cyberpunk Cyan',
-    className: 'theme-cyberpunk-cyan',
+    className: 'theme-cyberpunk-cyan', // Should match CSS class in globals.css
     previewColor: 'hsl(180, 100%, 50%)',
     variables: {
       background: '0 0% 0%',
@@ -63,9 +63,9 @@ export const themes: Theme[] = [
       cardForeground: '0 0% 95%',
       popover: '0 0% 7%',
       popoverForeground: '0 0% 95%',
-      primary: '180 100% 50%', // Neon Cyan
+      primary: '180 100% 50%',
       primaryForeground: '180 100% 10%',
-      secondary: '300 100% 50%', // Neon Magenta
+      secondary: '300 100% 50%',
       secondaryForeground: '300 100% 10%',
       muted: '0 0% 15%',
       mutedForeground: '0 0% 60%',
@@ -84,11 +84,11 @@ export const themes: Theme[] = [
       sidebarAccentForeground: '0 0% 5%',
       sidebarBorder: '180 100% 20%',
       sidebarRing: '180 100% 50%',
-      chart1: '180 100% 50%', // Neon Cyan
-      chart2: '300 100% 50%', // Neon Magenta
-      chart3: '120 100% 50%', // Neon Green
-      chart4: '60 100% 50%',  // Neon Yellow
-      chart5: '30 100% 50%',   // Neon Orange
+      chart1: '180 100% 50%',
+      chart2: '300 100% 50%',
+      chart3: '120 100% 50%',
+      chart4: '60 100% 50%',
+      chart5: '30 100% 50%',
       neonText: '0 0% 90%',
     },
   },
@@ -96,17 +96,17 @@ export const themes: Theme[] = [
     id: 'synthwave-sunset',
     name: 'Synthwave Sunset',
     className: 'theme-synthwave-sunset',
-    previewColor: 'hsl(330, 100%, 55%)', // Deep Pink/Orange
+    previewColor: 'hsl(330, 100%, 55%)',
     variables: {
-      background: '260 30% 5%', // Dark Purple
+      background: '260 30% 5%',
       foreground: '0 0% 90%',
       card: '260 30% 10%',
       cardForeground: '0 0% 90%',
       popover: '260 30% 10%',
       popoverForeground: '0 0% 90%',
-      primary: '330 100% 55%', // Neon Pink/Orange
+      primary: '330 100% 55%',
       primaryForeground: '330 100% 15%',
-      secondary: '30 100% 50%', // Neon Orange/Yellow
+      secondary: '30 100% 50%',
       secondaryForeground: '30 100% 10%',
       muted: '260 30% 20%',
       mutedForeground: '0 0% 65%',
@@ -127,9 +127,9 @@ export const themes: Theme[] = [
       sidebarRing: '330 100% 55%',
       chart1: '330 100% 55%',
       chart2: '30 100% 50%',
-      chart3: '210 100% 50%', // Neon Blue
-      chart4: '150 100% 50%', // Neon Teal
-      chart5: '270 100% 60%', // Neon Purple
+      chart3: '210 100% 50%',
+      chart4: '150 100% 50%',
+      chart5: '270 100% 60%',
       neonText: '0 0% 88%',
     },
   },
@@ -137,17 +137,17 @@ export const themes: Theme[] = [
     id: 'matrix-green',
     name: 'Matrix Green',
     className: 'theme-matrix-green',
-    previewColor: 'hsl(120, 100%, 50%)', // Bright Green
+    previewColor: 'hsl(120, 100%, 50%)',
     variables: {
-      background: '0 0% 2%', // Very Dark (almost black)
-      foreground: '120 100% 70%', // Lighter Green
+      background: '0 0% 2%',
+      foreground: '120 100% 70%',
       card: '0 0% 5%',
       cardForeground: '120 100% 70%',
       popover: '0 0% 5%',
       popoverForeground: '120 100% 70%',
-      primary: '120 100% 50%', // Neon Green
-      primaryForeground: '120 100% 5%', // Dark Green
-      secondary: '120 80% 30%', // Darker Neon Green
+      primary: '120 100% 50%',
+      primaryForeground: '120 100% 5%',
+      secondary: '120 80% 30%',
       secondaryForeground: '120 100% 80%',
       muted: '0 0% 10%',
       mutedForeground: '120 70% 50%',
@@ -168,9 +168,9 @@ export const themes: Theme[] = [
       sidebarRing: '120 100% 50%',
       chart1: '120 100% 50%',
       chart2: '120 80% 30%',
-      chart3: '100 100% 50%', // Lime Green
-      chart4: '140 100% 50%', // Greenish-Cyan
-      chart5: '0 0% 60%',     // Gray for contrast
+      chart3: '100 100% 50%',
+      chart4: '140 100% 50%',
+      chart5: '0 0% 60%',
       neonText: '120 100% 75%',
     },
   },
@@ -178,17 +178,17 @@ export const themes: Theme[] = [
     id: 'electric-blue',
     name: 'Electric Blue',
     className: 'theme-electric-blue',
-    previewColor: 'hsl(210, 100%, 55%)', // Bright Blue
+    previewColor: 'hsl(210, 100%, 55%)',
     variables: {
-      background: '220 40% 4%', // Very Dark Blue
+      background: '220 40% 4%',
       foreground: '0 0% 92%',
       card: '220 40% 8%',
       cardForeground: '0 0% 92%',
       popover: '220 40% 8%',
       popoverForeground: '0 0% 92%',
-      primary: '210 100% 55%', // Neon Electric Blue
+      primary: '210 100% 55%',
       primaryForeground: '210 100% 10%',
-      secondary: '180 100% 45%', // Neon Cyan (complementary)
+      secondary: '180 100% 45%',
       secondaryForeground: '180 100% 5%',
       muted: '220 40% 15%',
       mutedForeground: '0 0% 70%',
@@ -209,9 +209,9 @@ export const themes: Theme[] = [
       sidebarRing: '210 100% 55%',
       chart1: '210 100% 55%',
       chart2: '180 100% 45%',
-      chart3: '240 100% 60%', // Neon Indigo
-      chart4: '270 100% 60%', // Neon Purple
-      chart5: '300 100% 55%', // Neon Magenta
+      chart3: '240 100% 60%',
+      chart4: '270 100% 60%',
+      chart5: '300 100% 55%',
       neonText: '0 0% 90%',
     },
   },
@@ -219,23 +219,23 @@ export const themes: Theme[] = [
     id: 'crimson-code',
     name: 'Crimson Code',
     className: 'theme-crimson-code',
-    previewColor: 'hsl(0, 100%, 50%)', // Bright Red
+    previewColor: 'hsl(0, 100%, 50%)',
     variables: {
-      background: '0 0% 3%', // Very Dark, almost black
+      background: '0 0% 3%',
       foreground: '0 0% 88%',
       card: '0 0% 6%',
       cardForeground: '0 0% 88%',
       popover: '0 0% 6%',
       popoverForeground: '0 0% 88%',
-      primary: '0 100% 50%', // Neon Red
+      primary: '0 100% 50%',
       primaryForeground: '0 100% 10%',
-      secondary: '30 100% 45%', // Neon Orange
+      secondary: '30 100% 45%',
       secondaryForeground: '30 100% 5%',
       muted: '0 0% 12%',
       mutedForeground: '0 0% 60%',
       accent: '30 100% 60%',
       accentForeground: '0 0% 3%',
-      destructive: '0 100% 40%', // Slightly darker red for destructive
+      destructive: '0 100% 40%',
       destructiveForeground: '0 0% 95%',
       border: '0 100% 28%',
       input: '0 0% 12%',
@@ -250,9 +250,9 @@ export const themes: Theme[] = [
       sidebarRing: '0 100% 50%',
       chart1: '0 100% 50%',
       chart2: '30 100% 45%',
-      chart3: '60 100% 45%', // Neon Yellow
-      chart4: '330 100% 50%', // Neon Pink
-      chart5: '0 0% 70%',     // Light Gray for contrast
+      chart3: '60 100% 45%',
+      chart4: '330 100% 50%',
+      chart5: '0 0% 70%',
       neonText: '0 0% 85%',
     },
   },
