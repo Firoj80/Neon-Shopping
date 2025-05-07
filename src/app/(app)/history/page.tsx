@@ -41,7 +41,7 @@ export default function HistoryPage() {
 
     // Filter and sort items based on selections
     const historyItems = useMemo(() => {
-        let items = state.shoppingList.filter(item => item.checked); // Only purchased items
+        let items: ShoppingListItem[] = Array.isArray(state.shoppingList) ? state.shoppingList.filter(item => item.checked) : []; // Only purchased items, added check for state.shoppingList
          if (selectedListId !== null) {
             items = items.filter(item => item.listId === selectedListId); // List Filter
         }
@@ -66,7 +66,7 @@ export default function HistoryPage() {
             switch (sortOption) {
                 case 'dateAsc': return a.dateAdded - b.dateAdded;
                 case 'priceDesc': return (b.price * b.quantity) - (a.price * a.quantity);
-                case 'priceAsc': return (a.price * a.quantity) - (b.price * b.quantity);
+                case 'priceAsc': return (a.price * a.quantity) - (b.price * a.quantity);
                 case 'dateDesc':
                 default: return b.dateAdded - a.dateAdded;
             }
@@ -291,7 +291,7 @@ const HistoryPageSkeleton: React.FC = () => (
         <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" /> {/* Title */}
 
         {/* Filter Skeleton - Sticky */}
-        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border-inner">
+        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                 <Skeleton className="h-5 w-1/5" />
             </CardHeader>
@@ -331,4 +331,3 @@ const HistoryPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
-
