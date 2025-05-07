@@ -1,16 +1,17 @@
+
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google'; // Import Inter font
+import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import './globals.css';
-import { Providers } from './providers'; // Import Providers
+import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
-import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { ThemeWatcher } from '@/context/theme-watcher'; // Import ThemeWatcher
 import { Toaster } from "@/components/ui/toaster";
-import ClientOnly from '@/components/client-only'; // Import ClientOnly
+import ClientOnly from '@/components/client-only';
 
-// Use Inter font
 const inter = Inter({
-  variable: '--font-inter', // Set a CSS variable
+  variable: '--font-inter',
   subsets: ['latin'],
 });
 
@@ -26,24 +27,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-        {/* Apply the font variable */}
-        <body
-            className={cn(
-            inter.variable, // Apply the Inter font variable
-            'font-sans antialiased min-h-screen flex flex-col bg-background', // Use font-sans
-            )}
-        >
-          <Providers>
-              <SidebarProvider>
-                <ClientOnly> {/* Wrap AppLayout with ClientOnly */}
-                  <AppLayout>
-                      {children}
-                  </AppLayout>
-                </ClientOnly>
-                <Toaster />
-             </SidebarProvider>
-          </Providers>
-         </body>
-     </html>
+      <body
+        className={cn(
+          inter.variable,
+          'font-sans antialiased min-h-screen flex flex-col bg-background',
+        )}
+      >
+        <Providers>
+          <ThemeWatcher> {/* Wrap SidebarProvider (and thus AppLayout) with ThemeWatcher */}
+            <SidebarProvider>
+              <ClientOnly>
+                <AppLayout>
+                  {children}
+                </AppLayout>
+              </ClientOnly>
+              <Toaster />
+            </SidebarProvider>
+          </ThemeWatcher>
+        </Providers>
+      </body>
+    </html>
   );
 }
