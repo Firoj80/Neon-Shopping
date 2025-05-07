@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -13,7 +12,7 @@ import { getSupportedCurrencies, getUserCurrency } from '@/services/currency';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X, Palette } from 'lucide-react'; // Added Palette icon
+import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X, Palette, ArrowRight } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
-import { themes as appThemes, type Theme as AppTheme } from '@/config/themes'; // Import themes
+import Link from 'next/link'; // Import Link for navigation
 
 export default function SettingsPage() {
   const { state, dispatch, isLoading: contextLoading } = useAppContext();
@@ -136,8 +135,12 @@ export default function SettingsPage() {
   const confirmDeleteCategory = () => {
     if (!categoryToDelete) return;
     const itemsWithCategory = state.shoppingList.filter(item => item.category === categoryToDelete.id);
-    if (itemsWithCategory.length > 0 && !reassignCategoryId) {
-      toast({ title: "Reassignment Required", description: "Select category to reassign items.", variant: "destructive" });
+    if (itemsWithCategory.length > 0 && !reassignCategoryId && categoriesForReassignment.length === 0) {
+       toast({ title: "Cannot Delete", description: "This is the only category and items are assigned to it. Create another category first or reassign items.", variant: "destructive" });
+      return;
+    }
+     if (itemsWithCategory.length > 0 && !reassignCategoryId && categoriesForReassignment.length > 0) {
+      toast({ title: "Reassignment Required", description: "Select a category to reassign items to before deleting.", variant: "destructive" });
       return;
     }
     dispatch({
@@ -147,15 +150,6 @@ export default function SettingsPage() {
     setCategoryToDelete(null);
     setReassignCategoryId('');
     toast({ title: "Success", description: "Category deleted." });
-  };
-
-  const handleThemeSelect = (themeId: string) => {
-    dispatch({ type: 'SET_THEME', payload: themeId });
-    const selectedTheme = appThemes.find(t => t.id === themeId);
-    toast({
-      title: "Theme Changed",
-      description: `Switched to ${selectedTheme?.name || 'selected'} theme.`,
-    });
   };
 
   const isLoading = contextLoading || isLoadingCurrencies;
@@ -182,34 +176,15 @@ export default function SettingsPage() {
           <CardDescription className="text-muted-foreground">Customize the look and feel of the app.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 glow-border-inner p-4">
-          <Label className="text-neonText/80">Select Theme</Label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {appThemes.map((theme) => (
-              <Button
-                key={theme.id}
-                variant="outline"
-                className={cn(
-                  "flex flex-col items-center justify-center p-3 h-24 rounded-lg border-2 transition-all duration-200 ease-in-out glow-border-inner",
-                  state.theme === theme.id
-                    ? "border-primary shadow-neon ring-2 ring-primary"
-                    : "border-muted-foreground/30 hover:border-secondary"
-                )}
-                onClick={() => handleThemeSelect(theme.id)}
-                style={{ borderColor: state.theme === theme.id ? theme.previewColor : undefined }}
-              >
-                <div
-                  className="w-8 h-8 rounded-full mb-2 border border-foreground/20"
-                  style={{ backgroundColor: theme.previewColor }}
-                />
-                <span className={cn(
-                    "text-xs text-center truncate w-full",
-                     state.theme === theme.id ? "text-primary font-semibold" : "text-muted-foreground"
-                )}>
-                  {theme.name}
-                </span>
-              </Button>
-            ))}
-          </div>
+          <Link href="/settings/themes" passHref>
+            <Button variant="outline" className="w-full justify-between glow-border-inner hover:border-primary hover:shadow-neon">
+              <span className="text-neonText">Change Theme</span>
+              <ArrowRight className="h-4 w-4 text-primary" />
+            </Button>
+          </Link>
+           <p className="text-xs text-muted-foreground pt-1">
+              Explore different visual styles for your Neon Shopping experience.
+            </p>
         </CardContent>
       </Card>
 
@@ -324,6 +299,59 @@ export default function SettingsPage() {
                                   <span className="sr-only">Delete</span>
                                 </Button>
                               </AlertDialogTrigger>
+                               <AlertDialogContent className="glow-border">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Category: {categoryToDelete?.name}?</AlertDialogTitle>
+                                  {state.shoppingList.some(item => item.category === categoryToDelete?.id) ? (
+                                    <AlertDialogDescription>
+                                      This category is used by some shopping items. Please choose a category to reassign these items to before deleting, or confirm to remove items with this category.
+                                    </AlertDialogDescription>
+                                  ) : (
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the category.
+                                    </AlertDialogDescription>
+                                  )}
+                                </AlertDialogHeader>
+                                {state.shoppingList.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && (
+                                  <div className="py-4 grid gap-2">
+                                    <Label htmlFor="reassign-category" className="text-neonText/80">Reassign Items To</Label>
+                                    <Select
+                                      value={reassignCategoryId}
+                                      onValueChange={setReassignCategoryId}
+                                    >
+                                      <SelectTrigger
+                                        id="reassign-category"
+                                        className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
+                                      >
+                                        <SelectValue placeholder="Select a category..." />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
+                                        {categoriesForReassignment.map((cat) => (
+                                          <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
+                                            {cat.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                     <p className="text-xs text-muted-foreground pt-1">If no category is selected, items assigned to "{categoryToDelete?.name}" will be marked as "Uncategorized" or removed if this is the last category.</p>
+                                  </div>
+                                )}
+                                 {state.shoppingList.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length === 0 && (
+                                     <AlertDialogDescription className="pt-2 text-sm text-yellow-500">
+                                         Warning: This is the only category with assigned items. Deleting it will mark items as "Uncategorized" or remove them.
+                                    </AlertDialogDescription>
+                                )}
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={confirmDeleteCategory}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
+                                     disabled={state.shoppingList.some(item => item.category === categoryToDelete?.id) && !reassignCategoryId && categoriesForReassignment.length > 0}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
                             </AlertDialog>
                           </div>
                         </>
@@ -338,57 +366,6 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
-
-      <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
-        <AlertDialogContent className="glow-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Category: {categoryToDelete?.name}?</AlertDialogTitle>
-            {state.shoppingList.some(item => item.category === categoryToDelete?.id) ? (
-              <AlertDialogDescription>
-                This category is used by some shopping items. Please choose a category to reassign these items to before deleting.
-              </AlertDialogDescription>
-            ) : (
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the category.
-              </AlertDialogDescription>
-            )}
-          </AlertDialogHeader>
-          {state.shoppingList.some(item => item.category === categoryToDelete?.id) && (
-            <div className="py-4 grid gap-2">
-              <Label htmlFor="reassign-category" className="text-neonText/80">Reassign Items To</Label>
-              <Select
-                value={reassignCategoryId}
-                onValueChange={setReassignCategoryId}
-                disabled={categoriesForReassignment.length === 0}
-              >
-                <SelectTrigger
-                  id="reassign-category"
-                  className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
-                >
-                  <SelectValue placeholder={categoriesForReassignment.length > 0 ? "Select a category..." : "No other categories available"} />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
-                  {categoriesForReassignment.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteCategory}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
-              disabled={state.shoppingList.some(item => item.category === categoryToDelete?.id) && !reassignCategoryId && categoriesForReassignment.length > 0}
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
@@ -405,15 +382,8 @@ const SettingsPageSkeleton: React.FC = () => (
         <Skeleton className="h-4 w-3/5" /> {/* Card Description */}
       </CardHeader>
       <CardContent className="space-y-4 glow-border-inner p-4">
-        <Skeleton className="h-4 w-1/5 mb-2" /> {/* Label "Select Theme" */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="flex flex-col items-center p-3 h-24 rounded-lg border-2 border-muted-foreground/30 glow-border-inner">
-              <Skeleton className="w-8 h-8 rounded-full mb-2" />
-              <Skeleton className="h-3 w-3/4" />
-            </div>
-          ))}
-        </div>
+         <Skeleton className="h-10 w-full rounded-md" /> {/* Button */}
+         <Skeleton className="h-3 w-2/3 mt-1" /> {/* Helper text */}
       </CardContent>
     </Card>
 

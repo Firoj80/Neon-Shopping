@@ -1,6 +1,5 @@
-
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ShoppingCart,
@@ -17,38 +16,36 @@ import {
   X,
   UserCircle,
   Palette, // For theme selection
+  DollarSign,
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-  DropdownMenuSubContent,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { useAppContext } from '@/context/app-context'; // Import AppContext
-import { themes as appThemes } from '@/config/themes'; // Import themes
+import ClientOnly from '@/components/client-only';
+
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
   const { isMobile, openMobile, toggleSidebar } = useSidebar();
-  const { state: appState, dispatch: appDispatch } = useAppContext(); // Get theme state and dispatch
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname(); // Get current pathname
   const [isClientMounted, setIsClientMounted] = useState(false);
 
   useEffect(() => {
     setIsClientMounted(true);
   }, []);
+
 
   const profileMenuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
@@ -62,16 +59,17 @@ const MobileHeader: React.FC = () => {
     return pathname === itemHref;
   };
 
-  const handleThemeSelect = (themeId: string) => {
-    appDispatch({ type: 'SET_THEME', payload: themeId });
-    // Optionally: Close dropdown after selection
-    // if (openMobile) toggleSidebar(); // Or handle dropdown state separately
+  const handleNavigate = (href: string) => {
+    router.push(href);
+    if (openMobile) toggleSidebar(); // Close sidebar after navigation
   };
 
-  if (!isMobile) return null;
+
+  if (!isMobile && isClientMounted) return null; // Only render if mobile, after client mount
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+      {/* Hamburger Menu Trigger on the left */}
       <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
         <AnimatePresence initial={false} mode="wait">
           <motion.div
@@ -87,11 +85,13 @@ const MobileHeader: React.FC = () => {
         <span className="sr-only">Toggle Sidebar</span>
       </Button>
 
+      {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
         <ShoppingCart className="w-6 h-6" />
         <span className="font-bold text-neonText">Neon Shopping</span>
       </Link>
 
+      {/* Profile Icon/Dropdown on the right */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="ml-2 text-primary hover:text-primary/80 hover:bg-primary/10">
@@ -105,10 +105,7 @@ const MobileHeader: React.FC = () => {
           {profileMenuItems.map((item) => (
             <DropdownMenuItem
               key={item.href}
-              onClick={() => {
-                router.push(item.href);
-                if (openMobile) toggleSidebar();
-              }}
+              onClick={() => handleNavigate(item.href)}
               className={cn(
                 "flex items-center gap-2 cursor-pointer p-2 text-sm text-neonText hover:bg-primary/10 focus:bg-primary/20 focus:text-primary data-[active]:bg-primary/20 data-[active]:text-primary",
                 isDropdownItemActive(item.href) && "bg-primary/10 text-primary font-medium"
@@ -119,30 +116,14 @@ const MobileHeader: React.FC = () => {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator className="bg-border/50" />
-           {/* Theme Selection Submenu */}
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 cursor-pointer p-2 text-sm text-neonText hover:bg-primary/10 focus:bg-primary/20 focus:text-primary">
-              <Palette className="h-4 w-4" />
-              <span>Change Theme</span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent className="w-48 bg-card border-secondary/50 shadow-neon glow-border mr-2">
-                {appThemes.map((theme) => (
-                  <DropdownMenuItem
-                    key={theme.id}
-                    onClick={() => handleThemeSelect(theme.id)}
-                    className={cn(
-                      "flex items-center gap-2 cursor-pointer p-2 text-sm text-neonText hover:bg-secondary/10 focus:bg-secondary/20 focus:text-secondary",
-                      appState.theme === theme.id && "bg-secondary/10 text-secondary font-medium"
-                    )}
-                  >
-                    <div className="w-3 h-3 rounded-full border border-foreground/50" style={{ backgroundColor: theme.previewColor }} />
-                    <span>{theme.name}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
+          {/* Link to Theme Selection Page */}
+          <DropdownMenuItem
+            onClick={() => handleNavigate('/settings/themes')}
+            className="flex items-center gap-2 cursor-pointer p-2 text-sm text-neonText hover:bg-primary/10 focus:bg-primary/20 focus:text-primary"
+          >
+            <Palette className="h-4 w-4" />
+            <span>Change Theme</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
@@ -160,6 +141,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setIsClientMounted(true);
   }, []);
 
+
   const mainMenuDefinition = [
     { href: '/about', label: 'About Us', icon: InfoIcon },
     { href: '/contact', label: 'Contact Us', icon: Mail },
@@ -169,8 +151,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/more-apps', label: 'More Apps', icon: Apps },
   ];
 
-  const handleLinkClick = (itemHref: string, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-    event.preventDefault();
+
+  const handleLinkClick = (itemHref: string, event?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+    event?.preventDefault();
     if (isMobile && openMobile) {
       setOpenMobile(false);
     }
@@ -191,25 +174,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     "hover:text-secondary hover:border-secondary hover:shadow-[0_0_15px_3px_theme(colors.secondary.DEFAULT)/0.7,0_0_5px_theme(colors.secondary.DEFAULT)/0.9)]"
   );
 
-  const isItemActive = (itemHref: string) => {
+  const isItemActive = useCallback((itemHref: string) => {
     if (!isClientMounted) return false;
     return pathname === itemHref;
-  };
+  }, [pathname, isClientMounted]);
 
   return (
-    <>
-      <Sidebar className="hidden md:flex md:flex-col">
+    <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
+
+       {/* Desktop Sidebar */}
+       <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
             <ShoppingCart className="w-6 h-6" />
-            <span className="font-bold text-neonText">Neon Shopping</span>
+            <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-          {/* Profile items are now in the mobile header dropdown, and settings page for desktop */}
+          {/* Content for main area if needed, or leave empty if footer has all links */}
         </SidebarContent>
         <SidebarFooter className="p-2 border-t border-sidebar-border">
-          <SidebarMenu className="space-y-1.5 max-h-[calc(100vh/2.5)] overflow-y-auto custom-scrollbar">
+           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto custom-scrollbar">
             {mainMenuDefinition.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
@@ -231,15 +216,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
 
+      {/* Mobile Sidebar (Drawer) */}
       <Sidebar className="md:hidden" side="left" collapsible="offcanvas">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
-          <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setOpenMobile(false)}>
+           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setOpenMobile(false)}>
             <ShoppingCart className="w-6 h-6" />
-            <span className="font-bold text-neonText">Neon Shopping</span>
+            <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-          {/* Main menu items (About, Contact, etc.) are in the footer for mobile sidebar */}
+          {/* Primary navigation items for mobile can go here, or rely on profile dropdown */}
         </SidebarContent>
         <SidebarFooter className="p-2 border-t border-sidebar-border">
           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto custom-scrollbar">
@@ -263,11 +249,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
 
+      {/* Main Content Area */}
       <SidebarInset className="flex flex-col min-h-screen">
-        <MobileHeader />
+        <ClientOnly>
+            <MobileHeader />
+        </ClientOnly>
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom)+50px)] md:pb-[calc(1.5rem+env(safe-area-inset-bottom)+50px)]">
           {children}
         </main>
+        {/* Ad Banner Placeholder */}
         <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border shadow-neon-lg">
           <span className='text-muted-foreground/70'>Ad Banner Area</span>
         </div>
