@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -65,7 +66,10 @@ export default function StatsPage() {
         const startDate = startOfDay(dateRange.from);
         const endDate = endOfDay(dateRange.to);
 
-        return state.shoppingList.filter(item => {
+        const allShoppingItems = Array.isArray(state.shoppingListItems) ? state.shoppingListItems : [];
+
+
+        return allShoppingItems.filter(item => {
             if (!item.checked) return false; // Only purchased items
             if (selectedListId !== null && item.listId !== selectedListId) return false; // List Filter
 
@@ -74,7 +78,7 @@ export default function StatsPage() {
             const isMatchingCategory = selectedCategory === 'all' || item.category === selectedCategory;
             return isWithinDate && isMatchingCategory;
         });
-    }, [state.shoppingList, dateRange, selectedCategory, selectedListId]);
+    }, [state.shoppingListItems, dateRange, selectedCategory, selectedListId]);
 
 
     // Process data for Line/Bar chart (Expense Trend)
@@ -252,19 +256,23 @@ export default function StatsPage() {
       );
     }
 
+    if (isLoading) {
+        return <StatsPageSkeleton />;
+    }
+
 
     return (
         <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full"> {/* Ensure h-full for flex layout */}
             <h1 className="text-xl sm:text-2xl font-bold text-primary">Expense Dashboard</h1>
 
             {/* Filter Section - Made Sticky */}
-             <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm"> {/* Sticky classes added */}
+             <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border"> {/* Sticky classes added */}
                 <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                     <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2">
                         <Filter className="h-4 w-4" /> Filters
                     </CardTitle>
                 </CardHeader>
-                 <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6">
+                 <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
 
                     {/* List Selector*/}
                     <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
@@ -488,11 +496,12 @@ const StatsPageSkeleton: React.FC = () => (
         <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" /> {/* Title */}
 
         {/* Filter Skeleton - Sticky */}
-        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10">
+        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                 <Skeleton className="h-5 w-1/5" />
             </CardHeader>
-            <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6">
+            <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px] rounded-md" />
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px] rounded-md" />
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
@@ -551,4 +560,5 @@ const StatsPageSkeleton: React.FC = () => (
         </div>
     </div>
 );
+
 
