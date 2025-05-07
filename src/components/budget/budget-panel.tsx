@@ -1,14 +1,13 @@
-
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAppContext } from '@/context/app-context';
 import type { List, ShoppingListItem } from '@/context/app-context';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from '@/components/ui/label';
-import { Edit2, Wallet, Coins } from 'lucide-react';
+import { Edit2, Wallet, Coins, ShoppingCart } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -42,21 +41,19 @@ export const BudgetCard: React.FC = () => {
     return state.lists.find(list => list.id === state.selectedListId);
   }, [state.lists, state.selectedListId]);
 
-  // Find the current budget for the selected list, or create a default if none exists
+
   const budgetForSelectedList = useMemo(() => {
     if (!selectedList) {
-        // Return a default structure if no list is selected to avoid errors
         return { listId: null, limit: 0, spent: 0, lastSetDate: null };
     }
-    // This example assumes budget is directly on the list object.
-    // If budget is managed separately, this logic will need to change.
     return {
         listId: selectedList.id,
         limit: selectedList.budgetLimit,
-        spent: 0, // This will be calculated based on items
-        lastSetDate: null // Assuming this is not tracked per list directly, or needs to be added
+        spent: 0,
+        lastSetDate: null // This would typically be managed as part of the 'List' object if needed per-list.
+                         // For now, a general daily budget approach is simpler.
     };
-  }, [selectedList, state.lists, state.selectedListId]);
+  }, [selectedList]);
 
 
   const itemsForSelectedList: ShoppingListItem[] = useMemo(() => {
@@ -64,11 +61,13 @@ export const BudgetCard: React.FC = () => {
     return state.shoppingListItems.filter(item => item.listId === selectedList.id);
   }, [state.shoppingListItems, selectedList]);
 
+  // Calculate spent amount only for *checked* items in the *selected list*
+  // For daily budget, you might want to filter by dateAdded as well if it's a daily reset
   const spentForSelectedList: number = useMemo(() => {
     if (!selectedList) return 0;
-    // const today = startOfDay(new Date()); // Not used currently, for daily reset if needed
+    // const today = startOfDay(new Date()); // Uncomment if budget is daily and items are timestamped on purchase
     return itemsForSelectedList
-      .filter(item => item.checked)
+      .filter(item => item.checked /* && isSameDay(new Date(item.dateAdded), today) */) // Uncomment for daily reset
       .reduce((total, item) => total + (item.price * item.quantity), 0);
   }, [itemsForSelectedList, selectedList]);
 
@@ -83,11 +82,16 @@ export const BudgetCard: React.FC = () => {
   useEffect(() => {
     if (selectedList) {
         reset({ budgetLimit: selectedList.budgetLimit });
+    } else {
+        // If no list is selected, reset to a sensible default (e.g., 0 or last known global budget)
+        reset({ budgetLimit: 0 });
     }
   }, [selectedList, reset]);
 
    useEffect(() => {
-       if (budgetForSelectedList.lastSetDate) {
+       // This effect is for displaying a date label if budget.lastSetDate existed
+       // Currently, budget is per list and doesn't have its own lastSetDate in the AppState model
+       if (budgetForSelectedList.lastSetDate) { // This condition might always be false based on current model
            try {
                setBudgetDateLabel(format(new Date(budgetForSelectedList.lastSetDate), "MMM d, yyyy"));
            } catch (e) {
@@ -95,9 +99,9 @@ export const BudgetCard: React.FC = () => {
                setBudgetDateLabel("Invalid Date");
            }
        } else {
-           setBudgetDateLabel('Not Set');
+           setBudgetDateLabel(selectedList ? 'List Budget' : 'Set Budget');
        }
-   }, [budgetForSelectedList.lastSetDate]);
+   }, [budgetForSelectedList.lastSetDate, selectedList]);
 
 
   if (isLoading || !selectedList) {
@@ -122,16 +126,18 @@ export const BudgetCard: React.FC = () => {
   return (
     <Card className="w-full bg-card border-primary/30 shadow-neon glow-border-inner mb-1 sm:mb-2">
        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
-        <div className="flex items-center gap-2">
-             <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
-             <CardTitle className="text-sm sm:text-base font-semibold text-primary leading-tight">
-                 Budget: <span className="text-secondary">{selectedList.name}</span>
-             </CardTitle>
+        <div className="flex items-center gap-2 min-w-0"> {/* Added min-w-0 for truncation */}
+             <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+             <div className="flex-grow min-w-0">
+                <CardTitle className="text-sm sm:text-base font-semibold text-primary leading-tight truncate">
+                    Budget: <span className="text-secondary truncate">{selectedList.name}</span>
+                </CardTitle>
+             </div>
         </div>
 
         <Dialog open={isEditingBudget} onOpenChange={setIsEditingBudget}>
           <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-primary/80 hover:text-primary hover:bg-primary/10 glow-border-inner text-xs px-2 py-1 h-auto">
+              <Button variant="ghost" size="sm" className="text-primary/80 hover:text-primary hover:bg-primary/10 glow-border-inner text-xs px-1.5 py-1 h-auto sm:px-2"> {/* Adjusted padding */}
                 <Edit2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
                 Edit
               </Button>
@@ -217,6 +223,7 @@ export const BudgetCard: React.FC = () => {
   );
 };
 
+// Skeleton remains the same as it's a placeholder
 const BudgetCardSkeleton: React.FC<{ selectedListName?: string }> = ({ selectedListName }) => {
   return (
     <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-1 sm:mb-2 glow-border">
@@ -225,7 +232,7 @@ const BudgetCardSkeleton: React.FC<{ selectedListName?: string }> = ({ selectedL
             <Skeleton className="h-5 w-5 rounded-full" />
             <div className="flex flex-col gap-1 w-full">
                  <Skeleton className="h-4 w-3/4" />
-                 <Skeleton className="h-3 w-1/2" />
+                 {/* <Skeleton className="h-3 w-1/2" />  Removed to make it thinner */}
             </div>
         </div>
         <Skeleton className="h-7 w-20 rounded-md self-center" />

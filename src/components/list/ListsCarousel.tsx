@@ -1,20 +1,13 @@
-
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '@/context/app-context';
 import type { List } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card'; // Removed CardContent, CardFooter
-import { PlusCircle, Trash2, Edit2, MoreHorizontal } from 'lucide-react';
+import { Card, CardTitle } from '@/components/ui/card';
+import { PlusCircle, Trash2, Edit2 } from 'lucide-react'; // Removed MoreHorizontal
 import { cn } from '@/lib/utils';
 import { AddEditListModal } from './AddEditListModal';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+// Removed DropdownMenu imports as they are no longer used here
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +23,7 @@ export const ListsCarousel: React.FC = () => {
   const { state, dispatch } = useAppContext();
   const { lists, selectedListId } = state;
   const [isAddEditListModalOpen, setIsAddEditListModalOpen] = useState(false);
-  const [editingList, setEditingList] = useState<List | null>(null);
+  const [editingList, setEditingList] = useState<List | null>(null); // Keep for Add/Edit modal
   const [listToDelete, setListToDelete] = useState<List | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -60,12 +53,14 @@ export const ListsCarousel: React.FC = () => {
     setIsAddEditListModalOpen(true);
   };
 
-  const handleEditList = (list: List) => {
-    setEditingList(list);
-    setIsAddEditListModalOpen(true);
-  };
+  // Function to handle initiating edit from somewhere else if needed, but not from carousel card
+  // const handleEditList = (list: List) => {
+  //   setEditingList(list);
+  //   setIsAddEditListModalOpen(true);
+  // };
 
-  const handleDeleteList = (list: List) => {
+  const handleDeleteListClick = (list: List, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent card selection when clicking delete
     setListToDelete(list);
   };
 
@@ -93,35 +88,31 @@ export const ListsCarousel: React.FC = () => {
                 "min-w-[100px] max-w-[150px] h-10 flex-shrink-0 cursor-pointer transition-all duration-200 ease-in-out flex items-center justify-between px-3 py-1.5 rounded-md text-sm font-medium",
                 "glow-border-inner",
                 isSelected
-                  ? "bg-primary/20 text-primary shadow-neon ring-1 ring-primary" // Mimic active tab
-                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-secondary", // Mimic inactive tab
+                  ? "bg-primary/20 text-primary shadow-neon ring-1 ring-primary"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-secondary",
               )}
               onClick={() => handleSelectList(list.id)}
             >
               <CardTitle className={cn(
-                "text-xs font-semibold truncate flex-grow leading-none", // Ensure title doesn't wrap and affect height
+                "text-xs font-semibold truncate flex-grow leading-none",
                  isSelected ? "text-primary" : "text-neonText"
                 )}
               >
                 {list.name}
               </CardTitle>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className={cn("h-6 w-6 p-0 ml-1 shrink-0", isSelected ? "text-primary hover:bg-primary/20" : "text-muted-foreground hover:bg-muted/20")}>
-                    <MoreHorizontal className="h-3.5 w-3.5" />
-                    <span className="sr-only">List options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-card border-primary/50 shadow-neon glow-border w-40" align="end" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={() => handleEditList(list)} className="text-neonText hover:bg-primary/10 focus:bg-primary/20 focus:text-primary cursor-pointer">
-                    <Edit2 className="mr-2 h-4 w-4" /> Edit List
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-border/50" />
-                  <DropdownMenuItem onClick={() => handleDeleteList(list)} className="text-destructive hover:bg-destructive/20 focus:bg-destructive/20 focus:text-destructive cursor-pointer">
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete List
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Direct Delete Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-6 w-6 p-0 ml-1 shrink-0 text-destructive hover:bg-destructive/20",
+                  isSelected ? "hover:text-destructive-foreground" : ""
+                )}
+                onClick={(e) => handleDeleteListClick(list, e)}
+                aria-label={`Delete list ${list.name}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </Card>
           );
         })}
@@ -141,7 +132,7 @@ export const ListsCarousel: React.FC = () => {
       <AddEditListModal
         isOpen={isAddEditListModalOpen}
         onClose={() => setIsAddEditListModalOpen(false)}
-        listData={editingList}
+        listData={editingList} // This modal can still be used for adding and potentially editing if triggered elsewhere
       />
 
       <AlertDialog open={!!listToDelete} onOpenChange={(open) => !open && setListToDelete(null)}>
