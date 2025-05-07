@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '@/context/app-context';
@@ -83,41 +84,35 @@ export const ListsCarousel: React.FC = () => {
     }
   };
 
-  const calculateListSpent = (listId: string): number => {
-    return shoppingListItems
-      .filter(item => item.listId === listId && item.checked)
-      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  };
-
   return (
-    <div className="mb-3">
+    <div className="mb-2"> {/* Reduced mb */}
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto space-x-3 pb-3 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent"
+        className="flex overflow-x-auto space-x-2 pb-2 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent" // Reduced space-x and pb
         style={{ scrollbarWidth: 'thin' }} // For Firefox
       >
         {lists.map((list) => {
-          const spent = calculateListSpent(list.id);
           const isSelected = list.id === selectedListId;
           return (
             <Card
               key={list.id}
               data-list-id={list.id}
               className={cn(
-                "min-w-[160px] sm:min-w-[180px] flex-shrink-0 cursor-pointer transition-all duration-200 ease-in-out glow-border-inner",
+                "min-w-[100px] sm:min-w-[120px] flex-shrink-0 cursor-pointer transition-all duration-200 ease-in-out glow-border-inner flex flex-col justify-center items-center", // Made cards thinner and center content
                 isSelected
                   ? "border-primary shadow-neon ring-2 ring-primary bg-primary/10 transform scale-105"
                   : "border-muted-foreground/30 hover:border-secondary hover:bg-secondary/10",
               )}
               onClick={() => handleSelectList(list.id)}
+              style={{ height: '50px' }} // Set a fixed thinner height
             >
-              <CardHeader className="p-3 pb-1">
-                <div className="flex justify-between items-start">
-                    <CardTitle className={cn("text-sm font-semibold truncate", isSelected ? "text-primary" : "text-neonText")}>{list.name}</CardTitle>
+              <CardHeader className="p-2 pb-0 pt-1 w-full"> {/* Reduced padding */}
+                <div className="flex justify-between items-center">
+                    <CardTitle className={cn("text-xs font-semibold truncate flex-grow", isSelected ? "text-primary" : "text-neonText")}>{list.name}</CardTitle> {/* List name only */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className={cn("h-6 w-6 -mr-2 -mt-1", isSelected ? "text-primary hover:bg-primary/20" : "text-muted-foreground hover:bg-muted/20")}>
-                                <MoreHorizontal className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className={cn("h-5 w-5 -mr-1 -mt-0.5 p-0", isSelected ? "text-primary hover:bg-primary/20" : "text-muted-foreground hover:bg-muted/20")}> {/* Smaller icon button */}
+                                <MoreHorizontal className="h-3.5 w-3.5" />
                                 <span className="sr-only">List options</span>
                             </Button>
                         </DropdownMenuTrigger>
@@ -133,24 +128,18 @@ export const ListsCarousel: React.FC = () => {
                     </DropdownMenu>
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0 pb-2 text-xs">
-                <div className={cn("text-xs", isSelected ? "text-primary/90" : "text-muted-foreground")}>
-                  Spent: {formatCurrency(spent)}
-                </div>
-                <div className={cn("text-xs", isSelected ? "text-primary/70" : "text-muted-foreground/80")}>
-                  Limit: {formatCurrency(list.budgetLimit)}
-                </div>
-              </CardContent>
+              {/* Removed CardContent that showed spent/limit */}
             </Card>
           );
         })}
         <Card
-          className="min-w-[120px] sm:min-w-[140px] flex-shrink-0 flex flex-col items-center justify-center cursor-pointer border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 transition-all duration-200 ease-in-out glow-border-inner"
+          className="min-w-[90px] sm:min-w-[100px] flex-shrink-0 flex flex-col items-center justify-center cursor-pointer border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 transition-all duration-200 ease-in-out glow-border-inner" // Made thinner
           onClick={handleAddNewList}
+          style={{ height: '50px' }} // Match height
         >
-          <CardContent className="p-3 flex flex-col items-center justify-center text-center">
-            <PlusCircle className="h-6 w-6 text-primary mb-1" />
-            <span className="text-xs font-medium text-primary">New List</span>
+          <CardContent className="p-2 flex flex-col items-center justify-center text-center"> {/* Reduced padding */}
+            <PlusCircle className="h-5 w-5 text-primary mb-0.5" /> {/* Smaller icon */}
+            <span className="text-[10px] sm:text-xs font-medium text-primary">New List</span>
           </CardContent>
         </Card>
       </div>

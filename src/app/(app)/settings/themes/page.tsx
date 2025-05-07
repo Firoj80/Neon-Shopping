@@ -1,24 +1,15 @@
+
 "use client";
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useAppContext } from '@/context/app-context';
-// import { themes as appThemes, type Theme as AppTheme } from '@/config/themes'; // Commented out - themes removed
+import { themes as appThemes, type Theme as AppTheme } from '@/config/themes'; // Re-enabled import
 import { cn } from '@/lib/utils';
 import { Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-
-// Placeholder for themes if you re-add them. For now, this page might be non-functional or show a message.
-const appThemes: any[] = [
-    // Example themes - replace or remove if themes are fully deprecated
-    { id: 'cyberpunk-cyan', name: 'Cyberpunk Cyan', previewColor: 'hsl(180, 100%, 50%)' },
-    { id: 'synthwave-sunset', name: 'Synthwave Sunset', previewColor: 'hsl(330, 100%, 55%)' },
-    { id: 'matrix-green', name: 'Matrix Green', previewColor: 'hsl(120, 100%, 50%)' },
-    { id: 'electric-blue', name: 'Electric Blue', previewColor: 'hsl(210, 100%, 55%)' },
-    { id: 'crimson-code', name: 'Crimson Code', previewColor: 'hsl(0, 100%, 50%)' },
-];
 
 
 export default function ThemesPage() {
@@ -26,21 +17,15 @@ export default function ThemesPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // const handleThemeSelect = (themeId: string) => {
-  //   // This functionality is deprecated as themes are removed.
-  //   // dispatch({ type: 'SET_THEME', payload: themeId });
-  //   // const selectedTheme = appThemes.find(t => t.id === themeId);
-  //   // toast({
-  //   //   title: "Theme Changed",
-  //   //   description: `Switched to ${selectedTheme?.name || 'selected'} theme.`,
-  //   //   className: "bg-primary/10 border-primary text-primary-foreground glow-border",
-  //   // });
-  //    toast({
-  //       title: "Themes Removed",
-  //       description: "Theme selection is currently disabled.",
-  //       variant: "destructive"
-  //   });
-  // };
+  const handleThemeSelect = (themeId: string) => {
+    dispatch({ type: 'SET_THEME', payload: themeId });
+    const selectedTheme = appThemes.find(t => t.id === themeId);
+    toast({
+      title: "Theme Changed",
+      description: `Switched to ${selectedTheme?.name || 'selected'} theme.`,
+      className: "bg-primary/10 border-primary text-primary-foreground glow-border",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -56,16 +41,10 @@ export default function ThemesPage() {
         <CardHeader>
           <CardTitle className="text-secondary">Choose Your Style</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Theme selection is currently unavailable. The default theme is applied.
-            {/* Select a theme to customize the look and feel of Neon Shopping. Changes are applied instantly. */}
+            Select a theme to customize the look and feel of Neon Shopping. Changes are applied instantly.
           </CardDescription>
         </CardHeader>
         <CardContent className="glow-border-inner p-4 md:p-6">
-          <p className="text-center text-muted-foreground">
-            Custom theme selection has been temporarily removed.
-            The application will use its default appearance.
-          </p>
-          {/*
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
             {appThemes.map((theme) => (
               <Button
@@ -73,17 +52,17 @@ export default function ThemesPage() {
                 variant="outline"
                 className={cn(
                   "flex flex-col items-center justify-center p-3 h-28 md:h-32 rounded-lg border-2 transition-all duration-200 ease-in-out glow-border-inner",
-                  state.theme === theme.id // Assuming state.theme still exists for fallback
+                  state.theme === theme.id
                     ? "border-primary shadow-neon ring-2 ring-primary bg-primary/10"
                     : "border-muted-foreground/30 hover:border-secondary hover:bg-secondary/5"
                 )}
                 onClick={() => handleThemeSelect(theme.id)}
                 style={{ borderColor: state.theme === theme.id ? theme.previewColor : undefined }}
-                disabled // Disable theme selection
               >
                 <div
                   className="w-10 h-10 md:w-12 md:h-12 rounded-full mb-2 border border-foreground/20 shadow-md"
                   style={{ backgroundColor: theme.previewColor }}
+                  aria-hidden="true" // Decorative element
                 />
                 <span className={cn(
                     "text-xs sm:text-sm text-center truncate w-full font-medium",
@@ -94,7 +73,6 @@ export default function ThemesPage() {
               </Button>
             ))}
           </div>
-          */}
         </CardContent>
       </Card>
     </div>

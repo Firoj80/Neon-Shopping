@@ -1,9 +1,11 @@
+
 "use client";
 import type React from 'react';
 import { createContext, useContext, useReducer, useEffect, useState, useCallback }
   from 'react';
 import { format, startOfDay, isSameDay } from 'date-fns';
-import { v4 as uuidv4 } from 'uuid';
+import { themes, defaultThemeId } from '@/config/themes'; // Ensure themes and defaultThemeId are imported
+import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
 
 // --- Types ---
 export interface Currency {
@@ -49,8 +51,8 @@ interface AppState {
   selectedListId: string | null;
   shoppingListItems: ShoppingListItem[]; // Stores all items for all lists
   categories: Category[];
-  isPremium: boolean; // Retain for future premium features
-  // Budget is now implicitly tied to the selected list, derived from lists and shoppingListItems
+  isPremium: boolean;
+  theme: string; // Added theme property
 }
 
 type Action =
@@ -67,6 +69,7 @@ type Action =
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } }
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } }
   | { type: 'SET_PREMIUM'; payload: boolean }
+  | { type: 'SET_THEME'; payload: string } // Added SET_THEME action
   | { type: 'LOAD_STATE'; payload: Partial<AppState> & { userId: string } };
 
 
@@ -93,15 +96,15 @@ const initialState: AppState = {
   shoppingListItems: [],
   categories: DEFAULT_CATEGORIES,
   isPremium: false,
+  theme: defaultThemeId, // Initialize with default theme
 };
 
-const LOCAL_STORAGE_KEY_PREFIX = 'neonShoppingAppState_v8_'; // Updated version
+const LOCAL_STORAGE_KEY_PREFIX = 'neonShoppingAppState_v9_'; // Updated version for potential schema changes
 const USER_ID_KEY = 'neonShoppingUserId_v1';
 
 
 function appReducer(state: AppState, action: Action): AppState {
   let newState: AppState;
-  // Firebase calls would typically happen here or in dedicated service functions called from here
 
   switch (action.type) {
     case 'SET_CURRENCY':
@@ -115,7 +118,6 @@ function appReducer(state: AppState, action: Action): AppState {
         budgetLimit: action.payload.budgetLimit,
       };
       newState = { ...state, lists: [...state.lists, newList], selectedListId: newList.id };
-      // TODO: Firebase - addListToFirestore(newList);
       break;
     }
     case 'UPDATE_LIST': {
@@ -123,7 +125,6 @@ function appReducer(state: AppState, action: Action): AppState {
         ...state,
         lists: state.lists.map(list => list.id === action.payload.id ? action.payload : list),
       };
-      // TODO: Firebase - updateListInFirestore(action.payload);
       break;
     }
     case 'DELETE_LIST': {
@@ -138,7 +139,6 @@ function appReducer(state: AppState, action: Action): AppState {
         shoppingListItems: state.shoppingListItems.filter(item => item.listId !== listIdToDelete),
         selectedListId: newSelectedListId,
       };
-      // TODO: Firebase - deleteListFromFirestore(listIdToDelete) and deleteItemsForList(listIdToDelete);
       break;
     }
     case 'SELECT_LIST':
@@ -148,7 +148,7 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'ADD_SHOPPING_ITEM': {
       if (!action.payload.listId) {
         console.error("Attempted to add item without listId");
-        return state; // Or handle more gracefully
+        return state;
       }
       const newItem: ShoppingListItem = {
         ...action.payload,
@@ -156,7 +156,6 @@ function appReducer(state: AppState, action: Action): AppState {
         dateAdded: Date.now(),
       };
       newState = { ...state, shoppingListItems: [newItem, ...state.shoppingListItems] };
-      // TODO: Firebase - addItemToFirestore(newItem);
       break;
     }
     case 'UPDATE_SHOPPING_ITEM': {
@@ -166,7 +165,6 @@ function appReducer(state: AppState, action: Action): AppState {
           item.id === action.payload.id ? action.payload : item
         ),
       };
-      // TODO: Firebase - updateItemInFirestore(action.payload);
       break;
     }
     case 'REMOVE_SHOPPING_ITEM': {
@@ -174,7 +172,6 @@ function appReducer(state: AppState, action: Action): AppState {
         ...state,
         shoppingListItems: state.shoppingListItems.filter((item) => item.id !== action.payload),
       };
-      // TODO: Firebase - deleteItemFromFirestore(action.payload);
       break;
     }
     case 'TOGGLE_SHOPPING_ITEM': {
@@ -184,7 +181,6 @@ function appReducer(state: AppState, action: Action): AppState {
           item.id === action.payload ? { ...item, checked: !item.checked } : item
         ),
       };
-      // TODO: Firebase - updateItemInFirestore (for the toggled item);
       break;
     }
     case 'ADD_CATEGORY': {
@@ -193,7 +189,6 @@ function appReducer(state: AppState, action: Action): AppState {
         name: action.payload.name,
       };
       newState = { ...state, categories: [...state.categories, newCategory] };
-      // TODO: Firebase - (if categories are stored in Firestore) addCategoryToFirestore(newCategory);
       break;
     }
     case 'UPDATE_CATEGORY': {
@@ -203,7 +198,6 @@ function appReducer(state: AppState, action: Action): AppState {
           cat.id === action.payload.id ? { ...cat, name: action.payload.name } : cat
         )
       };
-      // TODO: Firebase - (if categories are stored in Firestore) updateCategoryInFirestore(action.payload);
       break;
     }
     case 'REMOVE_CATEGORY': {
@@ -214,32 +208,34 @@ function appReducer(state: AppState, action: Action): AppState {
         updatedShoppingListItems = state.shoppingListItems.map(item =>
           item.category === categoryId ? { ...item, category: reassignToId } : item
         );
-      } else { // Mark as uncategorized or remove items with this category
-        // For simplicity, let's assume reassignToId or a default "uncategorized" ID is always provided if items exist.
-        // Or, filter them out:
+      } else {
          updatedShoppingListItems = state.shoppingListItems.map(item =>
-            item.category === categoryId ? { ...item, category: 'uncategorized' } : item // Example: set to a default
+            item.category === categoryId ? { ...item, category: 'uncategorized' } : item
           );
       }
       newState = { ...state, categories: remainingCategories, shoppingListItems: updatedShoppingListItems };
-      // TODO: Firebase - (if categories are stored in Firestore) removeCategoryFromFirestore(categoryId) and update items.
       break;
     }
     case 'SET_PREMIUM': {
       newState = { ...state, isPremium: action.payload };
       break;
     }
+    case 'SET_THEME': { // Handle SET_THEME action
+      newState = { ...state, theme: action.payload };
+      break;
+    }
     case 'LOAD_STATE': {
-      const loadedUserId = action.payload.userId; // userId is now guaranteed by the payload type
+      const loadedUserId = action.payload.userId;
       newState = {
-        ...initialState, // Start with initial state to ensure all fields are present
-        ...action.payload, // Override with loaded data
+        ...initialState,
+        ...action.payload,
         userId: loadedUserId,
         lists: action.payload.lists && action.payload.lists.length > 0 ? action.payload.lists : INITIAL_LISTS,
         selectedListId: action.payload.selectedListId || (action.payload.lists && action.payload.lists.length > 0 ? action.payload.lists[0].id : initialListId),
         categories: action.payload.categories && action.payload.categories.length > 0 ? action.payload.categories : DEFAULT_CATEGORIES,
         currency: action.payload.currency || defaultCurrency,
         isPremium: action.payload.isPremium ?? false,
+        theme: action.payload.theme || defaultThemeId, // Load theme or use default
       };
       break;
     }
@@ -295,14 +291,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   shoppingListItems: parsedState.shoppingListItems,
                   categories: parsedState.categories,
                   isPremium: parsedState.isPremium,
+                  theme: parsedState.theme, // Load theme
                 };
               }
             } catch (e) {
               console.error("Failed to parse saved state, resetting:", e);
-              localStorage.removeItem(userSpecificStorageKey); // Clear corrupted state
+              localStorage.removeItem(userSpecificStorageKey);
             }
           }
-        } // End typeof window !== 'undefined'
+        }
 
         if (isMounted) {
           dispatch({ type: 'LOAD_STATE', payload: { ...loadedStateFromStorage, userId: userIdFromStorage || uuidv4() } });
@@ -312,7 +309,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (error) {
         console.error("Failed to load initial data:", error);
         if (isMounted) {
-          // Ensure userId is always set, even on error
           let finalUserId = userIdFromStorage || (typeof window !== 'undefined' ? localStorage.getItem(USER_ID_KEY) : null) || uuidv4();
           if (typeof window !== 'undefined' && !localStorage.getItem(USER_ID_KEY)) localStorage.setItem(USER_ID_KEY, finalUserId);
 
@@ -332,7 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const formatCurrency = useCallback((amount: number): string => {
     try {
-      return new Intl.NumberFormat(undefined, { // Uses browser's default locale
+      return new Intl.NumberFormat(undefined, {
         style: 'currency',
         currency: state.currency.code,
         minimumFractionDigits: 2,
@@ -344,7 +340,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [state.currency]);
 
-  const contextValue: AppContextProps = { // Explicitly define type for contextValue
+  const contextValue: AppContextProps = {
     state,
     dispatch,
     formatCurrency,

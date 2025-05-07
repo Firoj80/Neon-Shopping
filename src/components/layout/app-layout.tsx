@@ -1,11 +1,12 @@
+
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  ShoppingCart, // Kept for app icon potentially
-  LayoutGrid as Dashboard, // For profile dropdown
-  History, // For profile dropdown
-  Settings as SettingsIcon, // For profile dropdown and main menu
+  ShoppingCart,
+  LayoutGrid as Dashboard,
+  History,
+  Settings as SettingsIcon,
   Info as InfoIcon,
   Mail,
   ShieldCheck as Policy,
@@ -14,9 +15,8 @@ import {
   Store as Apps,
   Menu,
   X,
-  UserCircle, // For profile icon
-  Palette,
-  DollarSign, // For currency if needed elsewhere
+  UserCircle,
+  Palette, // Added Palette for Themes icon
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
@@ -32,6 +32,13 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import ClientOnly from '@/components/client-only';
+
+// Placeholder for AdComponent if needed later
+// import dynamic from 'next/dynamic';
+// const AdComponent = dynamic(() => import('@/components/admob/ad-component').then(mod => mod.AdComponent), { // Corrected import path
+//     ssr: false, // Ensure this component is only loaded on the client-side
+//     loading: () => <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-background/50 flex items-center justify-center text-xs text-muted-foreground z-40">Loading Ad...</div> // Optional loading state
+// });
 
 
 // --- Mobile Header Component ---
@@ -50,7 +57,8 @@ const MobileHeader: React.FC = () => {
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: Dashboard },
     { href: '/history', label: 'History', icon: History },
-    { href: '/settings', label: 'Settings', icon: SettingsIcon }, // Settings icon for settings
+    { href: '/settings', label: 'Settings', icon: SettingsIcon },
+    { href: '/settings/themes', label: 'Themes', icon: Palette }, // Added Themes option
   ];
 
   const isDropdownItemActive = (itemHref: string) => {
@@ -83,7 +91,7 @@ const MobileHeader: React.FC = () => {
       </Button>
 
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <ShoppingCart className="w-6 h-6" /> {/* App Icon */}
+        <ShoppingCart className="w-6 h-6" />
         <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
       </Link>
 
@@ -127,8 +135,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setIsClientMounted(true);
   }, []);
 
-  // Main menu items for the sidebar (desktop) and potentially mobile drawer
-  const mainMenuDefinition = [
+  // Sidebar footer menu items
+  const footerMenuItems = [
     { href: '/about', label: 'About Us', icon: InfoIcon },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: Policy },
@@ -138,12 +146,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const handleLinkClick = (itemHref: string, event?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-    event?.preventDefault();
+    event?.preventDefault(); // Prevent default only if it's a mouse event
+    // showPreparedInterstitialAd(); // Show interstitial ad on link click
     if (isMobile && openMobile) {
       setOpenMobile(false);
     }
     router.push(itemHref);
   };
+
 
   const menuItemClasses = cn(
     "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm glow-border-inner",
@@ -170,17 +180,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-            <ShoppingCart className="w-6 h-6" /> {/* App Icon */}
+            <ShoppingCart className="w-6 h-6" />
             <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
           </Link>
         </SidebarHeader>
-        {/* Desktop Sidebar content is now mainly in the footer */}
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-             {/* Intentionally sparse; main nav items are in profile dropdown or footer for desktop */}
+             {/* Desktop main navigation items are now in profile dropdown */}
         </SidebarContent>
         <SidebarFooter className="p-2 border-t border-sidebar-border">
            <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto custom-scrollbar">
-            {mainMenuDefinition.map((item) => (
+            {footerMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
@@ -205,14 +214,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar className="md:hidden" side="left" collapsible="offcanvas">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setOpenMobile(false)}>
-            <ShoppingCart className="w-6 h-6" /> {/* App Icon */}
+            <ShoppingCart className="w-6 h-6" />
             <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-          {/* Mobile drawer items - these are general app links, not the main list/dashboard/etc. */}
           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto custom-scrollbar">
-            {mainMenuDefinition.map((item) => (
+            {footerMenuItems.map((item) => ( // Use footer menu items for mobile drawer as well
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
@@ -242,10 +250,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom)+50px)] md:pb-[calc(1.5rem+env(safe-area-inset-bottom)+50px)]">
           {children}
         </main>
-        {/* Ad Banner Placeholder */}
+        {/* Ad Banner Placeholder - Kept for potential future use or if AdComponent is re-added */}
         <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border shadow-neon-lg">
           <ClientOnly><span className='text-muted-foreground/70'>Ad Banner Area</span></ClientOnly>
         </div>
+        {/* <AdComponent /> */} {/* AdComponent call commented out */}
       </SidebarInset>
     </>
   );

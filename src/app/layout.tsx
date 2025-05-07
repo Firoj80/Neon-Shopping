@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google'; // Using Inter as a fallback
 import { cn } from '@/lib/utils';
@@ -5,7 +6,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
 import { SidebarProvider } from '@/components/ui/sidebar';
-// import { ThemeWatcher } from '@/context/theme-watcher'; // ThemeWatcher removed
+import { ThemeWatcher } from '@/context/theme-watcher'; // Import ThemeWatcher
 import { Toaster } from "@/components/ui/toaster";
 import ClientOnly from '@/components/client-only';
 
@@ -33,15 +34,16 @@ export default function RootLayout({
         )}
       >
         <Providers>
-          {/* ThemeWatcher removed */}
-          <SidebarProvider>
-            <ClientOnly>
-              <AppLayout>
-                {children}
-              </AppLayout>
-            </ClientOnly>
-            <Toaster />
-          </SidebarProvider>
+          <ThemeWatcher> {/* Wrap with ThemeWatcher */}
+            <SidebarProvider>
+              <ClientOnly>
+                <AppLayout>
+                  {children}
+                </AppLayout>
+              </ClientOnly>
+              <Toaster />
+            </SidebarProvider>
+          </ThemeWatcher>
         </Providers>
       </body>
     </html>
