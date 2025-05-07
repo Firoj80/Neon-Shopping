@@ -15,12 +15,13 @@ import {
   Menu,
   X,
   UserCircle,
+  DollarSign, // Keep if used elsewhere, or remove if only for currency page link
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar';
+import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-// Removed AdMob import: import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer';
+// Removed AdMob related imports as per previous cleanup
+// import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer';
 
 // Placeholder for AdComponent if needed later
 // import dynamic from 'next/dynamic';
@@ -105,9 +107,7 @@ const MobileHeader: React.FC = () => {
             <DropdownMenuItem
               key={item.href}
               onClick={() => {
-                // Removed AdMob call: if (item.href === '/stats' || item.href === '/history' || item.href === '/settings') {
-                //   showPreparedInterstitialAd();
-                // }
+                // Removed AdMob call
                 router.push(item.href);
                 if (openMobile) toggleSidebar(); // Close sidebar if open
               }}
@@ -139,14 +139,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
    // Define menu items
-   const profileMenuDefinition = [
+   const profileMenuDefinition = [ // These items appear in the Desktop Sidebar's main content and Mobile Header's profile dropdown
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: Dashboard },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
-  const mainMenuDefinition = [
+  const mainMenuDefinition = [ // These items appear in the Footer of both sidebars and main content of mobile sidebar
     { href: '/about', label: 'About Us', icon: InfoIcon },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: Policy },
@@ -190,12 +190,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+       {/* AdMob Banner Placeholder Removed */}
+       {/* <AdComponent /> */}
+
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
              <ShoppingCart className="w-6 h-6" />
-             <span className="font-bold text-neonText">Neon Shopping</span>
+             <span className="font-bold text-neonText">Neon Shopping</span> {/* Updated App Name */}
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
@@ -251,32 +254,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setOpenMobile(false)}>
             <ShoppingCart className="w-6 h-6" />
-            <span className="font-bold text-neonText">Neon Shopping</span>
+            <span className="font-bold text-neonText">Neon Shopping</span> {/* Updated App Name */}
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-           <SidebarMenu className="space-y-1.5">
-           {profileMenuDefinition.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isItemActive(item.href)}
-                   className={cn(
-                     menuItemClasses,
-                     isItemActive(item.href) && activeItemClasses
-                   )}
-                >
-                   <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
-                     <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                     <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
+           {/* 
+             Removed the rendering of profileMenuDefinition from the main mobile sidebar content.
+             These items (Shopping List, Dashboard, History, Settings) are now accessible
+             exclusively through the MobileHeader's profile dropdown on mobile.
+             The mainMenuDefinition (About, Contact, etc.) will be rendered in the footer below.
+           */}
         </SidebarContent>
          <SidebarFooter className="p-2 border-t border-sidebar-border">
-           <SidebarMenu className="space-y-1.5 max-h-[calc(100vh/2.5)] overflow-y-auto custom-scrollbar">
+           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto custom-scrollbar"> {/* Ensure this menu can grow and scroll */}
             {mainMenuDefinition.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
