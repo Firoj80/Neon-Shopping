@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useAppContext } from '@/context/app-context';
-import type { ShoppingListItem, Category } from '@/context/app-context'; // Import Category type
+import type { ShoppingListItem, Category, List } from '@/context/app-context'; // Import Category type
 import { subDays, format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards } from 'lucide-react';
@@ -37,11 +37,22 @@ export default function HistoryPage() {
         const startDate = startOfDay(subDays(endDate, 29)); // Default to last 30 days
         return { from: startDate, to: endDate };
     });
-    const [selectedListId, setSelectedListId] = useState<string | null>(state.selectedListId || null); // List Filter
+    const [selectedListId, setSelectedListId] = useState<string | null>(null); // Default to no list selected initially
+
+    // Effect to set initial selectedListId if lists are available and none is selected
+    useEffect(() => {
+        if (!selectedListId && state.lists.length > 0) {
+            setSelectedListId(state.lists[0].id); // Default to the first list if available
+        } else if (state.lists.length === 0) {
+            setSelectedListId(null); // No lists available
+        }
+    }, [state.lists, selectedListId]);
+
 
     // Filter and sort items based on selections
     const historyItems = useMemo(() => {
-        let items: ShoppingListItem[] = Array.isArray(state.shoppingList) ? state.shoppingList.filter(item => item.checked) : []; // Only purchased items, added check for state.shoppingList
+        let items: ShoppingListItem[] = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : []; // Only purchased items
+
          if (selectedListId !== null) {
             items = items.filter(item => item.listId === selectedListId); // List Filter
         }
@@ -73,7 +84,7 @@ export default function HistoryPage() {
         });
 
         return items;
-    }, [state.shoppingList, dateRange, selectedCategory, sortOption, selectedListId]);
+    }, [state.shoppingListItems, dateRange, selectedCategory, sortOption, selectedListId]);
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
@@ -126,7 +137,7 @@ export default function HistoryPage() {
                   <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
                       {/*List Selector*/}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                           <Select value={selectedListId || 'all'} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
+                           <Select value={selectedListId || 'all'} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)} disabled={state.lists.length === 0}>
                                <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
                                   <WalletCards className="h-4 w-4 mr-2 opacity-70" />
                                  <SelectValue placeholder="Select Shopping List" />
@@ -135,9 +146,13 @@ export default function HistoryPage() {
                                   <SelectGroup>
                                       <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Shopping List</SelectLabel>
                                       <SelectItem value="all" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">All Lists</SelectItem>
-                                      {state.lists.map((list) => (
-                                          <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
-                                      ))}
+                                      {state.lists.length > 0 ? (
+                                        state.lists.map((list) => (
+                                            <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
+                                        ))
+                                      ) : (
+                                        <SelectItem value="no-lists" disabled>No lists available</SelectItem>
+                                      )}
                                   </SelectGroup>
                               </SelectContent>
                           </Select>
@@ -291,7 +306,7 @@ const HistoryPageSkeleton: React.FC = () => (
         <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" /> {/* Title */}
 
         {/* Filter Skeleton - Sticky */}
-        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10">
+        <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border-inner">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                 <Skeleton className="h-5 w-1/5" />
             </CardHeader>
@@ -331,3 +346,4 @@ const HistoryPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
+
