@@ -2,8 +2,8 @@
 import type React from 'react';
 import { createContext, useContext, useReducer, useEffect, useState, useCallback }
   from 'react';
-import { format, startOfDay, isSameDay } from 'date-fns';
-import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
+import { format } from 'date-fns'; // Removed startOfDay, isSameDay as they are not used directly here
+import { v4 as uuidv4 } from 'uuid';
 
 // --- Types ---
 export interface Currency {
@@ -17,14 +17,13 @@ export interface List {
   name: string;
   budgetLimit: number;
   defaultCategory?: string;
-  // Add other list-specific properties if needed, e.g., creationDate
 }
 
-export interface BudgetItem { // This will represent the budget of the *selected* list
-  listId: string | null; // ID of the list this budget belongs to
+export interface BudgetItem {
+  listId: string | null;
   limit: number;
   spent: number;
-  lastSetDate: string | null; // YYYY-MM-DD for when the limit was set for this list
+  lastSetDate: string | null;
 }
 
 export interface Category {
@@ -32,15 +31,15 @@ export interface Category {
   name: string;
 }
 
-export interface ShoppingListItem { // Renamed from Item to avoid conflict with native Item
+export interface ShoppingListItem {
   id: string;
-  listId: string; // Foreign key to associate with a List
+  listId: string;
   name: string;
   quantity: number;
   price: number;
   category: string;
-  checked: boolean; // "purchased" flag
-  dateAdded: number; // Timestamp
+  checked: boolean;
+  dateAdded: number;
 }
 
 interface AppState {
@@ -48,27 +47,28 @@ interface AppState {
   currency: Currency;
   lists: List[];
   selectedListId: string | null;
-  shoppingListItems: ShoppingListItem[]; // Stores all items for all lists
+  shoppingListItems: ShoppingListItem[];
   categories: Category[];
   isPremium: boolean;
+  theme: string; // Added theme state
 }
 
 type Action =
   | { type: 'SET_CURRENCY'; payload: Currency }
   | { type: 'ADD_LIST'; payload: { name: string; budgetLimit: number; defaultCategory?: string } }
-  | { type: 'UPDATE_LIST'; payload: List } // For name and budgetLimit
-  | { type: 'DELETE_LIST'; payload: string } // listId
-  | { type: 'SELECT_LIST'; payload: string | null } // listId or null if no list selected
+  | { type: 'UPDATE_LIST'; payload: List }
+  | { type: 'DELETE_LIST'; payload: string }
+  | { type: 'SELECT_LIST'; payload: string | null }
   | { type: 'ADD_SHOPPING_ITEM'; payload: Omit<ShoppingListItem, 'id' | 'dateAdded'> }
   | { type: 'UPDATE_SHOPPING_ITEM'; payload: ShoppingListItem }
-  | { type: 'REMOVE_SHOPPING_ITEM'; payload: string } // itemId
-  | { type: 'TOGGLE_SHOPPING_ITEM'; payload: string } // itemId
+  | { type: 'REMOVE_SHOPPING_ITEM'; payload: string }
+  | { type: 'TOGGLE_SHOPPING_ITEM'; payload: string }
   | { type: 'ADD_CATEGORY'; payload: { name: string } }
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } }
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } }
   | { type: 'SET_PREMIUM'; payload: boolean }
+  | { type: 'SET_THEME'; payload: string } // Added theme action
   | { type: 'LOAD_STATE'; payload: Partial<AppState> & { userId: string } };
-
 
 // --- Initial State & Reducer ---
 const defaultCurrency: Currency = { code: 'USD', symbol: '$', name: 'US Dollar' };
@@ -80,24 +80,21 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'sports', name: 'Sports' },
 ];
 
-const initialListId = uuidv4();
-const INITIAL_LISTS: List[] = [
-  { id: initialListId, name: 'My First List', budgetLimit: 100, defaultCategory: 'grocery' },
-];
+const INITIAL_LISTS: List[] = []; // No default list
 
 const initialState: AppState = {
-  userId: '', // Will be set on load
+  userId: '',
   currency: defaultCurrency,
-  lists: INITIAL_LISTS,
-  selectedListId: initialListId,
+  lists: INITIAL_LISTS, // Start with no lists
+  selectedListId: null, // No list selected initially
   shoppingListItems: [],
   categories: DEFAULT_CATEGORIES,
   isPremium: false,
+  theme: 'cyberpunk-cyan', // Default theme
 };
 
-const LOCAL_STORAGE_KEY_PREFIX = 'neonShoppingAppState_v9_'; // Updated version for potential schema changes
+const LOCAL_STORAGE_KEY_PREFIX = 'neonShoppingAppState_v10_';
 const USER_ID_KEY = 'neonShoppingUserId_v1';
-
 
 function appReducer(state: AppState, action: Action): AppState {
   let newState: AppState;
@@ -106,13 +103,12 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'SET_CURRENCY':
       newState = { ...state, currency: action.payload };
       break;
-
     case 'ADD_LIST': {
       const newList: List = {
         id: uuidv4(),
         name: action.payload.name,
         budgetLimit: action.payload.budgetLimit,
-        defaultCategory: action.payload.defaultCategory
+        defaultCategory: action.payload.defaultCategory,
       };
       newState = { ...state, lists: [...state.lists, newList], selectedListId: newList.id };
       break;
@@ -141,7 +137,6 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'SELECT_LIST':
       newState = { ...state, selectedListId: action.payload };
       break;
-
     case 'ADD_SHOPPING_ITEM': {
       if (!action.payload.listId) {
         console.error("Attempted to add item without listId");
@@ -217,17 +212,22 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = { ...state, isPremium: action.payload };
       break;
     }
+    case 'SET_THEME': // Added theme reducer case
+      newState = { ...state, theme: action.payload };
+      break;
     case 'LOAD_STATE': {
       const loadedUserId = action.payload.userId;
+      const loadedLists = action.payload.lists && action.payload.lists.length > 0 ? action.payload.lists : INITIAL_LISTS;
       newState = {
         ...initialState,
         ...action.payload,
         userId: loadedUserId,
-        lists: action.payload.lists && action.payload.lists.length > 0 ? action.payload.lists : INITIAL_LISTS,
-        selectedListId: action.payload.selectedListId || (action.payload.lists && action.payload.lists.length > 0 ? action.payload.lists[0].id : initialListId),
+        lists: loadedLists,
+        selectedListId: action.payload.selectedListId || (loadedLists.length > 0 ? loadedLists[0].id : null),
         categories: action.payload.categories && action.payload.categories.length > 0 ? action.payload.categories : DEFAULT_CATEGORIES,
         currency: action.payload.currency || defaultCurrency,
         isPremium: action.payload.isPremium ?? false,
+        theme: action.payload.theme || 'cyberpunk-cyan', // Ensure theme is loaded or defaulted
       };
       break;
     }
@@ -283,6 +283,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   shoppingListItems: parsedState.shoppingListItems,
                   categories: parsedState.categories,
                   isPremium: parsedState.isPremium,
+                  theme: parsedState.theme, // Load theme
                 };
               }
             } catch (e) {
@@ -315,7 +316,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadInitialData();
     return () => { isMounted = false; };
   }, []);
-
 
   const formatCurrency = useCallback((amount: number): string => {
     try {
@@ -360,4 +360,3 @@ export const useAppContext = (): AppContextProps => {
   }
   return context;
 };
-

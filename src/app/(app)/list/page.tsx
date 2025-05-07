@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, ShoppingCart, CheckCircle } from 'lucide-react';
+import { PlusCircle, Trash2, ShoppingCart, CheckCircle, ListPlus } from 'lucide-react';
 import { ItemCard } from '@/components/shopping/item-card';
 import { useAppContext } from '@/context/app-context';
 import type { ShoppingListItem as AppShoppingListItem, List } from '@/context/app-context';
@@ -23,12 +23,14 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ClientOnly from '@/components/client-only';
+import { AddEditListModal } from '@/components/list/AddEditListModal'; // For creating first list
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading } = useAppContext();
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AppShoppingListItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [isAddListModalOpen, setIsAddListModalOpen] = useState(false); // For creating a new list
 
   const { selectedListId, shoppingListItems } = state;
 
@@ -71,7 +73,7 @@ export default function ShoppingListPage() {
      const listDefaultCategory = selectedList?.defaultCategory || '';
      const itemWithListCat = {
             ...itemData,
-            category: itemData.category || listDefaultCategory, // Set to list default if empty
+            category: itemData.category || listDefaultCategory, 
          };
 
     if (editingItem) {
@@ -151,7 +153,7 @@ export default function ShoppingListPage() {
     return (
         <div className="flex flex-col h-full gap-4">
             <BudgetCardSkeleton />
-            <Skeleton className="h-16 w-full rounded-lg" /> {/* Lists Carousel Skeleton - reduced height */}
+            <Skeleton className="h-10 w-full rounded-lg" /> {/* Lists Carousel Skeleton - reduced height */}
             <Skeleton className="h-10 w-full rounded-md" /> {/* TabsList Skeleton */}
             <div className="flex-grow overflow-y-auto">
                 {renderSkeletons()}
@@ -160,14 +162,36 @@ export default function ShoppingListPage() {
     )
   }
 
+  if (!isLoading && state.lists.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center py-10">
+        <ListPlus className="h-16 w-16 text-primary/50 mb-4" />
+        <h2 className="text-xl font-semibold text-neonText mb-2">No Shopping Lists Yet!</h2>
+        <p className="text-muted-foreground mb-6">
+          Get started by creating your first shopping list.
+        </p>
+        <Button
+          onClick={() => setIsAddListModalOpen(true)}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-neon glow-border"
+        >
+          <PlusCircle className="mr-2 h-5 w-5" /> Create New List
+        </Button>
+        <AddEditListModal
+          isOpen={isAddListModalOpen}
+          onClose={() => setIsAddListModalOpen(false)}
+        />
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex flex-col h-full">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pt-1 pb-0"> {/* Adjusted padding */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pt-1 pb-0"> 
             <BudgetCard />
-            <ListsCarousel /> {/* Removed margin top as spacing is handled by BudgetCard's bottom margin */}
+            <ListsCarousel /> 
             <ClientOnly>
-                <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2"> {/* Reduced mt */}
+                <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2"> 
                     <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
                         <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
                     </TabsTrigger>
@@ -179,9 +203,9 @@ export default function ShoppingListPage() {
         </div>
 
         <div className="flex-grow overflow-y-auto mt-1">
-          {!selectedListId && !isLoading ? (
+          {!selectedListId && !isLoading && state.lists.length > 0 ? (
             <div className="flex items-center justify-center h-full text-center py-10">
-                <p className="text-muted-foreground text-neonText">Please select or create a shopping list to view items.</p>
+                <p className="text-muted-foreground text-neonText">Please select a shopping list to view items.</p>
             </div>
             ) : (
             <ClientOnly>
@@ -235,3 +259,4 @@ export default function ShoppingListPage() {
     </div>
   );
 }
+
