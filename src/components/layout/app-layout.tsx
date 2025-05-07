@@ -16,8 +16,7 @@ import {
   Menu,
   X,
   UserCircle,
-  Palette,
-  DollarSign, // Added for Currency
+  Palette, // Icon for Themes
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
@@ -34,7 +33,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ClientOnly from '@/components/client-only';
 
-// Admob and complex auth related imports are removed
+// Placeholder for AdComponent if needed later
+// import dynamic from 'next/dynamic';
+// const AdComponent = dynamic(() => import('@/components/admob/ad-component').then(mod => mod.AdComponent), {
+//     ssr: false, // Ensure this component is only loaded on the client-side
+//     loading: () => <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-background/50 flex items-center justify-center text-xs text-muted-foreground z-40">Loading Ad...</div> // Optional loading state
+// });
+
 
 const MobileHeader: React.FC = () => {
   const { isMobile, openMobile, toggleSidebar } = useSidebar();
@@ -51,11 +56,11 @@ const MobileHeader: React.FC = () => {
     { href: '/stats', label: 'Dashboard', icon: Dashboard },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: SettingsIcon },
-    // Themes option removed
+    { href: '/themes', label: 'Themes', icon: Palette }, // Added Themes option
   ];
 
   const isDropdownItemActive = (itemHref: string) => {
-    if (!isClientMounted) return false; // Prevent premature execution
+    if (!isClientMounted) return false;
     return pathname === itemHref;
   };
 
@@ -65,10 +70,10 @@ const MobileHeader: React.FC = () => {
   };
 
 
-  if (!isMobile && isClientMounted) return null; // Only render if mobile and mounted
+  if (!isMobile && isClientMounted) return null;
 
   return (
-    <ClientOnly> {/* Ensure this part only renders on client */}
+    <ClientOnly>
       <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
         <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
           <AnimatePresence initial={false} mode="wait">
@@ -130,12 +135,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setIsClientMounted(true);
   }, []);
 
-  const mainNavItems = [
-    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: Dashboard },
-    { href: '/history', label: 'History', icon: History },
-    { href: '/settings', label: 'Settings', icon: SettingsIcon },
-  ];
+  // Main navigation for desktop is now empty as per request
+  const mainNavItems: { href: string; label: string; icon: React.ElementType }[] = [];
+
 
   const footerMenuItems = [
     { href: '/about', label: 'About Us', icon: InfoIcon },
@@ -148,10 +150,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const handleLinkClick = (itemHref: string, event?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     event?.preventDefault();
+    router.push(itemHref);
     if (isMobile && openMobile) {
       setOpenMobile(false);
     }
-    router.push(itemHref);
   };
 
   const menuItemClasses = cn(
@@ -175,11 +177,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
 
   if (!isClientMounted) {
-    return <div className="flex items-center justify-center h-screen"><span className="text-primary">Loading Neon Shopping...</span></div>; // Or a proper skeleton loader
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <span className="text-primary">Loading Neon Shopping...</span>
+      </div>
+    );
   }
 
   return (
     <>
+      {/* AdMob Banner Placeholder */}
+      {/* <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border shadow-neon-lg">
+        <ClientOnly><span className='text-muted-foreground/70'>Ad Banner Area</span></ClientOnly>
+      </div> */}
+      {/* <AdComponent /> */}
+
+
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
@@ -189,27 +202,35 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-          {/* Main navigation for desktop */}
-          <SidebarMenu className="space-y-1.5">
-            {mainNavItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isItemActive(item.href)}
-                  tooltip={item.label}
-                  className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
-                >
-                  <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
-                    <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                    <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
+          {/* Main navigation for desktop - is now empty */}
+          {mainNavItems.length > 0 && (
+            <SidebarMenu className="space-y-1.5">
+              {mainNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isItemActive(item.href)}
+                    tooltip={item.label}
+                    className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
+                  >
+                    <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
+                      <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                      <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          )}
+          {mainNavItems.length === 0 && (
+             <div className="flex-grow flex items-center justify-center text-muted-foreground/50 text-sm">
+                {/* Optional: Placeholder if main nav is empty */}
+                {/* Main navigation items moved to profile dropdown. */}
+            </div>
+          )}
         </SidebarContent>
         <SidebarFooter className="p-2 border-t border-sidebar-border">
-           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto"> {/* Custom scrollbar applied via globals.css */}
+           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
             {footerMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
@@ -240,7 +261,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-          {/* Footer menu items are used for mobile drawer content as per previous structure */}
           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
             {footerMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
@@ -266,11 +286,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <SidebarInset className="flex flex-col min-h-screen">
-        <MobileHeader /> {/* MobileHeader now safely uses hooks */}
+        <MobileHeader />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom)+50px)] md:pb-[calc(1.5rem+env(safe-area-inset-bottom)+50px)]">
           {children}
         </main>
-        {/* Ad Banner Placeholder - Removed AdComponent */}
+         {/* Ad Banner Placeholder - for layout spacing */}
         <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border shadow-neon-lg">
            <ClientOnly><span className='text-muted-foreground/70'>Ad Banner Area</span></ClientOnly>
         </div>

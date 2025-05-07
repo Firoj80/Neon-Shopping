@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,7 +8,7 @@
   :root {
     --radius: 0.5rem; /* Base radius */
 
-    /* Default Theme (Cyberpunk Cyan) */
+    /* Default Theme (Cyberpunk Cyan) - Fallback variables */
     --background: 0 0% 0%; /* Black */
     --foreground: 0 0% 95%; /* Near White */
     --card: 0 0% 7%;
@@ -35,13 +36,194 @@
     --sidebar-accent-foreground: 0 0% 5%;
     --sidebar-border: 180 100% 20%;
     --sidebar-ring: 180 100% 50%;
-    --chart-1: 180 100% 50%; /* Neon Cyan */
-    --chart-2: 300 100% 50%; /* Neon Magenta */
-    --chart-3: 120 100% 50%; /* Neon Green */
-    --chart-4: 60 100% 50%;  /* Neon Yellow */
-    --chart-5: 30 100% 50%;   /* Neon Orange */
-    --neon-text: 0 0% 90%; /* General bright text for neon effect */
+    --chart-1: 180 100% 50%;
+    --chart-2: 300 100% 50%;
+    --chart-3: 120 100% 50%;
+    --chart-4: 60 100% 50%;
+    --chart-5: 30 100% 50%;
+    --neon-text: 0 0% 90%;
   }
+
+  /* Dynamically set variables based on the active theme class on <html> */
+  html.theme-cyberpunk-cyan {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 180 100% 10%;
+    --secondary: 300 100% 50%;
+    --secondary-foreground: 300 100% 10%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 300 100% 70%;
+    --accent-foreground: 0 0% 5%;
+    --border: 180 100% 30%;
+    --input: 0 0% 15%;
+    --ring: 180 100% 50%;
+    --neon-text: 0 0% 90%;
+  }
+
+  html.theme-neon-magenta {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 300 100% 50%;
+    --primary-foreground: 300 100% 10%;
+    --secondary: 60 100% 50%;
+    --secondary-foreground: 60 100% 10%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 60 100% 70%;
+    --accent-foreground: 0 0% 5%;
+    --border: 300 100% 30%;
+    --input: 0 0% 15%;
+    --ring: 300 100% 50%;
+    --neon-text: 0 0% 90%;
+  }
+
+  html.theme-electric-blue {
+    --background: 220 20% 12%;
+    --foreground: 220 10% 85%;
+    --card: 220 20% 7%;
+    --card-foreground: 220 10% 85%;
+    --popover: 220 20% 7%;
+    --popover-foreground: 220 10% 85%;
+    --primary: 210 100% 70%;
+    --primary-foreground: 210 100% 10%;
+    --secondary: 270 50% 60%;
+    --secondary-foreground: 270 50% 10%;
+    --muted: 220 10% 20%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 270 50% 70%;
+    --accent-foreground: 220 10% 5%;
+    --border: 210 100% 40%;
+    --input: 220 20% 15%;
+    --ring: 210 100% 70%;
+    --neon-text: 220 10% 90%;
+  }
+
+  html.theme-acid-green {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 120 100% 50%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 300 100% 50%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 300 100% 70%;
+    --accent-foreground: 0 0% 5%;
+    --border: 120 100% 30%;
+    --input: 0 0% 15%;
+    --ring: 120 100% 50%;
+    --neon-text: 0 0% 90%;
+  }
+
+  html.theme-radioactive-orange {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 30 100% 50%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 180 100% 50%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 180 100% 70%;
+    --accent-foreground: 0 0% 5%;
+    --border: 30 100% 30%;
+    --input: 0 0% 15%;
+    --ring: 30 100% 50%;
+    --neon-text: 0 0% 90%;
+  }
+
+  html.theme-synthwave-purple {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 270 100% 50%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 180 100% 50%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 180 100% 70%;
+    --accent-foreground: 0 0% 5%;
+    --border: 270 100% 30%;
+    --input: 0 0% 15%;
+    --ring: 270 100% 50%;
+    --neon-text: 0 0% 90%;
+  }
+
+  html.theme-glitch-red {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 100% 50%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 180 100% 50%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 180 100% 70%;
+    --accent-foreground: 0 0% 5%;
+    --border: 0 100% 30%;
+    --input: 0 0% 15%;
+    --ring: 0 100% 50%;
+    --neon-text: 0 0% 90%;
+  }
+  
+  html.theme-tron-blue {
+    --background: 240 10% 5%;
+    --foreground: 240 10% 90%;
+    --card: 240 10% 10%;
+    --card-foreground: 240 10% 90%;
+    --popover: 240 10% 10%;
+    --popover-foreground: 240 10% 90%;
+    --primary: 210 100% 60%;
+    --primary-foreground: 240 10% 10%;
+    --secondary: 270 50% 50%;
+    --secondary-foreground: 240 10% 10%;
+    --muted: 240 10% 15%;
+    --muted-foreground: 240 10% 60%;
+    --accent: 270 50% 70%;
+    --accent-foreground: 240 10% 5%;
+    --border: 210 100% 30%;
+    --input: 240 10% 15%;
+    --ring: 210 100% 60%;
+    --neon-text: 240 10% 85%;
+  }
+
+
+  /* Theme Preview Variables (used in themes page) */
+  /* These are placeholders; theme-watcher will apply actual theme colors */
+  html.theme-cyberpunk-cyan { --primary-bg-cyberpunk-cyan: 180 100% 50%; --secondary-bg-cyberpunk-cyan: 300 100% 50%; --accent-bg-cyberpunk-cyan: 300 100% 70%; --card-bg-cyberpunk-cyan: 0 0% 7%; }
+  html.theme-neon-magenta { --primary-bg-neon-magenta: 300 100% 50%; --secondary-bg-neon-magenta: 60 100% 50%; --accent-bg-neon-magenta: 60 100% 70%; --card-bg-neon-magenta: 0 0% 7%; }
+  html.theme-electric-blue { --primary-bg-electric-blue: 210 100% 70%; --secondary-bg-electric-blue: 270 50% 60%; --accent-bg-electric-blue: 270 50% 70%; --card-bg-electric-blue: 220 20% 7%; }
+  html.theme-acid-green { --primary-bg-acid-green: 120 100% 50%; --secondary-bg-acid-green: 300 100% 50%; --accent-bg-acid-green: 300 100% 70%; --card-bg-acid-green: 0 0% 7%; }
+  html.theme-radioactive-orange { --primary-bg-radioactive-orange: 30 100% 50%; --secondary-bg-radioactive-orange: 180 100% 50%; --accent-bg-radioactive-orange: 180 100% 70%; --card-bg-radioactive-orange: 0 0% 7%; }
+  html.theme-synthwave-purple { --primary-bg-synthwave-purple: 270 100% 50%; --secondary-bg-synthwave-purple: 180 100% 50%; --accent-bg-synthwave-purple: 180 100% 70%; --card-bg-synthwave-purple: 0 0% 7%; }
+  html.theme-glitch-red { --primary-bg-glitch-red: 0 100% 50%; --secondary-bg-glitch-red: 180 100% 50%; --accent-bg-glitch-red: 180 100% 70%; --card-bg-glitch-red: 0 0% 7%; }
+  html.theme-tron-blue { --primary-bg-tron-blue: 210 100% 60%; --secondary-bg-tron-blue: 270 50% 50%; --accent-bg-tron-blue: 270 50% 70%; --card-bg-tron-blue: 240 10% 10%; }
 
   /* Ensure .dark is always present for base dark mode structure */
   html.dark {

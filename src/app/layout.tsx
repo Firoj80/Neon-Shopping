@@ -7,6 +7,7 @@ import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeWatcher } from '@/context/theme-watcher'; // Import ThemeWatcher
 import ClientOnly from '@/components/client-only';
 
 const inter = Inter({
@@ -32,15 +33,17 @@ export default function RootLayout({
           'font-sans antialiased min-h-screen flex flex-col bg-background',
         )}
       >
-        <Providers> {/* AppProvider is now the main context provider here */}
-          <SidebarProvider>
-            <ClientOnly> {/* Ensure AppLayout and its children render client-side to avoid hydration issues with localStorage access */}
-              <AppLayout>
-                {children}
-              </AppLayout>
-            </ClientOnly>
-            <Toaster />
-          </SidebarProvider>
+        <Providers>
+          <ThemeWatcher> {/* Wrap with ThemeWatcher */}
+            <SidebarProvider>
+              <ClientOnly>
+                <AppLayout>
+                  {children}
+                </AppLayout>
+              </ClientOnly>
+              <Toaster />
+            </SidebarProvider>
+          </ThemeWatcher>
         </Providers>
       </body>
     </html>
