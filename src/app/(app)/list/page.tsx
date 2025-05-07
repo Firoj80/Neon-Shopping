@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -70,21 +71,27 @@ export default function ShoppingListPage() {
         return;
     }
 
-     const listDefaultCategory = selectedList?.defaultCategory || '';
-     const itemWithListCat = {
-            ...itemData,
-            category: itemData.category || listDefaultCategory, 
-         };
+    // Get the default category from the selected list
+    const listDefaultCategory = selectedList?.defaultCategory || '';
+
+    // If itemData.category is empty (e.g., modal pre-fill failed or user cleared it, though validation should prevent),
+    // use the list's default category. Otherwise, use the category from the form.
+    const finalCategory = itemData.category || listDefaultCategory;
+
+    const itemWithFinalCategoryDetails = {
+      ...itemData,
+      category: finalCategory,
+    };
 
     if (editingItem) {
       dispatch({
         type: 'UPDATE_SHOPPING_ITEM',
-        payload: { ...editingItem, ...itemWithListCat },
+        payload: { ...editingItem, ...itemWithFinalCategoryDetails },
       });
     } else {
       dispatch({
         type: 'ADD_SHOPPING_ITEM',
-        payload: { ...itemWithListCat, listId: selectedListId, checked: false },
+        payload: { ...itemWithFinalCategoryDetails, listId: selectedListId, checked: false },
       });
     }
     setIsAddItemModalOpen(false);
@@ -187,11 +194,11 @@ export default function ShoppingListPage() {
 
   return (
     <div className="flex flex-col h-full">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pt-1 pb-0"> 
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pt-1 pb-0">
             <BudgetCard />
-            <ListsCarousel /> 
+            <ListsCarousel />
             <ClientOnly>
-                <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2"> 
+                <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2">
                     <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
                         <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
                     </TabsTrigger>
@@ -202,7 +209,7 @@ export default function ShoppingListPage() {
             </ClientOnly>
         </div>
 
-        <div className="flex-grow overflow-y-auto mt-1">
+        <div className="flex-grow overflow-y-auto mt-1 pb-[calc(50px+1.5rem+env(safe-area-inset-bottom)+4rem)]"> {/* Adjusted padding-bottom */}
           {!selectedListId && !isLoading && state.lists.length > 0 ? (
             <div className="flex items-center justify-center h-full text-center py-10">
                 <p className="text-muted-foreground text-neonText">Please select a shopping list to view items.</p>
@@ -260,3 +267,36 @@ export default function ShoppingListPage() {
   );
 }
 
+const BudgetCardSkeleton: React.FC = () => {
+  return (
+    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-1 sm:mb-2 glow-border">
+       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
+        <div className="flex items-center gap-2 w-3/5">
+            <Skeleton className="h-5 w-5 rounded-full" />
+            <div className="flex flex-col gap-1 w-full">
+                 <Skeleton className="h-4 w-3/4" />
+                 {/* <Skeleton className="h-3 w-1/2" />  Removed to make it thinner */}
+            </div>
+        </div>
+        <Skeleton className="h-7 w-20 rounded-md self-center" />
+      </CardHeader>
+       <CardContent className="space-y-1 px-3 pb-2 sm:px-4 sm:pb-3 glow-border-inner">
+        <div className="space-y-0.5">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-3 w-1/4" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+          <Skeleton className="h-1.5 w-full rounded-full glow-border-inner" />
+          <Skeleton className="h-3 w-1/5 ml-auto" />
+        </div>
+         <div className="flex items-center justify-between pt-0.5">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-3.5 w-3.5 rounded-full" />
+            <Skeleton className="h-3.5 w-1/3" />
+          </div>
+          <Skeleton className="h-4 w-1/4" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};

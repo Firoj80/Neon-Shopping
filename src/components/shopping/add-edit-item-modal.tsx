@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -32,7 +33,7 @@ const formSchema = z.object({
   name: z.string().min(1, "Item name is required"),
   quantity: z.number().min(1, "Quantity must be at least 1").int(),
   price: z.number().min(0, "Price cannot be negative"),
-  category: z.string().min(1, "Category is required"),
+  category: z.string().min(1, "Category is required"), // Category is required
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -56,29 +57,34 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
       name: '',
       quantity: 1,
       price: 0,
-      category: categories.length > 0 ? categories[0].id : '',
+      category: '', // Initial default, will be updated by useEffect
     }
   });
 
   useEffect(() => {
     if (isOpen) {
-        if (itemData) {
+        if (itemData) { // Editing existing item
             reset({
                 name: itemData.name,
                 quantity: itemData.quantity,
                 price: itemData.price,
                 category: itemData.category,
             });
-        } else {
+        } else { // Adding new item
+            // Get the selected list's default category
+            const selectedListObject = state.lists.find(list => list.id === currentListId);
+            const listDefaultCategory = selectedListObject?.defaultCategory || '';
+
             reset({
                 name: '',
                 quantity: 1,
                 price: 0,
-                category: categories.length > 0 ? categories[0].id : '',
+                // Use list's default category if available, otherwise first category, else empty
+                category: listDefaultCategory || (categories.length > 0 ? categories[0].id : ''),
             });
         }
     }
-  }, [isOpen, itemData, reset, categories]);
+  }, [isOpen, itemData, reset, categories, currentListId, state.lists]);
 
 
   const onSubmit = (data: FormData) => {
@@ -144,7 +150,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                 render={({ field }) => (
                     <Select
                      onValueChange={field.onChange}
-                     value={field.value}
+                     value={field.value} // This value will be pre-filled by the useEffect
                      disabled={categories.length === 0}
                     >
                         <SelectTrigger
