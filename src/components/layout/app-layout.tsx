@@ -14,18 +14,42 @@ import {
   Store as Apps,
   Menu,
   X,
-  UserCircle, // Added UserCircle icon
+  UserCircle,
+  DollarSign, // Keep if used elsewhere, or remove if not.
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar';
-import dynamic from 'next/dynamic';
+import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+
+// Placeholder for AdComponent if needed later
+// import dynamic from 'next/dynamic';
+// const AdComponent = dynamic(() => import('@/components/admob/ad-component').then(mod => mod.AdComponent), {
+//     ssr: false,
+//     loading: () => <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-background/50 flex items-center justify-center text-xs text-muted-foreground z-40">Loading Ad...</div>
+// });
+
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
   const { isMobile, openMobile, toggleSidebar } = useSidebar();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const profileMenuItems = [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: Dashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+  ];
 
   if (!isMobile) return null;
 
@@ -54,10 +78,31 @@ const MobileHeader: React.FC = () => {
       </Link>
 
       {/* User Profile Icon on the right */}
-      <Button variant="ghost" size="icon" className="ml-2 text-primary hover:text-primary/80 hover:bg-primary/10">
-        <UserCircle className="h-6 w-6" />
-        <span className="sr-only">User Profile</span>
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="ml-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+            <UserCircle className="h-6 w-6" />
+            <span className="sr-only">User Profile</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56 bg-card border-primary/50 shadow-neon glow-border mr-2" align="end">
+          <DropdownMenuItem className="font-semibold text-primary px-2 py-1.5">My Account</DropdownMenuItem>
+          <DropdownMenuSeparator className="bg-border/50" />
+          {profileMenuItems.map((item) => (
+            <DropdownMenuItem
+              key={item.href}
+              onClick={() => router.push(item.href)}
+              className={cn(
+                "flex items-center gap-2 cursor-pointer p-2 text-sm text-neonText hover:bg-primary/10 focus:bg-primary/20 focus:text-primary data-[active]:bg-primary/20 data-[active]:text-primary",
+                pathname === item.href && "bg-primary/10 text-primary font-medium"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              <span>{item.label}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 };
@@ -66,14 +111,11 @@ const MobileHeader: React.FC = () => {
 // --- App Layout Component ---
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, openMobile, toggleSidebar } = useSidebar(); // Added openMobile and toggleSidebar for mobile sidebar
   const router = useRouter();
 
-   const menuItems = [
-     { href: '/list', label: 'Shopping List', icon: ShoppingCart, triggerAd: false },
-     { href: '/stats', label: 'Dashboard', icon: Dashboard, triggerAd: false },
-     { href: '/history', label: 'History', icon: History, triggerAd: false },
-     { href: '/settings', label: 'Settings', icon: Settings, triggerAd: false },
+   // Main menu items (excluding those moved to profile dropdown)
+   const mainMenuDefinition = [
      { href: '/about', label: 'About Us', icon: InfoIcon, triggerAd: false },
      { href: '/contact', label: 'Contact Us', icon: Mail, triggerAd: false },
      { href: '/privacy', label: 'Privacy Policy', icon: Policy, triggerAd: false },
@@ -82,14 +124,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
      { href: '/more-apps', label: 'More Apps', icon: Apps, triggerAd: false },
    ];
 
+   // Profile dropdown items (used by desktop sidebar if needed, and mobile header)
+   const profileMenuDefinition = [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: Dashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+  ];
 
-  const handleLinkClick = async (item: { href: string; triggerAd: boolean }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+
+  const handleLinkClick = (itemHref: string, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
      event.preventDefault();
-
-    if (isMobile) {
+    // For mobile, close sidebar on link click
+    if (isMobile && openMobile) {
       setOpenMobile(false);
     }
-      router.push(item.href);
+    router.push(itemHref);
   };
 
 
@@ -110,6 +160,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+       {/* AdMob Banner Placeholder - if needed */}
+       {/* <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-background/80 flex items-center justify-center text-xs text-muted-foreground z-40 backdrop-blur-sm border-t border-border/30 glow-border">
+         AdMob Banner Placeholder
+       </div> */}
+       {/* <AdComponent /> */}
+
+
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
@@ -119,8 +176,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col">
-           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-            {menuItems.map((item) => (
+            {/* Profile items first on desktop sidebar */}
+           <SidebarMenu className="space-y-1.5">
+            {profileMenuDefinition.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
@@ -131,7 +189,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                      pathname === item.href && activeItemClasses
                    )}
                 >
-                   <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
+                   <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
+                     <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                     <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+          <hr className="my-3 border-sidebar-border/50" /> {/* Separator */}
+           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
+            {mainMenuDefinition.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href}
+                  tooltip={item.label}
+                   className={cn(
+                     menuItemClasses,
+                     pathname === item.href && activeItemClasses
+                   )}
+                >
+                   <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
                      <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
                      <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
                   </Link>
@@ -146,11 +225,51 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
 
+      {/* Mobile Sidebar (Sheet) - Triggered by MobileHeader's hamburger icon */}
+      <Sidebar className="md:hidden" side="left" collapsible="offcanvas">
+        <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
+          <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setOpenMobile(false)}>
+            <ShoppingCart className="w-6 h-6" />
+            <span className="font-bold text-neonText">Neon Shopping</span>
+          </Link>
+        </SidebarHeader>
+        <SidebarContent className="p-2 flex flex-col">
+            {/* All items for mobile sidebar */}
+           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
+           {[...profileMenuDefinition, ...mainMenuDefinition].map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === item.href}
+                   className={cn(
+                     menuItemClasses, // Basic styling
+                     pathname === item.href && activeItemClasses // Active styling
+                   )}
+                >
+                   <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
+                     <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                     <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarContent>
+         <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
+          <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
+        </SidebarFooter>
+      </Sidebar>
+
+
       <SidebarInset className="flex flex-col min-h-screen">
         <MobileHeader />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {children}
         </main>
+         {/* Banner Ad Placeholder - sticky at the bottom */}
+         {/* <div className="sticky bottom-0 left-0 right-0 h-[60px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border">
+           Ad Banner Area
+         </div> */}
       </SidebarInset>
     </>
   );
