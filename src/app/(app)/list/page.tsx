@@ -1,11 +1,10 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, ShoppingCart, CheckCircle } from 'lucide-react';
 import { ItemCard } from '@/components/shopping/item-card';
 import { useAppContext } from '@/context/app-context';
-import type { ShoppingListItem as AppShoppingListItem } from '@/context/app-context';
+import type { ShoppingListItem as AppShoppingListItem, List } from '@/context/app-context';
 import { AddEditItemModal } from '@/components/shopping/add-edit-item-modal';
 import { BudgetCard } from '@/components/budget/budget-panel';
 import { ListsCarousel } from '@/components/list/ListsCarousel';
@@ -32,6 +31,10 @@ export default function ShoppingListPage() {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const { selectedListId, shoppingListItems } = state;
+
+  const selectedList: List | undefined = useMemo(() => {
+      return state.lists.find(list => list.id === selectedListId);
+  }, [state.lists, selectedListId]);
 
   const handleAddItemClick = () => {
     if (!selectedListId) {
@@ -65,15 +68,21 @@ export default function ShoppingListPage() {
         return;
     }
 
+     const listDefaultCategory = selectedList?.defaultCategory || '';
+     const itemWithListCat = {
+            ...itemData,
+            category: itemData.category || listDefaultCategory, // Set to list default if empty
+         };
+
     if (editingItem) {
       dispatch({
         type: 'UPDATE_SHOPPING_ITEM',
-        payload: { ...editingItem, ...itemData },
+        payload: { ...editingItem, ...itemWithListCat },
       });
     } else {
       dispatch({
         type: 'ADD_SHOPPING_ITEM',
-        payload: { ...itemData, listId: selectedListId, checked: false },
+        payload: { ...itemWithListCat, listId: selectedListId, checked: false },
       });
     }
     setIsAddItemModalOpen(false);
@@ -226,4 +235,3 @@ export default function ShoppingListPage() {
     </div>
   );
 }
-

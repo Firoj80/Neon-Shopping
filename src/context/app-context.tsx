@@ -1,10 +1,8 @@
-
 "use client";
 import type React from 'react';
 import { createContext, useContext, useReducer, useEffect, useState, useCallback }
   from 'react';
 import { format, startOfDay, isSameDay } from 'date-fns';
-import { themes, defaultThemeId } from '@/config/themes'; // Ensure themes and defaultThemeId are imported
 import { v4 as uuidv4 } from 'uuid'; // Import UUID generator
 
 // --- Types ---
@@ -18,6 +16,7 @@ export interface List {
   id: string;
   name: string;
   budgetLimit: number;
+  defaultCategory?: string;
   // Add other list-specific properties if needed, e.g., creationDate
 }
 
@@ -52,12 +51,11 @@ interface AppState {
   shoppingListItems: ShoppingListItem[]; // Stores all items for all lists
   categories: Category[];
   isPremium: boolean;
-  theme: string; // Added theme property
 }
 
 type Action =
   | { type: 'SET_CURRENCY'; payload: Currency }
-  | { type: 'ADD_LIST'; payload: { name: string; budgetLimit: number } }
+  | { type: 'ADD_LIST'; payload: { name: string; budgetLimit: number; defaultCategory?: string } }
   | { type: 'UPDATE_LIST'; payload: List } // For name and budgetLimit
   | { type: 'DELETE_LIST'; payload: string } // listId
   | { type: 'SELECT_LIST'; payload: string | null } // listId or null if no list selected
@@ -69,7 +67,6 @@ type Action =
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } }
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } }
   | { type: 'SET_PREMIUM'; payload: boolean }
-  | { type: 'SET_THEME'; payload: string } // Added SET_THEME action
   | { type: 'LOAD_STATE'; payload: Partial<AppState> & { userId: string } };
 
 
@@ -85,7 +82,7 @@ const DEFAULT_CATEGORIES: Category[] = [
 
 const initialListId = uuidv4();
 const INITIAL_LISTS: List[] = [
-  { id: initialListId, name: 'My First List', budgetLimit: 100 },
+  { id: initialListId, name: 'My First List', budgetLimit: 100, defaultCategory: 'grocery' },
 ];
 
 const initialState: AppState = {
@@ -96,7 +93,6 @@ const initialState: AppState = {
   shoppingListItems: [],
   categories: DEFAULT_CATEGORIES,
   isPremium: false,
-  theme: defaultThemeId, // Initialize with default theme
 };
 
 const LOCAL_STORAGE_KEY_PREFIX = 'neonShoppingAppState_v9_'; // Updated version for potential schema changes
@@ -116,6 +112,7 @@ function appReducer(state: AppState, action: Action): AppState {
         id: uuidv4(),
         name: action.payload.name,
         budgetLimit: action.payload.budgetLimit,
+        defaultCategory: action.payload.defaultCategory
       };
       newState = { ...state, lists: [...state.lists, newList], selectedListId: newList.id };
       break;
@@ -220,10 +217,6 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = { ...state, isPremium: action.payload };
       break;
     }
-    case 'SET_THEME': { // Handle SET_THEME action
-      newState = { ...state, theme: action.payload };
-      break;
-    }
     case 'LOAD_STATE': {
       const loadedUserId = action.payload.userId;
       newState = {
@@ -235,7 +228,6 @@ function appReducer(state: AppState, action: Action): AppState {
         categories: action.payload.categories && action.payload.categories.length > 0 ? action.payload.categories : DEFAULT_CATEGORIES,
         currency: action.payload.currency || defaultCurrency,
         isPremium: action.payload.isPremium ?? false,
-        theme: action.payload.theme || defaultThemeId, // Load theme or use default
       };
       break;
     }
@@ -291,7 +283,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   shoppingListItems: parsedState.shoppingListItems,
                   categories: parsedState.categories,
                   isPremium: parsedState.isPremium,
-                  theme: parsedState.theme, // Load theme
                 };
               }
             } catch (e) {
@@ -369,3 +360,4 @@ export const useAppContext = (): AppContextProps => {
   }
   return context;
 };
+

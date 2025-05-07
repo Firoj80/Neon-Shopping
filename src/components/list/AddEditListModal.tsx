@@ -14,13 +14,19 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
 } from '@/components/ui/dialog';
-import type { List } from '@/context/app-context';
+import type { List, Category } from '@/context/app-context';
 import { useAppContext } from '@/context/app-context';
 
 const listFormSchema = z.object({
   name: z.string().min(1, "List name is required").max(50, "List name too long"),
   budgetLimit: z.number().min(0, "Budget limit cannot be negative"),
+  defaultCategory: z.string().optional(), // Add default category
 });
 
 type ListFormData = z.infer<typeof listFormSchema>;
@@ -32,13 +38,15 @@ interface AddEditListModalProps {
 }
 
 export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onClose, listData }) => {
-  const { dispatch, state } = useAppContext(); // currency from context
+  const { dispatch, state } = useAppContext();
+  const { categories } = state;
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ListFormData>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ListFormData>({
     resolver: zodResolver(listFormSchema),
     defaultValues: {
       name: '',
       budgetLimit: 0,
+      defaultCategory: '',
     }
   });
 
@@ -48,15 +56,17 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
         reset({
           name: listData.name,
           budgetLimit: listData.budgetLimit,
+          defaultCategory: listData.defaultCategory || '',
         });
       } else {
         reset({ // Defaults for new list
           name: '',
           budgetLimit: 0,
+          defaultCategory: categories.length > 0 ? categories[0].id : '',
         });
       }
     }
-  }, [isOpen, listData, reset]);
+  }, [isOpen, listData, reset, categories]);
 
   const onSubmit = (data: ListFormData) => {
     if (listData) { // Editing existing list
@@ -112,6 +122,21 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
             />
             {errors.budgetLimit && <p className="text-red-500 text-xs">{errors.budgetLimit.message}</p>}
           </div>
+
+           <div className="grid gap-2">
+            <Label htmlFor="defaultCategory" className="text-neonText/80">Default Category</Label>
+            <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-sm glow-border-inner"
+                             aria-invalid={errors.defaultCategory ? "true" : "false"}>
+                <SelectValue placeholder="Select a default category" />
+            </SelectTrigger>
+            <SelectContent>
+            {state.categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                </SelectItem>
+             ))}
+            </SelectContent>
+           </div>
 
           <DialogFooter className="mt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
             <DialogClose asChild>
