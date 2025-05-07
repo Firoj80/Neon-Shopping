@@ -42,6 +42,8 @@
     "firebase": "^11.3.0",
     "framer-motion": "^11.3.19",
     "genkit": "^1.6.2",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
     "lucide-react": "^0.475.0",
     "next": "15.2.3",
     "patch-package": "^8.0.0",

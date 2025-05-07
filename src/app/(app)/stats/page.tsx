@@ -9,19 +9,25 @@ import type { ProcessedExpenseData } from '@/components/charts/expense-chart';
 import { CategoryPieChart } from '@/components/charts/category-pie-chart';
 import type { CategoryData } from '@/components/charts/category-pie-chart';
 import { useAppContext } from '@/context/app-context';
-import type { Category, List, ShoppingListItem } from '@/context/app-context'; // Import Category type
+import type { Category, List, ShoppingListItem } from '@/context/app-context';
 import { subDays, format, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon } from 'lucide-react';
+import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon, Download } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
-import { ChartConfig } from '@/components/ui/chart'; // Import ChartConfig for dynamic config
+import { ChartConfig } from '@/components/ui/chart';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable'; // Extends jsPDF
 
 type TrendChartType = 'line' | 'bar';
 type CategoryChartType = 'pie' | 'bar';
 type TimePeriodPreset = '7d' | '30d' | '90d' | 'custom';
 type CategoryFilter = string; // 'all' or specific category ID
+
+interface jsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: any) => jsPDFWithAutoTable;
+}
 
 export default function StatsPage() {
     const { state, formatCurrency, isLoading } = useAppContext();
@@ -34,45 +40,36 @@ export default function StatsPage() {
         const startDate = startOfDay(subDays(endDate, 29));
         return { from: startDate, to: endDate };
     });
-    const [selectedListId, setSelectedListId] = useState<string | null>(null); // List Filter - Default to All Lists
+    const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
-    // Update date range when preset changes
     useEffect(() => {
-        if (timePeriodPreset === 'custom' || !dateRange) return; // Don't overwrite custom range
-
+        if (timePeriodPreset === 'custom' || !dateRange) return;
         const now = new Date();
         let startDate: Date;
         const endDate = endOfDay(now);
-
         switch (timePeriodPreset) {
             case '7d': startDate = startOfDay(subDays(now, 6)); break;
             case '90d': startDate = startOfDay(subDays(now, 89)); break;
             case '30d': default: startDate = startOfDay(subDays(now, 29)); break;
         }
         setDateRange({ from: startDate, to: endDate });
-    }, [timePeriodPreset]); // Removed dateRange dependency to prevent loop on custom selection
+    }, [timePeriodPreset]);
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
         if (newRange?.from && newRange?.to) {
-           setTimePeriodPreset('custom'); // Switch to custom if dates are manually changed
+           setTimePeriodPreset('custom');
         }
     };
 
-     // Filter items based on current date range and category filter (Only *checked* items)
      const filteredItems = useMemo(() => {
         if (!dateRange?.from || !dateRange?.to) return [];
-
         const startDate = startOfDay(dateRange.from);
         const endDate = endOfDay(dateRange.to);
-
         const allShoppingItems = Array.isArray(state.shoppingListItems) ? state.shoppingListItems : [];
-
-
         return allShoppingItems.filter(item => {
-            if (!item.checked) return false; // Only purchased items
-            if (selectedListId !== null && item.listId !== selectedListId) return false; // List Filter
-
+            if (!item.checked) return false;
+            if (selectedListId !== null && item.listId !== selectedListId) return false;
             const itemDate = new Date(item.dateAdded);
             const isWithinDate = isWithinInterval(itemDate, { start: startDate, end: endDate });
             const isMatchingCategory = selectedCategory === 'all' || item.category === selectedCategory;
@@ -80,148 +77,109 @@ export default function StatsPage() {
         });
     }, [state.shoppingListItems, dateRange, selectedCategory, selectedListId]);
 
-
-    // Process data for Line/Bar chart (Expense Trend)
     const processedTrendData = useMemo(() => {
         if (!dateRange?.from || !dateRange?.to) return [];
-
         const startDate = startOfDay(dateRange.from);
         const endDate = endOfDay(dateRange.to);
         const dailyTotals: Record<string, number> = {};
         const datesInRange = eachDayOfInterval({ start: startDate, end: endDate });
-
-        // Initialize all days in the range with 0
         datesInRange.forEach(date => {
             const formattedDate = format(date, 'yyyy-MM-dd');
             dailyTotals[formattedDate] = 0;
         });
-
-        // Add spending from filtered items
         filteredItems.forEach(item => {
             const itemDate = format(new Date(item.dateAdded), 'yyyy-MM-dd');
              if (dailyTotals.hasOwnProperty(itemDate)) {
                 dailyTotals[itemDate] += item.quantity * item.price;
              }
         });
-
-         // Determine appropriate date format based on range duration
          const durationDays = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24);
          let dateFormat = 'MMM dd';
-         if (durationDays <= 7) dateFormat = 'eee'; // Abbreviated weekday for <= 7 days
-         else if (durationDays > 90) dateFormat = 'MMM yy'; // Month and year for > 90 days
-
-         // Create a map for easy date object lookup
+         if (durationDays <= 7) dateFormat = 'eee';
+         else if (durationDays > 90) dateFormat = 'MMM yy';
          const dateMap = new Map<string, Date>();
          Object.keys(dailyTotals).forEach(dateStr => {
-             dateMap.set(dateStr, parseISO(dateStr + 'T00:00:00Z')); // Use UTC to avoid timezone issues
+             dateMap.set(dateStr, parseISO(dateStr + 'T00:00:00Z'));
          });
-
-        // Format data for the chart, ensuring correct sorting
         const formattedData: ProcessedExpenseData[] = Object.entries(dailyTotals)
           .map(([dateStr, total]) => ({
-             date: format(dateMap.get(dateStr)!, dateFormat), // Format using the chosen format
+             date: format(dateMap.get(dateStr)!, dateFormat),
              total,
            }))
           .sort((a, b) => {
-              // Find original date strings to sort correctly based on Date objects
-              // This approach can be complex; sorting by original date string before mapping is safer
               const dateAStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === a.date)?.[0];
               const dateBStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === b.date)?.[0];
               if (!dateAStr || !dateBStr) return 0;
               return dateMap.get(dateAStr)!.getTime() - dateMap.get(dateBStr)!.getTime();
           });
-
         return formattedData;
-
     }, [filteredItems, dateRange]);
 
-
-     // Process data for Category Breakdown (Pie or Bar)
      const processedCategoryData = useMemo(() => {
-         const categoryTotals: Record<string, { total: number; name: string }> = {}; // Store name along with total
-
+         const categoryTotals: Record<string, { total: number; name: string }> = {};
          filteredItems.forEach(item => {
              const categoryId = item.category;
-             // Use state.categories to find the name, default to 'Uncategorized'
              const categoryName = state.categories.find(c => c.id === categoryId)?.name || 'Uncategorized';
              if (!categoryTotals[categoryId]) {
                  categoryTotals[categoryId] = { total: 0, name: categoryName };
              }
              categoryTotals[categoryId].total += item.quantity * item.price;
          });
-
          const totalSpent = Object.values(categoryTotals).reduce((sum, catData) => sum + catData.total, 0);
-         if (totalSpent === 0) return []; // Return empty if no spending
-
-         // Transform data for the chart components
+         if (totalSpent === 0) return [];
          const categoryData: CategoryData[] = Object.entries(categoryTotals)
              .map(([_, catData]) => ({
-                 category: catData.name, // Use category name for display
+                 category: catData.name,
                  total: catData.total,
              }))
-             .sort((a, b) => b.total - a.total); // Sort by total descending
-
+             .sort((a, b) => b.total - a.total);
          return categoryData;
      }, [filteredItems, state.categories]);
 
-     // Dynamically generate chart config for categories based on context
      const dynamicChartConfig = useMemo(() => {
         const config: ChartConfig = { total: { label: "Total Spend", color: "hsl(var(--primary))" } };
-        // Define a palette of distinct neon-like colors
         const availableColors = [
             "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
-            "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(150 100% 50%)", // Neon Green
-            "hsl(270 100% 60%)", "hsl(30 100% 50%)", // Neon Orange
-            "hsl(210 100% 60%)", "hsl(330 100% 60%)" // Neon Pink
+            "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(150 100% 50%)",
+            "hsl(270 100% 60%)", "hsl(30 100% 50%)",
+            "hsl(210 100% 60%)", "hsl(330 100% 60%)"
         ];
         let colorIndex = 0;
-
         state.categories.forEach(cat => {
-          config[cat.name] = { // Use category name as key
+          config[cat.name] = {
             label: cat.name,
             color: availableColors[colorIndex % availableColors.length],
           };
           colorIndex++;
         });
-        // Add a fallback color for uncategorized items
-        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" }; // Neutral gray
-
+        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" };
         return config;
      }, [state.categories]);
 
-
      const summaryStats = useMemo(() => {
         if (!dateRange?.from || !dateRange?.to) return { totalSpent: 0, averagePerDayInRange: 0, averagePerSpendingDay: 0, highestSpendDay: null, totalItems: 0 };
-
         const totalSpent = filteredItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
         const daysWithSpending = new Set(filteredItems.map(item => format(new Date(item.dateAdded), 'yyyy-MM-dd')));
-        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size); // Avoid division by zero
-
-         // Calculate number of days in the selected range
+        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size);
          const start = startOfDay(dateRange.from);
          const end = endOfDay(dateRange.to);
-         const numberOfDaysInRange = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 3600 * 24) + 1); // Inclusive
-
+         const numberOfDaysInRange = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 3600 * 24) + 1);
          const averagePerDayInRange = totalSpent / numberOfDaysInRange;
          const averagePerSpendingDay = totalSpent / numberOfDaysWithSpending;
-
-         // Find the day with the highest spending from processedTrendData
          const highestSpendDay = processedTrendData.reduce(
             (max, day) => (day.total > max.total ? day : max),
-            { date: '', total: -1 } // Initial value with negative total
+            { date: '', total: -1 }
           );
          const totalItems = filteredItems.length;
-
         return {
             totalSpent,
             averagePerDayInRange,
             averagePerSpendingDay,
-            highestSpendDay: highestSpendDay.total >= 0 ? highestSpendDay : null, // Only return if total is non-negative
+            highestSpendDay: highestSpendDay.total >= 0 ? highestSpendDay : null,
             totalItems,
         };
     }, [filteredItems, processedTrendData, dateRange]);
 
-     // Helper to get category name for display
      const getCategoryName = (categoryId: string): string => {
         return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
      };
@@ -229,7 +187,6 @@ export default function StatsPage() {
     const getFilterLabel = () => {
         let dateLabel = '';
         const listName = selectedListId === null ? 'All Lists' : state.lists.find(list => list.id === selectedListId)?.name || 'Unknown List';
-
          if (timePeriodPreset !== 'custom' && dateRange?.from && dateRange?.to) {
              switch (timePeriodPreset) {
                 case '7d': dateLabel = 'Last 7d'; break;
@@ -241,20 +198,135 @@ export default function StatsPage() {
          } else {
              dateLabel = 'Select Dates';
          }
-
         const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
         return `${listName} | ${dateLabel}${categoryLabel}`;
     };
 
-    const isLoadingSkeletons = () => {
-      return (
-        <div className="flex flex-col gap-3">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-6 w-1/3" />
-          ))}
-        </div>
-      );
-    }
+    const handleExportPDF = () => {
+        const doc = new jsPDF() as jsPDFWithAutoTable;
+        const tableCellStyles = { fontSize: 8 };
+        const tableHeaderStyles = { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' };
+
+        doc.setFontSize(18);
+        doc.text("Neon Shopping - Expense Dashboard Report", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+
+        // Filter criteria
+        const filterCriteria = `Filters Applied:
+        List: ${selectedListId === null ? 'All Lists' : state.lists.find(list => list.id === selectedListId)?.name || 'Unknown List'}
+        Date Range: ${dateRange?.from ? format(dateRange.from, 'MMM d, yyyy') : 'N/A'} - ${dateRange?.to ? format(dateRange.to, 'MMM d, yyyy') : 'N/A'}
+        Category: ${selectedCategory === 'all' ? 'All Categories' : getCategoryName(selectedCategory)}`;
+        doc.text(filterCriteria, 14, 32);
+
+        let yPos = 55; // Initial Y position for summary
+
+        // Summary Statistics
+        doc.setFontSize(12);
+        doc.text("Summary Statistics:", 14, yPos);
+        yPos += 7;
+        doc.setFontSize(10);
+        doc.text(`Total Spent: ${formatCurrency(summaryStats.totalSpent)}`, 14, yPos);
+        yPos += 5;
+        doc.text(`Average Spend / Day (in range): ${formatCurrency(summaryStats.averagePerDayInRange)}`, 14, yPos);
+        yPos += 5;
+        doc.text(`Average Spend / Spending Day: ${formatCurrency(summaryStats.averagePerSpendingDay)}`, 14, yPos);
+        yPos += 5;
+        doc.text(`Highest Spend Day: ${summaryStats.highestSpendDay ? `${formatCurrency(summaryStats.highestSpendDay.total)} on ${summaryStats.highestSpendDay.date}` : 'N/A'}`, 14, yPos);
+        yPos += 5;
+        doc.text(`Total Items Purchased: ${summaryStats.totalItems}`, 14, yPos);
+        yPos += 10;
+
+        // Expense Trend Table
+        if (processedTrendData.length > 0) {
+            doc.setFontSize(12);
+            doc.text("Expense Trend Data:", 14, yPos);
+            yPos += 7;
+            doc.autoTable({
+                startY: yPos,
+                head: [['Date', 'Total Spent']],
+                body: processedTrendData.map(d => [d.date, formatCurrency(d.total)]),
+                theme: 'grid',
+                headStyles: tableHeaderStyles,
+                styles: tableCellStyles,
+                didDrawPage: (data) => { yPos = data.cursor?.y ?? yPos; }
+            });
+            yPos += 10; // Add space after table
+        } else {
+            doc.setFontSize(10);
+            doc.text("No expense trend data for selected filters.", 14, yPos);
+            yPos += 7;
+        }
+
+
+        // Category Breakdown Table
+        if (processedCategoryData.length > 0) {
+            doc.setFontSize(12);
+            doc.text("Category Breakdown Data:", 14, yPos);
+            yPos += 7;
+            doc.autoTable({
+                startY: yPos,
+                head: [['Category', 'Total Spent']],
+                body: processedCategoryData.map(d => [d.category, formatCurrency(d.total)]),
+                theme: 'grid',
+                headStyles: tableHeaderStyles,
+                styles: tableCellStyles,
+                didDrawPage: (data) => { yPos = data.cursor?.y ?? yPos; }
+            });
+        } else {
+            doc.setFontSize(10);
+            doc.text("No category breakdown data for selected filters.", 14, yPos);
+        }
+
+        doc.save('expense_dashboard_report.pdf');
+    };
+
+    const downloadCSV = (csvContent: string, fileName: string) => {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    };
+
+    const handleExportCSV = () => {
+        let csvContent = "";
+        const headers = ["Date/Category", "Total Spent"];
+        csvContent += headers.join(",") + "\r\n";
+
+        // Summary Data
+        csvContent += `"Filter Criteria: ${getFilterLabel()}"\r\n`;
+        csvContent += `"Total Spent","${formatCurrency(summaryStats.totalSpent)}"\r\n`;
+        csvContent += `"Avg Spend / Day (in range)","${formatCurrency(summaryStats.averagePerDayInRange)}"\r\n`;
+        csvContent += `"Avg Spend / Spending Day","${formatCurrency(summaryStats.averagePerSpendingDay)}"\r\n`;
+        csvContent += `"Highest Spend Day","${summaryStats.highestSpendDay ? `${formatCurrency(summaryStats.highestSpendDay.total)} on ${summaryStats.highestSpendDay.date}` : 'N/A'}"\r\n`;
+        csvContent += `"Total Items Purchased","${summaryStats.totalItems}"\r\n\r\n`;
+        
+        // Trend Data
+        csvContent += "Expense Trend Data\r\n";
+        csvContent += `"Date","Total Spent"\r\n`;
+        processedTrendData.forEach(item => {
+            csvContent += `"${item.date}","${formatCurrency(item.total)}"\r\n`;
+        });
+        csvContent += "\r\n"; // Separator
+
+        // Category Data
+        csvContent += "Category Breakdown Data\r\n";
+        csvContent += `"Category","Total Spent"\r\n`;
+        processedCategoryData.forEach(item => {
+            csvContent += `"${item.category}","${formatCurrency(item.total)}"\r\n`;
+        });
+
+        downloadCSV(csvContent, 'expense_dashboard_report.csv');
+    };
+
 
     if (isLoading) {
         return <StatsPageSkeleton />;
@@ -262,22 +334,29 @@ export default function StatsPage() {
 
 
     return (
-        <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full"> {/* Ensure h-full for flex layout */}
+        <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full">
             <h1 className="text-xl sm:text-2xl font-bold text-primary">Expense Dashboard</h1>
 
-            {/* Filter Section - Made Sticky */}
-             <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border"> {/* Sticky classes added */}
+             <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border">
                 <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                    <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2">
-                        <Filter className="h-4 w-4" /> Filters
-                    </CardTitle>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2 mb-2 sm:mb-0">
+                            <Filter className="h-4 w-4" /> Filters & Export
+                        </CardTitle>
+                         <div className="flex gap-2">
+                            <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                                <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> Export PDF
+                            </Button>
+                            <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                                <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> Export CSV
+                            </Button>
+                        </div>
+                    </div>
                 </CardHeader>
                  <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
-
-                    {/* List Selector*/}
                     <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                          <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
-                             <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
+                             <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
                                 <WalletCards className="h-4 w-4 mr-2 opacity-70" />
                                 <SelectValue placeholder="Select Shopping List" />
                             </SelectTrigger>
@@ -288,15 +367,14 @@ export default function StatsPage() {
                                     {state.lists.map((list) => (
                                         <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
                                     ))}
+                                     {state.lists.length === 0 && <SelectItem value="no-lists" disabled>No lists available</SelectItem>}
                                 </SelectGroup>
                             </SelectContent>
                         </Select>
                     </div>
-
-                    {/* Time Period Preset */}
                     <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
                          <Select value={timePeriodPreset} onValueChange={(value: TimePeriodPreset) => setTimePeriodPreset(value)}>
-                             <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary [&[data-state=open]]:border-primary [&[data-state=open]]:shadow-primary text-xs sm:text-sm">
+                             <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary [&[data-state=open]]:border-primary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
                                 <CalendarDays className="h-4 w-4 mr-2 opacity-70" />
                                 <SelectValue placeholder="Select time period" />
                             </SelectTrigger>
@@ -308,19 +386,17 @@ export default function StatsPage() {
                             </SelectContent>
                         </Select>
                     </div>
-                     {/* Date Range Picker */}
                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
                          <DateRangePicker
                             range={dateRange}
                             onRangeChange={handleDateRangeChange}
-                             triggerClassName="w-full justify-start text-left font-normal text-xs sm:text-sm"
+                             triggerClassName="w-full justify-start text-left font-normal text-xs sm:text-sm glow-border-inner"
                              align="start"
                          />
                      </div>
-                     {/* Category Selector */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                          <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
-                             <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
+                             <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
                                  <Layers className="h-4 w-4 mr-2 opacity-70" />
                                 <SelectValue placeholder="Filter by category" />
                             </SelectTrigger>
@@ -346,12 +422,9 @@ export default function StatsPage() {
                 </CardContent>
             </Card>
 
-            {/* Scrollable Content Area */}
-            <div className="flex-grow overflow-y-auto mt-4"> {/* Added mt-4 for spacing below sticky filter */}
-                <div className="space-y-4 sm:space-y-6 pb-6"> {/* Added padding-bottom */}
-                    {/* Summary Cards */}
+            <div className="flex-grow overflow-y-auto mt-4">
+                <div className="space-y-4 sm:space-y-6 pb-6">
                     <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                        {/* Total Spent */}
                         <Card className="bg-card border-primary/30 shadow-neon glow-border-inner">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
                             <CardTitle className="text-xs sm:text-sm font-medium text-primary">Total Spent</CardTitle>
@@ -362,7 +435,6 @@ export default function StatsPage() {
                             <p className="text-xs text-muted-foreground">{summaryStats.totalItems} items ({getFilterLabel()})</p>
                             </CardContent>
                         </Card>
-                        {/* Avg Spend / Day */}
                         <Card className="bg-card border-secondary/30 shadow-neon glow-border-inner">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
                             <CardTitle className="text-xs sm:text-sm font-medium text-secondary">Avg. Spend / Day</CardTitle>
@@ -373,7 +445,6 @@ export default function StatsPage() {
                             <p className="text-xs text-muted-foreground">Avg/spending day: {formatCurrency(summaryStats.averagePerSpendingDay)}</p>
                             </CardContent>
                         </Card>
-                        {/* Highest Spend Day */}
                         <Card className="bg-card border-yellow-500/30 shadow-neon glow-border-inner">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
                             <CardTitle className="text-xs sm:text-sm font-medium text-yellow-500">Highest Spend Day</CardTitle>
@@ -390,7 +461,6 @@ export default function StatsPage() {
                             )}
                             </CardContent>
                         </Card>
-                        {/* Items Purchased */}
                         <Card className="bg-card border-green-500/30 shadow-neon glow-border-inner">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
                             <CardTitle className="text-xs sm:text-sm font-medium text-green-500">Items Purchased</CardTitle>
@@ -403,9 +473,7 @@ export default function StatsPage() {
                         </Card>
                     </div>
 
-                    {/* Chart Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                        {/* Expense Trend Chart */}
                         <Card className="bg-card border-primary/30 shadow-neon lg:col-span-1 glow-border-inner">
                             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
                                 <div>
@@ -431,7 +499,6 @@ export default function StatsPage() {
                             </CardHeader>
                             <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
                                 {processedTrendData.length > 0 ? (
-                                    // Pass dynamicChartConfig to ExpenseChart
                                     <ExpenseChart data={processedTrendData} chartType={trendChartType} chartConfig={dynamicChartConfig} />
                                 ) : (
                                     <div className="flex items-center justify-center h-[200px] sm:h-[300px]">
@@ -441,7 +508,6 @@ export default function StatsPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Category Breakdown Chart */}
                         <Card className="bg-card border-secondary/30 shadow-neon lg:col-span-1 glow-border-inner">
                             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
                                 <div>
@@ -470,10 +536,8 @@ export default function StatsPage() {
                             <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
                                 {processedCategoryData.length > 0 ? (
                                     categoryChartType === 'pie' ? (
-                                        // Pass dynamicChartConfig to CategoryPieChart
                                         <CategoryPieChart data={processedCategoryData} chartConfig={dynamicChartConfig} />
                                     ) : (
-                                        // Pass dynamicChartConfig to ExpenseChart for category bar view
                                         <ExpenseChart data={processedCategoryData.map(d => ({ date: d.category, total: d.total }))} chartType="bar" keyPrefix="category" chartConfig={dynamicChartConfig}/>
                                     )
                                 ) : (
@@ -486,19 +550,23 @@ export default function StatsPage() {
                     </div>
                 </div>
             </div>
-
         </div>
     );
 }
 
 const StatsPageSkeleton: React.FC = () => (
-    <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse"> {/* Ensure h-full */}
-        <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" /> {/* Title */}
+    <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">
+        <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" />
 
-        {/* Filter Skeleton - Sticky */}
         <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                <Skeleton className="h-5 w-1/5" />
+                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                    <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
+                    <div className="flex gap-2">
+                        <Skeleton className="h-8 w-24 rounded-md" /> {/* PDF Button */}
+                        <Skeleton className="h-8 w-24 rounded-md" /> {/* CSV Button */}
+                    </div>
+                </div>
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
@@ -508,10 +576,8 @@ const StatsPageSkeleton: React.FC = () => (
             </CardContent>
         </Card>
 
-        {/* Scrollable Content Skeleton */}
         <div className="flex-grow overflow-y-auto mt-4">
             <div className="space-y-4 sm:space-y-6 pb-6">
-                {/* Summary Cards Skeleton */}
                 <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                     {[1, 2, 3, 4].map((i) => (
                         <Card key={i} className="bg-card border-border/20 shadow-md glow-border-inner">
@@ -527,9 +593,7 @@ const StatsPageSkeleton: React.FC = () => (
                     ))}
                 </div>
 
-                {/* Chart Section Skeleton */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    {/* Trend Chart Skeleton */}
                     <Card className="bg-card border-border/20 shadow-md lg:col-span-1 glow-border-inner">
                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
                             <div className="w-3/5 space-y-1">
@@ -542,7 +606,6 @@ const StatsPageSkeleton: React.FC = () => (
                             <Skeleton className="h-4/5 w-11/12" />
                         </CardContent>
                     </Card>
-                    {/* Pie Chart Skeleton */}
                     <Card className="bg-card border-border/20 shadow-md lg:col-span-1 glow-border-inner">
                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
                             <div className="w-3/5 space-y-1">
@@ -560,6 +623,3 @@ const StatsPageSkeleton: React.FC = () => (
         </div>
     </div>
 );
-
-
-

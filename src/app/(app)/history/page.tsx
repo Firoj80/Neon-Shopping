@@ -1,13 +1,14 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useAppContext } from '@/context/app-context';
-import type { ShoppingListItem, Category, List } from '@/context/app-context'; // Import Category type
+import type { ShoppingListItem, Category, List } from '@/context/app-context';
 import { subDays, format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards } from 'lucide-react';
+import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards, Download } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
@@ -23,41 +24,45 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 type CategoryFilter = string; // 'all' or specific category ID
 type SortOption = 'dateDesc' | 'dateAsc' | 'priceDesc' | 'priceAsc';
 
+interface jsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: any) => jsPDFWithAutoTable;
+}
+
+
 export default function HistoryPage() {
     const { state, dispatch, formatCurrency, isLoading } = useAppContext();
-    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all'); // Default to 'all'
+    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
     const [sortOption, setSortOption] = useState<SortOption>('dateDesc');
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         const endDate = endOfDay(new Date());
-        const startDate = startOfDay(subDays(endDate, 29)); // Default to last 30 days
+        const startDate = startOfDay(subDays(endDate, 29));
         return { from: startDate, to: endDate };
     });
-    const [selectedListId, setSelectedListId] = useState<string | null>(null); // Default to 'all' lists (null)
+    const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
-    // Effect to set initial selectedListId if lists are available and none is selected
     useEffect(() => {
-        if (selectedListId === undefined && state.lists.length > 0) { // check for undefined to allow null for 'All Lists'
-            setSelectedListId(state.lists[0].id); // Default to the first list if available
-        } else if (state.lists.length === 0 && selectedListId !== null) { // If no lists, selectedListId should be null
+        if (selectedListId === undefined && state.lists.length > 0) {
+            setSelectedListId(state.lists[0].id);
+        } else if (state.lists.length === 0 && selectedListId !== null) {
             setSelectedListId(null);
         }
     }, [state.lists, selectedListId]);
 
 
-    // Filter and sort items based on selections
     const historyItems = useMemo(() => {
-        let items: ShoppingListItem[] = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : []; // Only purchased items
+        let items: ShoppingListItem[] = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : [];
 
-         if (selectedListId !== null) { // Apply list filter only if a specific list is selected
+         if (selectedListId !== null) {
             items = items.filter(item => item.listId === selectedListId);
         }
 
-        // Date Range Filter
         if (dateRange?.from && dateRange?.to) {
             const startDate = startOfDay(dateRange.from);
             const endDate = endOfDay(dateRange.to);
@@ -67,12 +72,10 @@ export default function HistoryPage() {
             });
         }
 
-        // Category Filter (using category ID)
         if (selectedCategory !== 'all') {
             items = items.filter(item => item.category === selectedCategory);
         }
 
-        // Sorting
         items.sort((a, b) => {
             switch (sortOption) {
                 case 'dateAsc': return a.dateAdded - b.dateAdded;
@@ -91,21 +94,16 @@ export default function HistoryPage() {
     };
 
      const handleDeleteItem = (id: string) => {
-        setItemToDelete(id); // Trigger confirmation dialog
+        setItemToDelete(id);
      };
 
      const confirmDelete = () => {
         if (itemToDelete) {
           dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete });
-          setItemToDelete(null); // Close dialog
+          setItemToDelete(null);
         }
      };
 
-    if (isLoading) {
-        return <HistoryPageSkeleton />;
-    }
-
-    // Helper to get category name for display
     const getCategoryName = (categoryId: string): string => {
       return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
     };
@@ -121,24 +119,107 @@ export default function HistoryPage() {
       return `${listName} | ${dateLabel}${categoryLabel}`;
     };
 
+     const handleExportPDF = () => {
+        const doc = new jsPDF() as jsPDFWithAutoTable;
+        const tableCellStyles = { fontSize: 8 };
+        const tableHeaderStyles = { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' };
+
+        doc.setFontSize(18);
+        doc.text("Neon Shopping - Purchase History Report", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Report Generated: ${format(new Date(), 'MMM d, yyyy HH:mm')}`, 14, 32);
+        doc.text(`Filters Applied: ${getFilterLabel()}`, 14, 38);
+
+        const tableData = historyItems.map(item => [
+            item.name,
+            item.quantity,
+            formatCurrency(item.price),
+            formatCurrency(item.price * item.quantity),
+            getCategoryName(item.category),
+            format(new Date(item.dateAdded), 'MMM d, yyyy')
+        ]);
+
+        doc.autoTable({
+            startY: 45,
+            head: [['Item Name', 'Qty', 'Price', 'Total', 'Category', 'Date Purchased']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: tableHeaderStyles,
+            styles: tableCellStyles,
+        });
+
+        doc.save('purchase_history_report.pdf');
+    };
+
+    const downloadCSV = (csvContent: string, fileName: string) => {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    };
+
+    const handleExportCSV = () => {
+        let csvContent = "";
+        const headers = ["Item Name", "Quantity", "Price", "Total Price", "Category", "Date Purchased", "List Name"];
+        csvContent += headers.join(",") + "\r\n";
+
+        historyItems.forEach(item => {
+            const listName = state.lists.find(l => l.id === item.listId)?.name || 'N/A';
+            const row = [
+                `"${item.name.replace(/"/g, '""')}"`, // Escape double quotes
+                item.quantity,
+                item.price, // Raw number for CSV
+                item.price * item.quantity, // Raw number
+                `"${getCategoryName(item.category).replace(/"/g, '""')}"`,
+                format(new Date(item.dateAdded), 'yyyy-MM-dd'),
+                `"${listName.replace(/"/g, '""')}"`
+            ];
+            csvContent += row.join(",") + "\r\n";
+        });
+
+        downloadCSV(csvContent, 'purchase_history_report.csv');
+    };
+
+
+    if (isLoading) {
+        return <HistoryPageSkeleton />;
+    }
+
     return (
-        <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full"> {/* Ensure h-full */}
+        <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full">
             <h1 className="text-xl sm:text-2xl font-bold text-primary flex items-center gap-2">
                 <History className="h-6 w-6" /> Purchase History
             </h1>
 
-              {/* Filter & Sort Section - Made Sticky */}
-              <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border-inner"> {/* Sticky classes added */}
+              <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border-inner">
                   <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                      <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2">
-                          <Filter className="h-4 w-4" /> Filters & Sort
-                      </CardTitle>
+                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                            <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2 mb-2 sm:mb-0">
+                                <Filter className="h-4 w-4" /> Filters & Sort
+                            </CardTitle>
+                             <div className="flex gap-2">
+                                <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                                    <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> Export PDF
+                                </Button>
+                                <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                                    <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> Export CSV
+                                </Button>
+                            </div>
+                        </div>
                   </CardHeader>
                   <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
-                      {/*List Selector*/}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                            <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)} disabled={state.lists.length === 0}>
-                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
+                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
                                   <WalletCards className="h-4 w-4 mr-2 opacity-70" />
                                  <SelectValue placeholder="Select Shopping List" />
                               </SelectTrigger>
@@ -157,19 +238,17 @@ export default function HistoryPage() {
                               </SelectContent>
                           </Select>
                       </div>
-                      {/* Date Range Picker */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
                           <DateRangePicker
                               range={dateRange}
                               onRangeChange={handleDateRangeChange}
-                              triggerClassName="w-full justify-start text-left font-normal text-xs sm:text-sm"
+                              triggerClassName="w-full justify-start text-left font-normal text-xs sm:text-sm glow-border-inner"
                               align="start"
                           />
                       </div>
-                      {/* Category Selector */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
-                              <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
+                              <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
                                   <Layers className="h-4 w-4 mr-2 opacity-70" />
                                   <SelectValue placeholder="Filter by category" />
                               </SelectTrigger>
@@ -189,10 +268,9 @@ export default function HistoryPage() {
                               </SelectContent>
                           </Select>
                       </div>
-                       {/* Sort Selector */}
                        <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
-                              <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary text-xs sm:text-sm">
+                              <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary text-xs sm:text-sm glow-border-inner">
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
                                   <SelectValue placeholder="Sort by..." />
                               </SelectTrigger>
@@ -210,8 +288,7 @@ export default function HistoryPage() {
                   </CardContent>
               </Card>
 
-            {/* History List - Scrollable */}
-            <div className="flex-grow overflow-y-auto mt-4"> {/* Added mt-4 and overflow-y-auto */}
+            <div className="flex-grow overflow-y-auto mt-4">
                 <ScrollArea className="h-full pr-1">
                     {historyItems.length > 0 ? (
                         <div className="flex flex-col gap-2 pb-4">
@@ -227,7 +304,6 @@ export default function HistoryPage() {
                 </ScrollArea>
             </div>
 
-             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
                 <AlertDialogContent className="glow-border">
                     <AlertDialogHeader>
@@ -237,8 +313,8 @@ export default function HistoryPage() {
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    <AlertDialogCancel onClick={() => setItemToDelete(null)} className="glow-border-inner">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner">
                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                     </AlertDialogAction>
                     </AlertDialogFooter>
@@ -249,23 +325,21 @@ export default function HistoryPage() {
     );
 }
 
-// --- History Item Card ---
 interface HistoryItemCardProps {
     item: ShoppingListItem;
     formatCurrency: (amount: number) => string;
     onDelete: (id: string) => void;
-    getCategoryName: (id: string) => string; // Add function to get category name
+    getCategoryName: (id: string) => string;
 }
 
 const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency, onDelete, getCategoryName }) => {
   const purchaseDate = format(new Date(item.dateAdded), 'MMM d, yyyy');
   const totalItemPrice = item.price * item.quantity;
-  const categoryName = getCategoryName(item.category); // Get category name
+  const categoryName = getCategoryName(item.category);
 
   return (
     <Card className="rounded-lg shadow-sm p-3 w-full border-secondary/20 bg-card/70 hover:border-secondary/40 transition-colors duration-200 glow-border-inner">
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-         {/* Item Details */}
         <div className="flex-grow min-w-0">
           <p className="text-sm font-medium leading-tight text-neonText/90">{item.name}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
@@ -273,12 +347,11 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
             <span>Price: {formatCurrency(item.price)}</span>
             <span className="font-medium text-neonText/80">Total: {formatCurrency(totalItemPrice)}</span>
             <Badge variant="secondary" className="py-0.5 px-1.5 text-xs bg-secondary/20 text-secondary border-secondary/30">
-              <Tag className="h-3 w-3 mr-1" />{categoryName} {/* Display category name */}
+              <Tag className="h-3 w-3 mr-1" />{categoryName}
             </Badge>
           </div>
         </div>
 
-        {/* Date & Delete Button */}
          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 mt-2 sm:mt-0">
              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <CalendarDays className="h-3 w-3" /> {purchaseDate}
@@ -299,16 +372,19 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
   );
 };
 
-
-// --- Skeleton Loader ---
 const HistoryPageSkeleton: React.FC = () => (
-    <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse"> {/* Ensure h-full */}
-        <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" /> {/* Title */}
+    <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">
+        <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" />
 
-        {/* Filter Skeleton - Sticky */}
         <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border-inner">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                <Skeleton className="h-5 w-1/5" />
+                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                    <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
+                    <div className="flex gap-2">
+                        <Skeleton className="h-8 w-24 rounded-md" /> {/* PDF Button */}
+                        <Skeleton className="h-8 w-24 rounded-md" /> {/* CSV Button */}
+                    </div>
+                </div>
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
@@ -318,7 +394,6 @@ const HistoryPageSkeleton: React.FC = () => (
             </CardContent>
         </Card>
 
-        {/* History List Skeleton - Scrollable */}
          <div className="flex-grow overflow-y-auto mt-4">
             <ScrollArea className="h-full pr-1">
                 <div className="flex flex-col gap-2 pb-4">
@@ -346,5 +421,3 @@ const HistoryPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
-
-
