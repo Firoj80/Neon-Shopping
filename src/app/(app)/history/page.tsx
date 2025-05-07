@@ -37,14 +37,14 @@ export default function HistoryPage() {
         const startDate = startOfDay(subDays(endDate, 29)); // Default to last 30 days
         return { from: startDate, to: endDate };
     });
-    const [selectedListId, setSelectedListId] = useState<string | null>(null); // Default to no list selected initially
+    const [selectedListId, setSelectedListId] = useState<string | null>(null); // Default to 'all' lists (null)
 
     // Effect to set initial selectedListId if lists are available and none is selected
     useEffect(() => {
-        if (!selectedListId && state.lists.length > 0) {
+        if (selectedListId === undefined && state.lists.length > 0) { // check for undefined to allow null for 'All Lists'
             setSelectedListId(state.lists[0].id); // Default to the first list if available
-        } else if (state.lists.length === 0) {
-            setSelectedListId(null); // No lists available
+        } else if (state.lists.length === 0 && selectedListId !== null) { // If no lists, selectedListId should be null
+            setSelectedListId(null);
         }
     }, [state.lists, selectedListId]);
 
@@ -53,8 +53,8 @@ export default function HistoryPage() {
     const historyItems = useMemo(() => {
         let items: ShoppingListItem[] = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : []; // Only purchased items
 
-         if (selectedListId !== null) {
-            items = items.filter(item => item.listId === selectedListId); // List Filter
+         if (selectedListId !== null) { // Apply list filter only if a specific list is selected
+            items = items.filter(item => item.listId === selectedListId);
         }
 
         // Date Range Filter
@@ -77,7 +77,7 @@ export default function HistoryPage() {
             switch (sortOption) {
                 case 'dateAsc': return a.dateAdded - b.dateAdded;
                 case 'priceDesc': return (b.price * b.quantity) - (a.price * a.quantity);
-                case 'priceAsc': return (a.price * a.quantity) - (b.price * a.quantity);
+                case 'priceAsc': return (a.price * a.quantity) - (b.price * b.quantity);
                 case 'dateDesc':
                 default: return b.dateAdded - a.dateAdded;
             }
@@ -137,7 +137,7 @@ export default function HistoryPage() {
                   <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
                       {/*List Selector*/}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                           <Select value={selectedListId || 'all'} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)} disabled={state.lists.length === 0}>
+                           <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)} disabled={state.lists.length === 0}>
                                <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
                                   <WalletCards className="h-4 w-4 mr-2 opacity-70" />
                                  <SelectValue placeholder="Select Shopping List" />
@@ -346,4 +346,5 @@ const HistoryPageSkeleton: React.FC = () => (
          </div>
     </div>
 );
+
 

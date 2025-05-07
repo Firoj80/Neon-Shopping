@@ -34,7 +34,7 @@ export default function StatsPage() {
         const startDate = startOfDay(subDays(endDate, 29));
         return { from: startDate, to: endDate };
     });
-    const [selectedListId, setSelectedListId] = useState<string | null>(state.selectedListId || null); // List Filter
+    const [selectedListId, setSelectedListId] = useState<string | null>(null); // List Filter - Default to All Lists
 
     // Update date range when preset changes
     useEffect(() => {
@@ -276,7 +276,7 @@ export default function StatsPage() {
 
                     {/* List Selector*/}
                     <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                         <Select value={selectedListId || 'all'} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
+                         <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
                              <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm">
                                 <WalletCards className="h-4 w-4 mr-2 opacity-70" />
                                 <SelectValue placeholder="Select Shopping List" />
@@ -560,5 +560,6 @@ const StatsPageSkeleton: React.FC = () => (
         </div>
     </div>
 );
+
 
 
