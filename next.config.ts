@@ -18,12 +18,8 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    // unoptimized: true, // Use this if you plan to serve statically without Next.js image optimization
   },
-  // Ensure static export is configured for Capacitor
-  output: 'export',
-  // Set trailingSlash to true if your static server requires it (optional)
-  // trailingSlash: true,
+  output: 'export', // Often used for simpler, pure Next.js static deployments
 };
 
 export default nextConfig;

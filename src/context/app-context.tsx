@@ -1,8 +1,7 @@
 "use client";
 import type React from 'react';
-import { createContext, useContext, useReducer, useEffect, useState, useCallback }
-  from 'react';
-import { format } from 'date-fns'; // Removed startOfDay, isSameDay as they are not used directly here
+import { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
+import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
 // --- Types ---
@@ -19,11 +18,10 @@ export interface List {
   defaultCategory?: string;
 }
 
-export interface BudgetItem {
-  listId: string | null;
+export interface BudgetItem { // Simplified for local storage
   limit: number;
-  spent: number;
-  lastSetDate: string | null;
+  spent: number; // Typically calculated daily or per list based on items
+  lastSetDate: string | null; // Could be used for daily budget reset
 }
 
 export interface Category {
@@ -39,18 +37,18 @@ export interface ShoppingListItem {
   price: number;
   category: string;
   checked: boolean;
-  dateAdded: number;
+  dateAdded: number; // Timestamp
 }
 
 interface AppState {
-  userId: string;
+  userId: string; // For local storage keying, not for backend auth
   currency: Currency;
   lists: List[];
   selectedListId: string | null;
   shoppingListItems: ShoppingListItem[];
   categories: Category[];
-  isPremium: boolean;
-  theme: string; // Added theme state
+  // isPremium: boolean; // Removed, as complex auth/premium features are out
+  // theme: string; // Removed theme state
 }
 
 type Action =
@@ -66,8 +64,8 @@ type Action =
   | { type: 'ADD_CATEGORY'; payload: { name: string } }
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } }
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } }
-  | { type: 'SET_PREMIUM'; payload: boolean }
-  | { type: 'SET_THEME'; payload: string } // Added theme action
+  // | { type: 'SET_PREMIUM'; payload: boolean } // Removed
+  // | { type: 'SET_THEME'; payload: string } // Removed
   | { type: 'LOAD_STATE'; payload: Partial<AppState> & { userId: string } };
 
 // --- Initial State & Reducer ---
@@ -80,21 +78,22 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'sports', name: 'Sports' },
 ];
 
-const INITIAL_LISTS: List[] = []; // No default list
+const INITIAL_LISTS: List[] = [];
 
 const initialState: AppState = {
-  userId: '',
+  userId: '', // Will be set to UUID on load
   currency: defaultCurrency,
-  lists: INITIAL_LISTS, // Start with no lists
-  selectedListId: null, // No list selected initially
+  lists: INITIAL_LISTS,
+  selectedListId: null,
   shoppingListItems: [],
   categories: DEFAULT_CATEGORIES,
-  isPremium: false,
-  theme: 'cyberpunk-cyan', // Default theme
+  // isPremium: false, // Removed
+  // theme: 'cyberpunk-cyan', // Removed
 };
 
-const LOCAL_STORAGE_KEY_PREFIX = 'neonShoppingAppState_v10_';
-const USER_ID_KEY = 'neonShoppingUserId_v1';
+const LOCAL_STORAGE_KEY_PREFIX = 'neonShoppingAppState_pure_'; // Unique prefix for this version
+const USER_ID_KEY = 'neonShoppingUserId_pure_';
+
 
 function appReducer(state: AppState, action: Action): AppState {
   let newState: AppState;
@@ -140,7 +139,7 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'ADD_SHOPPING_ITEM': {
       if (!action.payload.listId) {
         console.error("Attempted to add item without listId");
-        return state;
+        return state; // Or handle error appropriately
       }
       const newItem: ShoppingListItem = {
         ...action.payload,
@@ -201,6 +200,7 @@ function appReducer(state: AppState, action: Action): AppState {
           item.category === categoryId ? { ...item, category: reassignToId } : item
         );
       } else {
+         // Fallback to a generic 'uncategorized' or handle as per app logic
          updatedShoppingListItems = state.shoppingListItems.map(item =>
             item.category === categoryId ? { ...item, category: 'uncategorized' } : item
           );
@@ -208,26 +208,17 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = { ...state, categories: remainingCategories, shoppingListItems: updatedShoppingListItems };
       break;
     }
-    case 'SET_PREMIUM': {
-      newState = { ...state, isPremium: action.payload };
-      break;
-    }
-    case 'SET_THEME': // Added theme reducer case
-      newState = { ...state, theme: action.payload };
-      break;
     case 'LOAD_STATE': {
-      const loadedUserId = action.payload.userId;
+      const loadedUserId = action.payload.userId || uuidv4(); // Ensure userId is always present
       const loadedLists = action.payload.lists && action.payload.lists.length > 0 ? action.payload.lists : INITIAL_LISTS;
       newState = {
-        ...initialState,
-        ...action.payload,
+        ...initialState, // Start from a clean slate
+        ...action.payload, // Apply loaded data
         userId: loadedUserId,
         lists: loadedLists,
         selectedListId: action.payload.selectedListId || (loadedLists.length > 0 ? loadedLists[0].id : null),
         categories: action.payload.categories && action.payload.categories.length > 0 ? action.payload.categories : DEFAULT_CATEGORIES,
         currency: action.payload.currency || defaultCurrency,
-        isPremium: action.payload.isPremium ?? false,
-        theme: action.payload.theme || 'cyberpunk-cyan', // Ensure theme is loaded or defaulted
       };
       break;
     }
@@ -235,6 +226,7 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = state;
   }
 
+  // Save to localStorage after every action except initial load
   if (action.type !== 'LOAD_STATE' && typeof window !== 'undefined' && state.userId) {
     try {
       const userSpecificStorageKey = `${LOCAL_STORAGE_KEY_PREFIX}${state.userId}`;
@@ -247,6 +239,13 @@ function appReducer(state: AppState, action: Action): AppState {
 }
 
 // --- Context & Provider ---
+interface AppContextProps {
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
+  formatCurrency: (amount: number) => string;
+  isLoading: boolean;
+}
+
 export const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -276,31 +275,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             try {
               const parsedState = JSON.parse(savedStateRaw);
               if (typeof parsedState === 'object' && parsedState !== null) {
+                // Explicitly map properties to ensure correct types and structure
                 loadedStateFromStorage = {
                   currency: parsedState.currency,
                   lists: parsedState.lists,
                   selectedListId: parsedState.selectedListId,
                   shoppingListItems: parsedState.shoppingListItems,
                   categories: parsedState.categories,
-                  isPremium: parsedState.isPremium,
-                  theme: parsedState.theme, // Load theme
+                  // No theme or premium status to load in this version
                 };
               }
             } catch (e) {
-              console.error("Failed to parse saved state, resetting:", e);
+              console.error("Failed to parse saved state, resetting for user:", userIdFromStorage, e);
+              // Optionally, clear the corrupted state
               localStorage.removeItem(userSpecificStorageKey);
             }
           }
+        } else {
+          // Fallback for non-browser environments (shouldn't happen in pure Next.js client-side)
+          userIdFromStorage = uuidv4();
         }
 
         if (isMounted) {
-          dispatch({ type: 'LOAD_STATE', payload: { ...loadedStateFromStorage, userId: userIdFromStorage || uuidv4() } });
+          dispatch({ type: 'LOAD_STATE', payload: { ...loadedStateFromStorage, userId: userIdFromStorage } });
           setIsHydrated(true);
         }
 
       } catch (error) {
         console.error("Failed to load initial data:", error);
         if (isMounted) {
+           // Ensure a userId is always generated and dispatched even on error
           let finalUserId = userIdFromStorage || (typeof window !== 'undefined' ? localStorage.getItem(USER_ID_KEY) : null) || uuidv4();
           if (typeof window !== 'undefined' && !localStorage.getItem(USER_ID_KEY)) localStorage.setItem(USER_ID_KEY, finalUserId);
 
@@ -315,17 +319,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     loadInitialData();
     return () => { isMounted = false; };
-  }, []);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   const formatCurrency = useCallback((amount: number): string => {
     try {
-      return new Intl.NumberFormat(undefined, {
+      return new Intl.NumberFormat(undefined, { // Use user's locale for formatting
         style: 'currency',
         currency: state.currency.code,
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(amount);
     } catch (error) {
+      // Fallback if Intl or currency code is problematic
       console.warn("Error formatting currency, falling back to default:", error);
       return `${state.currency.symbol}${amount.toFixed(2)}`;
     }
@@ -335,8 +340,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     state,
     dispatch,
     formatCurrency,
-    isLoading: isLoading || !isHydrated,
+    isLoading: isLoading || !isHydrated, // Consider both loading and hydration state
   };
+
+  if (!isHydrated) {
+      // Optionally return a global loader or null during server render / pre-hydration
+      // to prevent hydration mismatches if initial state relies on localStorage.
+      // For simplicity, we render children, but be mindful of components relying on context immediately.
+  }
 
   return (
     <AppContext.Provider value={contextValue}>
@@ -346,13 +357,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 };
 
 // --- Hook ---
-interface AppContextProps {
-  state: AppState;
-  dispatch: React.Dispatch<Action>;
-  formatCurrency: (amount: number) => string;
-  isLoading: boolean;
-}
-
 export const useAppContext = (): AppContextProps => {
   const context = useContext(AppContext);
   if (context === undefined) {

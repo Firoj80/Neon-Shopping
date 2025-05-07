@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -33,15 +34,13 @@ export default function SettingsPage() {
   const [isLoadingCurrencies, setIsLoadingCurrencies] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-
   const [categories, setCategories] = useState<Category[]>(state.categories);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [reassignCategoryId, setReassignCategoryId] = useState<string>('uncategorized'); // Default reassign to 'uncategorized'
+  const [reassignCategoryId, setReassignCategoryId] = useState<string>('uncategorized');
 
-  // Initial currency detection effect
   useEffect(() => {
     const fetchAndDetectCurrency = async () => {
       setIsLoadingCurrencies(true);
@@ -49,7 +48,7 @@ export default function SettingsPage() {
         const currencies = await getSupportedCurrencies();
         setSupportedCurrencies(currencies);
 
-        if (!state.currency.code || state.currency.code === 'USD') { // Detect if default or not set
+        if (!state.currency.code || state.currency.code === 'USD') {
           const detectedCurrency = await getUserCurrency();
           if (detectedCurrency && currencies.some(c => c.code === detectedCurrency.code)) {
             dispatch({ type: 'SET_CURRENCY', payload: detectedCurrency });
@@ -59,14 +58,12 @@ export default function SettingsPage() {
               variant: "default",
             });
           } else if (!state.currency.code && currencies.length > 0) {
-            // Fallback if detection fails but we have currencies
             dispatch({ type: 'SET_CURRENCY', payload: currencies.find(c=> c.code === 'USD') || currencies[0] });
           }
         }
       } catch (error) {
         console.error("Failed to fetch/detect currency:", error);
         toast({ title: "Currency Error", description: "Could not load currency information. Defaulting to USD.", variant: "destructive" });
-         // Ensure a default currency is set if all else fails
         if (!state.currency.code && supportedCurrencies.length > 0) {
             const usd = supportedCurrencies.find(c => c.code === 'USD') || supportedCurrencies[0];
             dispatch({ type: 'SET_CURRENCY', payload: usd });
@@ -79,7 +76,7 @@ export default function SettingsPage() {
     };
     fetchAndDetectCurrency();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, toast]); // Removed state.currency.code and supportedCurrencies to prevent re-triggering unnecessarily
+  }, [dispatch, toast]); // Only run once on mount
 
   const handleSelectCurrency = (currencyCode: string) => {
     const selected = supportedCurrencies.find(c => c.code === currencyCode);
@@ -151,31 +148,20 @@ export default function SettingsPage() {
 
   const handleDeleteCategoryClick = (category: Category) => {
     setCategoryToDelete(category);
-    // Default reassignId to 'uncategorized' or the first available if 'uncategorized' doesn't make sense for the app
     const availableCategories = categories.filter(c => c.id !== category.id);
-    const uncategorizedOption = { id: 'uncategorized', name: 'Uncategorized' }; // Ensure this exists or is handled
-    setReassignCategoryId(availableCategories.length > 0 ? availableCategories[0].id : uncategorizedOption.id);
+    setReassignCategoryId(availableCategories.length > 0 ? availableCategories[0].id : 'uncategorized');
   };
 
   const confirmDeleteCategory = () => {
     if (!categoryToDelete) return;
     
     const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id);
-    
-    // Ensure there's a valid reassignToId if items exist for the category being deleted
-    // and there are other categories to reassign to.
     const canReassign = categoriesForReassignment.length > 0;
 
     if (itemsWithCategory.length > 0 && !reassignCategoryId && canReassign) {
        toast({ title: "Reassignment Required", description: "Select a category to reassign items to before deleting.", variant: "destructive" });
       return;
     }
-     if (itemsWithCategory.length > 0 && !canReassign && reassignCategoryId !== 'uncategorized') {
-         // If no other categories, items must be marked uncategorized or user warned more explicitly
-         // For now, let's assume 'uncategorized' is the implicit fallback handled by the reducer
-          toast({ title: "Cannot Delete", description: "This is the only category with items. Items will be marked 'Uncategorized' or similar.", variant: "destructive" });
-          // Potentially allow proceeding if they confirm this action
-     }
 
     dispatch({
       type: 'REMOVE_CATEGORY',
@@ -194,7 +180,6 @@ export default function SettingsPage() {
 
   const categoriesForReassignment = useMemo(() => {
     if (!categoryToDelete) return [];
-    // Exclude the category to be deleted and potentially a generic 'uncategorized' if it's a real category
     return categories.filter(c => c.id !== categoryToDelete.id && c.id !== 'uncategorized');
   }, [categories, categoryToDelete]);
 
@@ -206,7 +191,6 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
 
-      {/* --- Currency Settings --- */}
       <Card className="bg-card border-primary/30 shadow-neon glow-border">
         <CardHeader>
           <CardTitle className="text-secondary flex items-center gap-2">
@@ -264,7 +248,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* --- Category Settings --- */}
       <Card className="bg-card border-secondary/30 shadow-neon glow-border">
         <CardHeader>
           <CardTitle className="text-primary flex items-center gap-2">
@@ -348,7 +331,7 @@ export default function SettingsPage() {
                                     <Select
                                       value={reassignCategoryId}
                                       onValueChange={setReassignCategoryId}
-                                      defaultValue="uncategorized" // Ensure a default for safety
+                                      defaultValue="uncategorized"
                                     >
                                       <SelectTrigger
                                         id="reassign-category"
@@ -378,7 +361,6 @@ export default function SettingsPage() {
                                   <AlertDialogAction
                                     onClick={confirmDeleteCategory}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
-                                    // Disable delete if items exist, reassign is required, and no reassignId selected (excluding 'uncategorized' as a valid choice)
                                     disabled={state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && !reassignCategoryId }
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -399,16 +381,15 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      {/* Theme selection UI removed */}
     </div>
   );
 }
 
-// --- Skeleton Loader ---
 const SettingsPageSkeleton: React.FC = () => (
   <div className="space-y-6 animate-pulse">
-    <Skeleton className="h-8 w-1/4" /> {/* Title */}
+    <Skeleton className="h-8 w-1/4" />
 
-    {/* Currency Skeleton */}
     <Card className="bg-card border-border/20 shadow-md glow-border">
       <CardHeader>
         <Skeleton className="h-6 w-1/5 mb-1" />
@@ -416,16 +397,15 @@ const SettingsPageSkeleton: React.FC = () => (
       </CardHeader>
       <CardContent className="space-y-4 glow-border-inner p-4">
         <div className="grid gap-2">
-          <Skeleton className="h-4 w-1/3" /> {/* Search Label */}
-          <Skeleton className="h-10 w-full rounded-md glow-border-inner" /> {/* Search Input */}
-          <Skeleton className="h-4 w-1/4 mt-3" /> {/* Select Label */}
-          <Skeleton className="h-10 w-full rounded-md glow-border-inner" /> {/* Select Trigger */}
-          <Skeleton className="h-3 w-2/3 mt-1" /> {/* Helper Text */}
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-10 w-full rounded-md glow-border-inner" />
+          <Skeleton className="h-4 w-1/4 mt-3" />
+          <Skeleton className="h-10 w-full rounded-md glow-border-inner" />
+          <Skeleton className="h-3 w-2/3 mt-1" />
         </div>
       </CardContent>
     </Card>
 
-    {/* Category Skeleton */}
     <Card className="bg-card border-border/20 shadow-md glow-border">
       <CardHeader>
         <Skeleton className="h-6 w-1/4 mb-1" />
@@ -443,7 +423,7 @@ const SettingsPageSkeleton: React.FC = () => (
           <Skeleton className="h-5 w-1/3" />
           <Card className="p-0 border-border/30 glow-border-inner">
             <ul className="divide-y divide-border/30">
-              {[1, 2].map(i => ( // Reduced skeleton items
+              {[1, 2].map(i => (
                 <li key={i} className="flex items-center justify-between p-2 glow-border-inner">
                   <Skeleton className="h-4 w-2/5" />
                   <div className="flex items-center gap-1">

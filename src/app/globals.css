@@ -6,11 +6,8 @@
 @layer base {
   :root {
     --radius: 0.5rem; /* Base radius */
-  }
 
-  /* Default Theme (Cyberpunk Cyan) - Applied if no other theme class is present or as a fallback */
-  html:not([class*="theme-"]), /* Applied if no theme- class is present */
-  html.theme-cyberpunk-cyan {
+    /* Default Theme (Cyberpunk Cyan) */
     --background: 0 0% 0%; /* Black */
     --foreground: 0 0% 95%; /* Near White */
     --card: 0 0% 7%;
@@ -46,153 +43,8 @@
     --neon-text: 0 0% 90%; /* General bright text for neon effect */
   }
 
-  html.theme-synthwave-sunset {
-    --background: 260 30% 5%;
-    --foreground: 0 0% 90%;
-    --card: 260 30% 10%;
-    --card-foreground: 0 0% 90%;
-    --popover: 260 30% 10%;
-    --popover-foreground: 0 0% 90%;
-    --primary: 330 100% 55%; /* Neon Pink/Orange */
-    --primary-foreground: 330 100% 15%;
-    --secondary: 30 100% 50%; /* Neon Orange/Yellow */
-    --secondary-foreground: 30 100% 10%;
-    --muted: 260 30% 20%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 30 100% 65%; /* Brighter Orange/Yellow for accent */
-    --accent-foreground: 260 30% 5%;
-    --destructive: 0 80% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 330 100% 35%;
-    --input: 260 30% 20%;
-    --ring: 330 100% 55%;
-    --sidebar-background: 260 30% 8%;
-    --sidebar-foreground: 0 0% 80%;
-    --sidebar-primary: 330 100% 55%;
-    --sidebar-primary-foreground: 330 100% 15%;
-    --sidebar-accent: 30 100% 65%;
-    --sidebar-accent-foreground: 260 30% 5%;
-    --sidebar-border: 330 100% 25%;
-    --sidebar-ring: 330 100% 55%;
-    --chart-1: 330 100% 55%;
-    --chart-2: 30 100% 50%;
-    --chart-3: 210 100% 50%; /* Neon Blue */
-    --chart-4: 150 100% 50%; /* Neon Teal */
-    --chart-5: 270 100% 60%; /* Neon Purple */
-    --neon-text: 0 0% 88%;
-  }
-
-  html.theme-matrix-green {
-    --background: 0 0% 2%;
-    --foreground: 120 100% 70%;
-    --card: 0 0% 5%;
-    --card-foreground: 120 100% 70%;
-    --popover: 0 0% 5%;
-    --popover-foreground: 120 100% 70%;
-    --primary: 120 100% 50%; /* Neon Green */
-    --primary-foreground: 120 100% 5%;
-    --secondary: 120 80% 30%; /* Darker Neon Green */
-    --secondary-foreground: 120 100% 80%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 120 70% 50%;
-    --accent: 120 100% 65%; /* Brighter Green for accent */
-    --accent-foreground: 0 0% 2%;
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 95%;
-    --border: 120 100% 25%;
-    --input: 0 0% 10%;
-    --ring: 120 100% 50%;
-    --sidebar-background: 0 0% 3%;
-    --sidebar-foreground: 120 100% 65%;
-    --sidebar-primary: 120 100% 50%;
-    --sidebar-primary-foreground: 120 100% 5%;
-    --sidebar-accent: 120 100% 65%;
-    --sidebar-accent-foreground: 0 0% 2%;
-    --sidebar-border: 120 100% 20%;
-    --sidebar-ring: 120 100% 50%;
-    --chart-1: 120 100% 50%;
-    --chart-2: 120 80% 30%;
-    --chart-3: 100 100% 50%; /* Lime Green */
-    --chart-4: 140 100% 50%; /* Greenish-Cyan */
-    --chart-5: 0 0% 60%;     /* Gray for contrast */
-    --neon-text: 120 100% 75%;
-  }
-
-  html.theme-electric-blue {
-    --background: 220 40% 4%;
-    --foreground: 0 0% 92%;
-    --card: 220 40% 8%;
-    --card-foreground: 0 0% 92%;
-    --popover: 220 40% 8%;
-    --popover-foreground: 0 0% 92%;
-    --primary: 210 100% 55%;       /* Electric Blue */
-    --primary-foreground: 210 100% 10%;
-    --secondary: 180 100% 45%;     /* Neon Cyan */
-    --secondary-foreground: 180 100% 5%;
-    --muted: 220 40% 15%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 180 100% 60%;        /* Brighter Cyan for accent */
-    --accent-foreground: 220 40% 4%;
-    --destructive: 0 80% 55%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 210 100% 30%;       /* Border related to primary */
-    --input: 220 40% 15%;
-    --ring: 210 100% 55%;         /* Ring related to primary */
-    --sidebar-background: 220 40% 6%;
-    --sidebar-foreground: 0 0% 88%;
-    --sidebar-primary: 210 100% 55%;
-    --sidebar-primary-foreground: 210 100% 10%;
-    --sidebar-accent: 180 100% 60%;
-    --sidebar-accent-foreground: 220 40% 4%;
-    --sidebar-border: 210 100% 20%;
-    --sidebar-ring: 210 100% 55%;
-    --chart-1: 210 100% 55%; /* Electric Blue */
-    --chart-2: 180 100% 45%; /* Neon Cyan */
-    --chart-3: 240 100% 60%; /* Neon Indigo */
-    --chart-4: 270 100% 60%; /* Neon Purple */
-    --chart-5: 300 100% 55%; /* Neon Magenta */
-    --neon-text: 0 0% 90%;
-  }
-
-  html.theme-crimson-code {
-    --background: 0 0% 3%;
-    --foreground: 0 0% 88%;
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 88%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 88%;
-    --primary: 0 100% 50%; /* Neon Red */
-    --primary-foreground: 0 100% 10%;
-    --secondary: 30 100% 45%; /* Neon Orange */
-    --secondary-foreground: 30 100% 5%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 30 100% 60%; /* Brighter Orange for accent */
-    --accent-foreground: 0 0% 3%;
-    --destructive: 0 100% 40%;
-    --destructive-foreground: 0 0% 95%;
-    --border: 0 100% 28%;
-    --input: 0 0% 12%;
-    --ring: 0 100% 50%;
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 0 0% 80%;
-    --sidebar-primary: 0 100% 50%;
-    --sidebar-primary-foreground: 0 100% 10%;
-    --sidebar-accent: 30 100% 60%;
-    --sidebar-accent-foreground: 0 0% 3%;
-    --sidebar-border: 0 100% 20%;
-    --sidebar-ring: 0 100% 50%;
-    --chart-1: 0 100% 50%;
-    --chart-2: 30 100% 45%;
-    --chart-3: 60 100% 45%; /* Neon Yellow */
-    --chart-4: 330 100% 50%; /* Neon Pink */
-    --chart-5: 0 0% 70%;     /* Light Gray for contrast */
-    --neon-text: 0 0% 85%;
-  }
-
-  /* Ensure .dark is always present for base dark mode structure, themes override colors */
+  /* Ensure .dark is always present for base dark mode structure */
   html.dark {
-    /* These are structural and might not need to change per theme, or can be overridden by theme variables */
     color-scheme: dark;
   }
 }
@@ -204,8 +56,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Optional: Apply a subtle texture or pattern if desired */
-    /* background-image: url('/path/to/cyberpunk-texture.png'); */
   }
 
   /* Add neon glow effect to focus states based on theme variables */
