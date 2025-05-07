@@ -14,12 +14,14 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectTrigger,
   SelectContent,
   SelectItem,
   SelectValue,
-} from '@/components/ui/dialog';
+} from '@/components/ui/select';
 import type { List, Category } from '@/context/app-context';
 import { useAppContext } from '@/context/app-context';
 
