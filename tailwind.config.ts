@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"], // Enable dark mode based on the 'dark' class
+  darkMode: ["class"],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -17,10 +17,9 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)', 'sans-serif'], // Use Inter as the default sans-serif font
+        sans: ['var(--font-inter)', 'sans-serif'], // Changed from GeistMono to Inter
       },
       colors: {
-        // Map Tailwind color names to CSS variables defined in globals.css
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -54,7 +53,6 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Map sidebar-specific colors
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -65,7 +63,6 @@ const config: Config = {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-         // Map chart colors
          chart: {
           '1': 'hsl(var(--chart-1))',
           '2': 'hsl(var(--chart-2))',
@@ -73,7 +70,6 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        // Add neon text color
         neonText: 'hsl(var(--neon-text))',
       },
       borderRadius: {
@@ -82,8 +78,8 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        neon: '0 0 6px hsl(var(--primary) / 0.7), 0 0 10px hsl(var(--secondary) / 0.5)', // Adjusted default neon glow
-        'neon-lg': '0 0 10px hsl(var(--primary)), 0 0 18px hsl(var(--secondary) / 0.8)', // Larger neon glow for hover/emphasis
+        neon: '0 0 6px hsl(var(--primary) / 0.7), 0 0 10px hsl(var(--secondary) / 0.5)',
+        'neon-lg': '0 0 10px hsl(var(--primary)), 0 0 18px hsl(var(--secondary) / 0.8)',
       },
       keyframes: {
         "accordion-down": {

@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export default function AppAreaLayout({
@@ -6,9 +5,7 @@ export default function AppAreaLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // This layout is now simpler, just passing children through.
-  // Settings-specific logic will be handled within the Settings page itself.
+  // This layout remains simple, passing children through.
+  // List-specific layout (like Tabs) or page-specific layouts handle their own structure.
   return <>{children}</>;
 }
-
-    

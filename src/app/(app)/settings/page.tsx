@@ -12,7 +12,7 @@ import { getSupportedCurrencies, getUserCurrency } from '@/services/currency';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X, Palette, ArrowRight } from 'lucide-react';
+import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,8 +24,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { cn } from '@/lib/utils';
-import Link from 'next/link'; // Import Link for navigation
 
 export default function SettingsPage() {
   const { state, dispatch, isLoading: contextLoading } = useAppContext();
@@ -33,41 +31,55 @@ export default function SettingsPage() {
 
   const [supportedCurrencies, setSupportedCurrencies] = useState<Currency[]>([]);
   const [isLoadingCurrencies, setIsLoadingCurrencies] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+
 
   const [categories, setCategories] = useState<Category[]>(state.categories);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [reassignCategoryId, setReassignCategoryId] = useState<string>('');
+  const [reassignCategoryId, setReassignCategoryId] = useState<string>('uncategorized'); // Default reassign to 'uncategorized'
 
+  // Initial currency detection effect
   useEffect(() => {
     const fetchAndDetectCurrency = async () => {
       setIsLoadingCurrencies(true);
-      let detectedCurrency = null;
       try {
         const currencies = await getSupportedCurrencies();
         setSupportedCurrencies(currencies);
-        if (!state.currency.code) {
-          detectedCurrency = await getUserCurrency();
-          if (detectedCurrency && currencies.some(c => c.code === detectedCurrency!.code)) {
+
+        if (!state.currency.code || state.currency.code === 'USD') { // Detect if default or not set
+          const detectedCurrency = await getUserCurrency();
+          if (detectedCurrency && currencies.some(c => c.code === detectedCurrency.code)) {
             dispatch({ type: 'SET_CURRENCY', payload: detectedCurrency });
             toast({
-              title: "Currency Detected",
-              description: `Currency set to ${detectedCurrency.name} (${detectedCurrency.code}).`,
+              title: "Currency Auto-Detected",
+              description: `Currency set to ${detectedCurrency.name} (${detectedCurrency.code}). You can change this below.`,
               variant: "default",
             });
+          } else if (!state.currency.code && currencies.length > 0) {
+            // Fallback if detection fails but we have currencies
+            dispatch({ type: 'SET_CURRENCY', payload: currencies.find(c=> c.code === 'USD') || currencies[0] });
           }
         }
       } catch (error) {
         console.error("Failed to fetch/detect currency:", error);
-        toast({ title: "Error", description: "Could not load currency information.", variant: "destructive" });
+        toast({ title: "Currency Error", description: "Could not load currency information. Defaulting to USD.", variant: "destructive" });
+         // Ensure a default currency is set if all else fails
+        if (!state.currency.code && supportedCurrencies.length > 0) {
+            const usd = supportedCurrencies.find(c => c.code === 'USD') || supportedCurrencies[0];
+            dispatch({ type: 'SET_CURRENCY', payload: usd });
+        } else if (!state.currency.code) {
+             dispatch({ type: 'SET_CURRENCY', payload: { code: 'USD', symbol: '$', name: 'US Dollar' } });
+        }
       } finally {
         setIsLoadingCurrencies(false);
       }
     };
     fetchAndDetectCurrency();
-  }, [dispatch, state.currency.code, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, toast]); // Removed state.currency.code and supportedCurrencies to prevent re-triggering unnecessarily
 
   const handleSelectCurrency = (currencyCode: string) => {
     const selected = supportedCurrencies.find(c => c.code === currencyCode);
@@ -81,6 +93,17 @@ export default function SettingsPage() {
       });
     }
   };
+
+  const filteredCurrencies = useMemo(() => {
+    if (!searchTerm) return supportedCurrencies;
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return supportedCurrencies.filter(currency =>
+      currency.name.toLowerCase().includes(lowerSearchTerm) ||
+      currency.code.toLowerCase().includes(lowerSearchTerm) ||
+      currency.symbol.toLowerCase().includes(lowerSearchTerm)
+    );
+  }, [supportedCurrencies, searchTerm]);
+
 
   useEffect(() => {
     setCategories(state.categories);
@@ -128,35 +151,51 @@ export default function SettingsPage() {
 
   const handleDeleteCategoryClick = (category: Category) => {
     setCategoryToDelete(category);
+    // Default reassignId to 'uncategorized' or the first available if 'uncategorized' doesn't make sense for the app
     const availableCategories = categories.filter(c => c.id !== category.id);
-    setReassignCategoryId(availableCategories.length > 0 ? availableCategories[0].id : '');
+    const uncategorizedOption = { id: 'uncategorized', name: 'Uncategorized' }; // Ensure this exists or is handled
+    setReassignCategoryId(availableCategories.length > 0 ? availableCategories[0].id : uncategorizedOption.id);
   };
 
   const confirmDeleteCategory = () => {
     if (!categoryToDelete) return;
-    const itemsWithCategory = state.shoppingList.filter(item => item.category === categoryToDelete.id);
-    if (itemsWithCategory.length > 0 && !reassignCategoryId && categoriesForReassignment.length === 0) {
-       toast({ title: "Cannot Delete", description: "This is the only category and items are assigned to it. Create another category first or reassign items.", variant: "destructive" });
+    
+    const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id);
+    
+    // Ensure there's a valid reassignToId if items exist for the category being deleted
+    // and there are other categories to reassign to.
+    const canReassign = categoriesForReassignment.length > 0;
+
+    if (itemsWithCategory.length > 0 && !reassignCategoryId && canReassign) {
+       toast({ title: "Reassignment Required", description: "Select a category to reassign items to before deleting.", variant: "destructive" });
       return;
     }
-     if (itemsWithCategory.length > 0 && !reassignCategoryId && categoriesForReassignment.length > 0) {
-      toast({ title: "Reassignment Required", description: "Select a category to reassign items to before deleting.", variant: "destructive" });
-      return;
-    }
+     if (itemsWithCategory.length > 0 && !canReassign && reassignCategoryId !== 'uncategorized') {
+         // If no other categories, items must be marked uncategorized or user warned more explicitly
+         // For now, let's assume 'uncategorized' is the implicit fallback handled by the reducer
+          toast({ title: "Cannot Delete", description: "This is the only category with items. Items will be marked 'Uncategorized' or similar.", variant: "destructive" });
+          // Potentially allow proceeding if they confirm this action
+     }
+
     dispatch({
       type: 'REMOVE_CATEGORY',
-      payload: { categoryId: categoryToDelete.id, reassignToId: itemsWithCategory.length > 0 ? reassignCategoryId : undefined }
+      payload: { 
+        categoryId: categoryToDelete.id, 
+        reassignToId: itemsWithCategory.length > 0 ? (reassignCategoryId || 'uncategorized') : undefined 
+      }
     });
     setCategoryToDelete(null);
-    setReassignCategoryId('');
+    setReassignCategoryId('uncategorized');
     toast({ title: "Success", description: "Category deleted." });
   };
+
 
   const isLoading = contextLoading || isLoadingCurrencies;
 
   const categoriesForReassignment = useMemo(() => {
     if (!categoryToDelete) return [];
-    return categories.filter(c => c.id !== categoryToDelete.id);
+    // Exclude the category to be deleted and potentially a generic 'uncategorized' if it's a real category
+    return categories.filter(c => c.id !== categoryToDelete.id && c.id !== 'uncategorized');
   }, [categories, categoryToDelete]);
 
   if (isLoading) {
@@ -166,27 +205,6 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
-
-      {/* --- Appearance Settings --- */}
-      <Card className="bg-card border-secondary/30 shadow-neon glow-border">
-        <CardHeader>
-          <CardTitle className="text-primary flex items-center gap-2">
-            <Palette className="h-5 w-5" /> Appearance
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">Customize the look and feel of the app.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 glow-border-inner p-4">
-          <Link href="/settings/themes" passHref>
-            <Button variant="outline" className="w-full justify-between glow-border-inner hover:border-primary hover:shadow-neon">
-              <span className="text-neonText">Change Theme</span>
-              <ArrowRight className="h-4 w-4 text-primary" />
-            </Button>
-          </Link>
-           <p className="text-xs text-muted-foreground pt-1">
-              Explore different visual styles for your Neon Shopping experience.
-            </p>
-        </CardContent>
-      </Card>
 
       {/* --- Currency Settings --- */}
       <Card className="bg-card border-primary/30 shadow-neon glow-border">
@@ -198,37 +216,49 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4 glow-border-inner p-4">
           <div className="grid gap-2">
-            <Label htmlFor="currency-select" className="text-neonText/80">Select Currency</Label>
+             <Label htmlFor="currency-search" className="text-neonText/80">Search Currency</Label>
+             <Input
+                id="currency-search"
+                type="text"
+                placeholder="e.g., USD, Euro, $"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
+            />
+
+            <Label htmlFor="currency-select" className="text-neonText/80 mt-3">Select Currency</Label>
             <Select
               value={state.currency.code || ''}
               onValueChange={handleSelectCurrency}
-              disabled={supportedCurrencies.length === 0}
+              disabled={filteredCurrencies.length === 0 && !isLoadingCurrencies}
             >
               <SelectTrigger
                 id="currency-select"
                 className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary glow-border-inner"
               >
-                <SelectValue placeholder={state.currency.code ? `${state.currency.name} (${state.currency.symbol})` : "Select a currency"} />
+                <SelectValue placeholder={state.currency.code ? `${state.currency.name} (${state.currency.symbol})` : (isLoadingCurrencies ? "Loading..." : "Select a currency")} />
               </SelectTrigger>
-              <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner" position="popper">
+              <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 glow-border-inner" position="popper">
                 <ScrollArea className="h-full">
                   <SelectGroup>
                     <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Currencies</SelectLabel>
-                    {supportedCurrencies.length > 0 ? (
-                      supportedCurrencies.map((currency) => (
+                    {isLoadingCurrencies && filteredCurrencies.length === 0 ? (
+                         <SelectItem value="loading" disabled>Loading currencies...</SelectItem>
+                    ) : filteredCurrencies.length > 0 ? (
+                      filteredCurrencies.map((currency) => (
                         <SelectItem key={currency.code} value={currency.code} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2">
                           {currency.name} ({currency.symbol})
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="loading" disabled>Loading currencies...</SelectItem>
+                      <SelectItem value="no-results" disabled>No currencies match your search.</SelectItem>
                     )}
                   </SelectGroup>
                 </ScrollArea>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground pt-1">
-              Your currency might be auto-detected on first use. You can always change it here.
+              Your currency might be auto-detected. You can always change it here.
             </p>
           </div>
         </CardContent>
@@ -302,9 +332,9 @@ export default function SettingsPage() {
                                <AlertDialogContent className="glow-border">
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Delete Category: {categoryToDelete?.name}?</AlertDialogTitle>
-                                  {state.shoppingList.some(item => item.category === categoryToDelete?.id) ? (
+                                  {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) ? (
                                     <AlertDialogDescription>
-                                      This category is used by some shopping items. Please choose a category to reassign these items to before deleting, or confirm to remove items with this category.
+                                      This category is used by some shopping items. Please choose a category to reassign these items to, or they will be marked as 'Uncategorized'.
                                     </AlertDialogDescription>
                                   ) : (
                                     <AlertDialogDescription>
@@ -312,12 +342,13 @@ export default function SettingsPage() {
                                     </AlertDialogDescription>
                                   )}
                                 </AlertDialogHeader>
-                                {state.shoppingList.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && (
+                                {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && (
                                   <div className="py-4 grid gap-2">
                                     <Label htmlFor="reassign-category" className="text-neonText/80">Reassign Items To</Label>
                                     <Select
                                       value={reassignCategoryId}
                                       onValueChange={setReassignCategoryId}
+                                      defaultValue="uncategorized" // Ensure a default for safety
                                     >
                                       <SelectTrigger
                                         id="reassign-category"
@@ -326,6 +357,7 @@ export default function SettingsPage() {
                                         <SelectValue placeholder="Select a category..." />
                                       </SelectTrigger>
                                       <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
+                                         <SelectItem value="uncategorized" className="focus:bg-secondary/30 focus:text-secondary">Uncategorized</SelectItem>
                                         {categoriesForReassignment.map((cat) => (
                                           <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
                                             {cat.name}
@@ -333,20 +365,21 @@ export default function SettingsPage() {
                                         ))}
                                       </SelectContent>
                                     </Select>
-                                     <p className="text-xs text-muted-foreground pt-1">If no category is selected, items assigned to "{categoryToDelete?.name}" will be marked as "Uncategorized" or removed if this is the last category.</p>
+                                     <p className="text-xs text-muted-foreground pt-1">If no category is selected, items assigned to "{categoryToDelete?.name}" will be marked as "Uncategorized".</p>
                                   </div>
                                 )}
-                                 {state.shoppingList.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length === 0 && (
+                                 {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length === 0 && (
                                      <AlertDialogDescription className="pt-2 text-sm text-yellow-500">
-                                         Warning: This is the only category with assigned items. Deleting it will mark items as "Uncategorized" or remove them.
+                                         Warning: No other categories available for reassignment. Items will be marked 'Uncategorized'.
                                     </AlertDialogDescription>
                                 )}
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel onClick={() => setCategoryToDelete(null)} className="glow-border-inner">Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={confirmDeleteCategory}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
-                                     disabled={state.shoppingList.some(item => item.category === categoryToDelete?.id) && !reassignCategoryId && categoriesForReassignment.length > 0}
+                                    // Disable delete if items exist, reassign is required, and no reassignId selected (excluding 'uncategorized' as a valid choice)
+                                    disabled={state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && !reassignCategoryId }
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                   </AlertDialogAction>
@@ -375,18 +408,6 @@ const SettingsPageSkeleton: React.FC = () => (
   <div className="space-y-6 animate-pulse">
     <Skeleton className="h-8 w-1/4" /> {/* Title */}
 
-     {/* Appearance Skeleton */}
-    <Card className="bg-card border-border/20 shadow-md glow-border">
-      <CardHeader>
-        <Skeleton className="h-6 w-1/4 mb-1" /> {/* Card Title */}
-        <Skeleton className="h-4 w-3/5" /> {/* Card Description */}
-      </CardHeader>
-      <CardContent className="space-y-4 glow-border-inner p-4">
-         <Skeleton className="h-10 w-full rounded-md" /> {/* Button */}
-         <Skeleton className="h-3 w-2/3 mt-1" /> {/* Helper text */}
-      </CardContent>
-    </Card>
-
     {/* Currency Skeleton */}
     <Card className="bg-card border-border/20 shadow-md glow-border">
       <CardHeader>
@@ -395,9 +416,11 @@ const SettingsPageSkeleton: React.FC = () => (
       </CardHeader>
       <CardContent className="space-y-4 glow-border-inner p-4">
         <div className="grid gap-2">
-          <Skeleton className="h-4 w-1/4" />
-          <Skeleton className="h-10 w-full rounded-md glow-border-inner" />
-          <Skeleton className="h-3 w-2/3 mt-1" />
+          <Skeleton className="h-4 w-1/3" /> {/* Search Label */}
+          <Skeleton className="h-10 w-full rounded-md glow-border-inner" /> {/* Search Input */}
+          <Skeleton className="h-4 w-1/4 mt-3" /> {/* Select Label */}
+          <Skeleton className="h-10 w-full rounded-md glow-border-inner" /> {/* Select Trigger */}
+          <Skeleton className="h-3 w-2/3 mt-1" /> {/* Helper Text */}
         </div>
       </CardContent>
     </Card>
@@ -420,7 +443,7 @@ const SettingsPageSkeleton: React.FC = () => (
           <Skeleton className="h-5 w-1/3" />
           <Card className="p-0 border-border/30 glow-border-inner">
             <ul className="divide-y divide-border/30">
-              {[1, 2, 3].map(i => (
+              {[1, 2].map(i => ( // Reduced skeleton items
                 <li key={i} className="flex items-center justify-between p-2 glow-border-inner">
                   <Skeleton className="h-4 w-2/5" />
                   <div className="flex items-center gap-1">
