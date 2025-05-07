@@ -14,18 +14,14 @@ import {
   Store as Apps,
   Menu,
   X,
-  Palette, // Icon for themes
+  UserCircle, // Added UserCircle icon
 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar'; // Import Sidebar component
-// Removed AdMob imports: import { showPreparedInterstitialAd, prepareInterstitialAd } from '@/components/admob/ad-initializer';
+import { SidebarProvider, useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar';
 import dynamic from 'next/dynamic';
-
-
-// Removed AdComponent dynamic import
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
@@ -53,12 +49,15 @@ const MobileHeader: React.FC = () => {
 
       {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-         <ShoppingCart className="w-6 h-6" /> {/* Use Cart icon */}
-         <span className="font-bold text-neonText">Neon Shopping</span> {/* Updated App Name */}
+         <ShoppingCart className="w-6 h-6" />
+         <span className="font-bold text-neonText">Neon Shopping</span>
       </Link>
 
-      {/* Placeholder to balance header */}
-      <div className="w-8"></div> {/* Adjust width if needed */}
+      {/* User Profile Icon on the right */}
+      <Button variant="ghost" size="icon" className="ml-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+        <UserCircle className="h-6 w-6" />
+        <span className="sr-only">User Profile</span>
+      </Button>
     </header>
   );
 };
@@ -67,15 +66,14 @@ const MobileHeader: React.FC = () => {
 // --- App Layout Component ---
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
+  const { isMobile, setOpenMobile } = useSidebar();
   const router = useRouter();
 
-   // Menu Items & Icons
    const menuItems = [
      { href: '/list', label: 'Shopping List', icon: ShoppingCart, triggerAd: false },
-     { href: '/stats', label: 'Dashboard', icon: Dashboard, triggerAd: false }, // Ad trigger removed
-     { href: '/history', label: 'History', icon: History, triggerAd: false },   // Ad trigger removed
-     { href: '/settings', label: 'Settings', icon: Settings, triggerAd: false }, // Ad trigger removed
+     { href: '/stats', label: 'Dashboard', icon: Dashboard, triggerAd: false },
+     { href: '/history', label: 'History', icon: History, triggerAd: false },
+     { href: '/settings', label: 'Settings', icon: Settings, triggerAd: false },
      { href: '/about', label: 'About Us', icon: InfoIcon, triggerAd: false },
      { href: '/contact', label: 'Contact Us', icon: Mail, triggerAd: false },
      { href: '/privacy', label: 'Privacy Policy', icon: Policy, triggerAd: false },
@@ -86,22 +84,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
 
   const handleLinkClick = async (item: { href: string; triggerAd: boolean }, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-     event.preventDefault(); // Prevent default link behavior initially
+     event.preventDefault();
 
-     // Removed interstitial ad logic
-
-     // Close mobile sidebar if open
     if (isMobile) {
       setOpenMobile(false);
     }
-      // Navigate after potential ad display
       router.push(item.href);
   };
 
 
    const menuItemClasses = cn(
-     "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm glow-border-inner", // Added glow-border-inner
-     "border border-cyan-500/30 hover:border-white hover:bg-primary/10 shadow-[0_0_5px_theme(colors.cyan.500/0.5)] hover:shadow-[0_0_10px_theme(colors.white/0.7),0_0_4px_theme(colors.white/0.9)]", // Added cyan glow, white hover glow
+     "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm glow-border-inner",
+     "border border-cyan-500/30 hover:border-white hover:bg-primary/10 shadow-[0_0_5px_theme(colors.cyan.500/0.5)] hover:shadow-[0_0_10px_theme(colors.white/0.7),0_0_4px_theme(colors.white/0.9)]",
      "transition-all duration-300 ease-in-out",
      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.white/0.6),0_0_4px_theme(colors.white/0.8)]",
      "[&_svg]:size-5 [&_svg]:shrink-0",
@@ -110,25 +104,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
 
    const activeItemClasses = cn(
-     "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary/0.8)]", // Active state cyan glow and border
-     "hover:text-white hover:border-white hover:shadow-[0_0_15px_3px_theme(colors.white/0.7),0_0_5px_theme(colors.white/0.9)]" // Intensified white glow on hover when active
+     "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary/0.8)]",
+     "hover:text-white hover:border-white hover:shadow-[0_0_15px_3px_theme(colors.white/0.7),0_0_5px_theme(colors.white/0.9)]"
    );
 
   return (
-    <> {/* Removed SidebarProvider wrap as it's now in layout.tsx */}
-       {/* AdMob Banner Placement Removed */}
-
+    <>
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-             <ShoppingCart className="w-6 h-6" /> {/* Use Cart icon */}
+             <ShoppingCart className="w-6 h-6" />
             <span className="font-bold text-neonText">Neon Shopping</span>
           </Link>
         </SidebarHeader>
-        <SidebarContent className="p-2 flex flex-col"> {/* Use flex-col */}
-          {/* Combined Menu Items */}
-           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto"> {/* Added scroll */}
+        <SidebarContent className="p-2 flex flex-col">
+           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
             {menuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
@@ -136,13 +127,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   isActive={pathname === item.href}
                   tooltip={item.label}
                    className={cn(
-                     menuItemClasses, // Base classes
-                     pathname === item.href && activeItemClasses // Active state classes
+                     menuItemClasses,
+                     pathname === item.href && activeItemClasses
                    )}
                 >
                    <Link href={item.href} onClick={(e) => handleLinkClick(item, e)}>
                      <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                     {/* Use neonText class for the label text */}
                      <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -152,19 +142,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         </SidebarContent>
         <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
-          <p className="text-xs text-muted-foreground text-center">v1.0.0</p> {/* You might want to update the version dynamically */}
+          <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
 
-      {/* Main Content Area */}
       <SidebarInset className="flex flex-col min-h-screen">
-        {/* Mobile Header */}
         <MobileHeader />
-
-        {/* Content */}
-         {/* Adjusted padding-bottom to account for potential fixed AdMob banner */}
-         {/* Using env(safe-area-inset-bottom) for better compatibility with notches/home indicators */}
-         {/* Removing specific padding for AdMob */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {children}
         </main>
