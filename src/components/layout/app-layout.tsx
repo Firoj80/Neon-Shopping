@@ -26,7 +26,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 
@@ -234,9 +233,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col">
-            {/* All items for mobile sidebar */}
+            {/* Only main menu items for mobile slide-in sidebar, profile items are in header dropdown */}
            <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-           {[...profileMenuDefinition, ...mainMenuDefinition].map((item) => (
+           {mainMenuDefinition.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
