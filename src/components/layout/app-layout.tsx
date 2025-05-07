@@ -15,7 +15,6 @@ import {
   Menu,
   X,
   UserCircle,
-  DollarSign,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
@@ -29,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-// import { showPreparedInterstitialAd, prepareInterstitialAd } from '@/components/admob/ad-initializer'; // Import the AdMob functions
+// Removed AdMob import: import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer';
 
 // Placeholder for AdComponent if needed later
 // import dynamic from 'next/dynamic';
@@ -64,10 +63,12 @@ const MobileHeader: React.FC = () => {
     return pathname === itemHref;
   };
 
+
   if (!isMobile) return null;
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+      {/* Hamburger Menu Trigger on the left */}
       <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
         <AnimatePresence initial={false} mode="wait">
           <motion.div
@@ -83,11 +84,13 @@ const MobileHeader: React.FC = () => {
         <span className="sr-only">Toggle Sidebar</span>
       </Button>
 
+      {/* App Name/Logo */}
       <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
          <ShoppingCart className="w-6 h-6" />
          <span className="font-bold text-neonText">Neon Shopping</span>
       </Link>
 
+      {/* Profile Icon/Dropdown on the right */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="ml-2 text-primary hover:text-primary/80 hover:bg-primary/10">
@@ -102,7 +105,9 @@ const MobileHeader: React.FC = () => {
             <DropdownMenuItem
               key={item.href}
               onClick={() => {
-                // showPreparedInterstitialAd(); // Show ad if prepared
+                // Removed AdMob call: if (item.href === '/stats' || item.href === '/history' || item.href === '/settings') {
+                //   showPreparedInterstitialAd();
+                // }
                 router.push(item.href);
                 if (openMobile) toggleSidebar(); // Close sidebar if open
               }}
@@ -125,7 +130,7 @@ const MobileHeader: React.FC = () => {
 // --- App Layout Component ---
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isMobile, setOpenMobile, openMobile, toggleSidebar } = useSidebar();
+  const { isMobile, setOpenMobile, openMobile } = useSidebar();
   const router = useRouter();
   const [isClientMounted, setIsClientMounted] = useState(false);
 
@@ -133,15 +138,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setIsClientMounted(true);
   }, []);
 
-   const mainMenuDefinition = [
-     { href: '/about', label: 'About Us', icon: InfoIcon, triggerAd: false },
-     { href: '/contact', label: 'Contact Us', icon: Mail, triggerAd: false },
-     { href: '/privacy', label: 'Privacy Policy', icon: Policy, triggerAd: false },
-     { href: '/terms', label: 'Terms of Service', icon: Article, triggerAd: false },
-     { href: '/rate', label: 'Rate App', icon: Star, triggerAd: false },
-     { href: '/more-apps', label: 'More Apps', icon: Apps, triggerAd: false },
-   ];
-
+   // Define menu items
    const profileMenuDefinition = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: Dashboard },
@@ -149,14 +146,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
+  const mainMenuDefinition = [
+    { href: '/about', label: 'About Us', icon: InfoIcon },
+    { href: '/contact', label: 'Contact Us', icon: Mail },
+    { href: '/privacy', label: 'Privacy Policy', icon: Policy },
+    { href: '/terms', label: 'Terms of Service', icon: Article },
+    { href: '/rate', label: 'Rate App', icon: Star },
+    { href: '/more-apps', label: 'More Apps', icon: Apps },
+  ];
+
+
   const handleLinkClick = (itemHref: string, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
      event.preventDefault();
     if (isMobile && openMobile) {
       setOpenMobile(false);
     }
-    // Example: Trigger interstitial ad for specific routes
-    // if (itemHref === '/stats' || itemHref === '/history' || itemHref === '/settings') {
-    //   showPreparedInterstitialAd(); // Show ad if prepared
+    // Removed AdMob call: if (itemHref === '/stats' || itemHref === '/history' || itemHref === '/settings') {
+    //   showPreparedInterstitialAd();
     // }
     router.push(itemHref);
   };
@@ -184,16 +190,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-       {/* <AdComponent /> */}
-
+       {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
              <ShoppingCart className="w-6 h-6" />
-            <span className="font-bold text-neonText">Neon Shopping</span>
+             <span className="font-bold text-neonText">Neon Shopping</span>
           </Link>
         </SidebarHeader>
-        <SidebarContent className="p-2 flex flex-col">
+        <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
            <SidebarMenu className="space-y-1.5">
             {profileMenuDefinition.map((item) => (
               <SidebarMenuItem key={item.href}>
@@ -214,8 +219,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
-          <hr className="my-3 border-sidebar-border/50" />
-           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
+        </SidebarContent>
+        <SidebarFooter className="p-2 border-t border-sidebar-border">
+          <SidebarMenu className="space-y-1.5 max-h-[calc(100vh/2.5)] overflow-y-auto custom-scrollbar">
             {mainMenuDefinition.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
@@ -235,12 +241,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
+          <hr className="my-3 border-sidebar-border/50" />
           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
 
+      {/* Mobile Sidebar */}
       <Sidebar className="md:hidden" side="left" collapsible="offcanvas">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setOpenMobile(false)}>
@@ -248,9 +254,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="font-bold text-neonText">Neon Shopping</span>
           </Link>
         </SidebarHeader>
-        <SidebarContent className="p-2 flex flex-col">
-           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-           {mainMenuDefinition.map((item) => (
+        <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
+           <SidebarMenu className="space-y-1.5">
+           {profileMenuDefinition.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
@@ -269,20 +275,38 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             ))}
           </SidebarMenu>
         </SidebarContent>
-         <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
+         <SidebarFooter className="p-2 border-t border-sidebar-border">
+           <SidebarMenu className="space-y-1.5 max-h-[calc(100vh/2.5)] overflow-y-auto custom-scrollbar">
+            {mainMenuDefinition.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isItemActive(item.href)}
+                   className={cn(
+                     menuItemClasses,
+                     isItemActive(item.href) && activeItemClasses
+                   )}
+                >
+                   <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
+                     <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                     <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+          <hr className="my-3 border-sidebar-border/50" />
           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
 
       <SidebarInset className="flex flex-col min-h-screen">
         <MobileHeader />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom)+50px)] md:pb-[calc(1.5rem+env(safe-area-inset-bottom)+50px)]"> {/* Adjusted padding for potential banner */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom)+50px)] md:pb-[calc(1.5rem+env(safe-area-inset-bottom)+50px)]">
           {children}
         </main>
-        {/* Placeholder for AdMob banner at the bottom */}
+        {/* AdMob Banner Ad Placeholder - Fixed at the bottom */}
         <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border shadow-neon-lg">
-           {/* AdMob Banner Ad Placeholder */}
-           {/* Note: Actual AdMob integration requires native-level code or specific Capacitor plugins */}
            <span className='text-muted-foreground/70'>Ad Banner Area</span>
         </div>
       </SidebarInset>
