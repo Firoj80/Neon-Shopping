@@ -1,163 +1,66 @@
+"use client";
 
-'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   ShoppingCart,
-  LayoutGrid as Dashboard,
+  LayoutDashboard as DashboardIcon,
   History,
   Settings as SettingsIcon,
   Info as InfoIcon,
   Mail,
   ShieldCheck as Policy,
-  FileText as Article,
+  FileText as ArticleIcon,
   Star,
-  Store as Apps,
-  Menu,
+  Grid as AppsIcon,
+  Menu as MenuIcon,
   X,
-  UserCircle,
-  Palette, // Icon for Themes
+  LogOut as LogoutIcon,
+  PlusCircle,
 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSidebar, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset } from '@/components/ui/sidebar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
+import { Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset, SidebarTrigger, SidebarRail, SidebarSeparator, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarGroupAction, SidebarMenuBadge } from '@/components/ui/sidebar';
 import ClientOnly from '@/components/client-only';
 
-// Placeholder for AdComponent if needed later
-// import dynamic from 'next/dynamic';
-// const AdComponent = dynamic(() => import('@/components/admob/ad-component').then(mod => mod.AdComponent), {
-//     ssr: false, // Ensure this component is only loaded on the client-side
-//     loading: () => <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-background/50 flex items-center justify-center text-xs text-muted-foreground z-40">Loading Ad...</div> // Optional loading state
-// });
-
-
 const MobileHeader: React.FC = () => {
-  const { isMobile, openMobile, toggleSidebar } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
   const [isClientMounted, setIsClientMounted] = useState(false);
+  const [openMobile, setOpenMobile] = useState(false);
 
   useEffect(() => {
     setIsClientMounted(true);
   }, []);
+
+  const toggleSidebar = () => {
+    setOpenMobile(!openMobile);
+  };
 
   const profileMenuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: Dashboard },
+    { href: '/stats', label: 'Dashboard', icon: DashboardIcon },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: SettingsIcon },
-    { href: '/themes', label: 'Themes', icon: Palette }, // Added Themes option
-  ];
-
-  const isDropdownItemActive = (itemHref: string) => {
-    if (!isClientMounted) return false;
-    return pathname === itemHref;
-  };
-
-  const handleNavigate = (href: string) => {
-    router.push(href);
-    if (openMobile) toggleSidebar();
-  };
-
-
-  if (!isMobile && isClientMounted) return null;
-
-  return (
-    <ClientOnly>
-      <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
-          <AnimatePresence initial={false} mode="wait">
-            <motion.div
-              key={openMobile ? "x" : "menu"}
-              initial={{ rotate: openMobile ? 90 : -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: openMobile ? -90 : 90, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {openMobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </motion.div>
-          </AnimatePresence>
-          <span className="sr-only">Toggle Sidebar</span>
-        </Button>
-
-        <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-          <ShoppingCart className="w-6 h-6" />
-          <span className="font-bold text-neonText">Neon Shopping</span>
-        </Link>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="ml-2 text-primary hover:text-primary/80 hover:bg-primary/10">
-              <UserCircle className="h-6 w-6" />
-              <span className="sr-only">User Profile</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56 bg-card border-primary/50 shadow-neon glow-border mr-2" align="end">
-            <DropdownMenuLabel className="font-semibold text-primary px-2 py-1.5">My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-border/50" />
-            {profileMenuItems.map((item) => (
-              <DropdownMenuItem
-                key={item.href}
-                onClick={() => handleNavigate(item.href)}
-                className={cn(
-                  "flex items-center gap-2 cursor-pointer p-2 text-sm text-neonText hover:bg-primary/10 focus:bg-primary/20 focus:text-primary data-[active]:bg-primary/20 data-[active]:text-primary glow-border-inner",
-                  isDropdownItemActive(item.href) && "bg-primary/10 text-primary font-medium"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                <span>{item.label}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </header>
-    </ClientOnly>
-  );
-};
-
-export function AppLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const { isMobile, setOpenMobile, openMobile } = useSidebar();
-  const router = useRouter();
-  const [isClientMounted, setIsClientMounted] = useState(false);
-
-  useEffect(() => {
-    setIsClientMounted(true);
-  }, []);
-
-  // Main navigation for desktop is now empty as per request
-  const mainNavItems: { href: string; label: string; icon: React.ElementType }[] = [];
-
-
-  const footerMenuItems = [
     { href: '/about', label: 'About Us', icon: InfoIcon },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-    { href: '/terms', label: 'Terms of Service', icon: Article },
+    { href: '/terms', label: 'Terms of Service', icon: FileText },
     { href: '/rate', label: 'Rate App', icon: Star },
-    { href: '/more-apps', label: 'More Apps', icon: Apps },
+    { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
   ];
 
   const handleLinkClick = (itemHref: string, event?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     event?.preventDefault();
     router.push(itemHref);
-    if (isMobile && openMobile) {
-      setOpenMobile(false);
-    }
+    setOpenMobile(false);
   };
 
+
   const menuItemClasses = cn(
-    "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm glow-border-inner",
+    "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm",
     "border border-primary/30 hover:border-secondary hover:bg-primary/10 shadow-[0_0_5px_theme(colors.primary.DEFAULT)/0.5] hover:shadow-[0_0_10px_theme(colors.secondary.DEFAULT)/0.7,0_0_4px_theme(colors.secondary.DEFAULT)/0.9]",
     "transition-all duration-300 ease-in-out",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.secondary.DEFAULT)/0.6,0_0_4px_theme(colors.secondary.DEFAULT)/0.8)]",
@@ -175,86 +78,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return pathname === itemHref;
   }, [pathname, isClientMounted]);
 
-
-  if (!isClientMounted) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <span className="text-primary">Loading Neon Shopping...</span>
-      </div>
-    );
-  }
-
   return (
-    <>
-      {/* AdMob Banner Placeholder */}
-      {/* <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border shadow-neon-lg">
-        <ClientOnly><span className='text-muted-foreground/70'>Ad Banner Area</span></ClientOnly>
-      </div> */}
-      {/* <AdComponent /> */}
+    <ClientOnly>
+      <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+          <AnimatePresence initial={false} mode="wait">
+            <motion.div
+              key={openMobile ? "x" : "menu"}
+              initial={{ rotate: openMobile ? 90 : -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: openMobile ? -90 : 90, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {openMobile ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+            </motion.div>
+          </AnimatePresence>
+          <span className="sr-only">Toggle Sidebar</span>
+        </Button>
+
+        <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+          <ShoppingCart className="w-6 h-6" />
+          <span className="font-bold text-neonText">Neon Shopping</span>
+        </Link>
 
 
-       {/* Desktop Sidebar */}
-       <Sidebar className="hidden md:flex md:flex-col">
-        <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
-          <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-            <ShoppingCart className="w-6 h-6" />
-            <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
-          </Link>
-        </SidebarHeader>
-        <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-          {/* Main navigation for desktop - is now empty */}
-          {mainNavItems.length > 0 && (
-            <SidebarMenu className="space-y-1.5">
-              {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isItemActive(item.href)}
-                    tooltip={item.label}
-                    className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
-                  >
-                    <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
-                      <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                      <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          )}
-          {mainNavItems.length === 0 && (
-             <div className="flex-grow flex items-center justify-center text-muted-foreground/50 text-sm">
-                {/* Optional: Placeholder if main nav is empty */}
-                {/* Main navigation items moved to profile dropdown. */}
-            </div>
-          )}
-        </SidebarContent>
-        <SidebarFooter className="p-2 border-t border-sidebar-border">
-           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-            {footerMenuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isItemActive(item.href)}
-                  tooltip={item.label}
-                  className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
-                >
-                  <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
-                    <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                    <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-          <hr className="my-3 border-sidebar-border/50" />
-          <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
-        </SidebarFooter>
-      </Sidebar>
-
-      {/* Mobile Sidebar (Drawer) */}
-      <Sidebar className="md:hidden" side="left" collapsible="offcanvas">
-        <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
+      </header>
+      <Sidebar className="md:hidden" side="left" collapsible="offcanvas" open={openMobile} onOpenChange={setOpenMobile}>
+         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setOpenMobile(false)}>
             <ShoppingCart className="w-6 h-6" />
              <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
@@ -262,6 +112,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
           <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
+            {profileMenuItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isItemActive(item.href)}
+                  className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
+                >
+                  <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
+                    <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                    <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
             {footerMenuItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
@@ -283,18 +147,97 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
         </SidebarFooter>
       </Sidebar>
+    </ClientOnly>
+  );
+};
 
-      {/* Main Content Area */}
-      <SidebarInset className="flex flex-col min-h-screen">
-        <MobileHeader />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom)+50px)] md:pb-[calc(1.5rem+env(safe-area-inset-bottom)+50px)]">
-          {children}
-        </main>
-         {/* Ad Banner Placeholder - for layout spacing */}
-        <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border shadow-neon-lg">
-           <ClientOnly><span className='text-muted-foreground/70'>Ad Banner Area</span></ClientOnly>
-        </div>
-      </SidebarInset>
-    </>
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [isClientMounted, setIsClientMounted] = useState(false);
+
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
+
+  const mainNavItems: { href: string; label: string; icon: React.ElementType }[] = [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: DashboardIcon },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: SettingsIcon },
+    { href: '/about', label: 'About Us', icon: InfoIcon },
+    { href: '/contact', label: 'Contact Us', icon: Mail },
+    { href: '/privacy', label: 'Privacy Policy', icon: Policy },
+    { href: '/terms', label: 'Terms of Service', icon: FileText },
+    { href: '/rate', label: 'Rate App', icon: Star },
+    { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
+  ];
+
+  const menuItemClasses = cn(
+    "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm",
+    "border border-primary/30 hover:border-secondary hover:bg-primary/10 shadow-[0_0_5px_theme(colors.primary.DEFAULT)/0.5] hover:shadow-[0_0_10px_theme(colors.secondary.DEFAULT)/0.7,0_0_4px_theme(colors.secondary.DEFAULT)/0.9]",
+    "transition-all duration-300 ease-in-out",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.secondary.DEFAULT)/0.6,0_0_4px_theme(colors.secondary.DEFAULT)/0.8)]",
+    "[&_svg]:size-5 [&_svg]:shrink-0",
+    "[&_span:last-child]:truncate"
+  );
+
+  const activeItemClasses = cn(
+    "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary.DEFAULT)/0.8]",
+    "hover:text-secondary hover:border-secondary hover:shadow-[0_0_15px_3px_theme(colors.secondary.DEFAULT)/0.7,0_0_5px_theme(colors.secondary.DEFAULT)/0.9)]"
+  );
+
+  const isItemActive = useCallback((itemHref: string) => {
+    if (!isClientMounted) return false;
+    return pathname === itemHref;
+  }, [pathname, isClientMounted]);
+
+  return (
+       <ClientOnly>
+            <MobileHeader />
+
+            <Sidebar className="hidden md:flex md:flex-col">
+                <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
+                    <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+                        <ShoppingCart className="w-6 h-6" />
+                        <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
+                    </Link>
+                </SidebarHeader>
+                <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
+                    {/* Main navigation for desktop */}
+                    <SidebarMenu className="space-y-1.5">
+                        {mainNavItems.map((item) => (
+                            <SidebarMenuItem key={item.href}>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={isItemActive(item.href)}
+                                    tooltip={item.label}
+                                    className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
+                                >
+                                    <Link href={item.href}>
+                                        <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                                        <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        ))}
+                    </SidebarMenu>
+                </SidebarContent>
+                <SidebarFooter className="p-2 border-t border-sidebar-border">
+                    <hr className="my-3 border-sidebar-border/50" />
+                    <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
+                </SidebarFooter>
+            </Sidebar>
+
+            {/* Main Content Area */}
+            <SidebarInset className="flex flex-col min-h-screen">
+                <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom)+50px)] md:pb-[calc(1.5rem+env(safe-area-inset-bottom)+50px)]">
+                    {children}
+                </main>
+                 {/* Ad Banner Placeholder - for layout spacing */}
+                <div className="fixed bottom-0 left-0 right-0 h-[50px] bg-card/90 backdrop-blur-sm border-t border-border/30 flex items-center justify-center text-xs text-muted-foreground z-40 glow-border shadow-neon-lg">
+                   <ClientOnly><span className='text-muted-foreground/70'>Ad Banner Area</span></ClientOnly>
+                </div>
+            </SidebarInset>
+       </ClientOnly>
   );
 }
