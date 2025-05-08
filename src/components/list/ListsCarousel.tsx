@@ -4,7 +4,7 @@ import { useAppContext } from '@/context/app-context';
 import type { List } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Trash2, Edit2 } from 'lucide-react'; // Removed MoreHorizontal
+import { PlusCircle, Trash2 } from 'lucide-react'; // Removed Edit2 and MoreHorizontal
 import { cn } from '@/lib/utils';
 import { AddEditListModal } from './AddEditListModal';
 // Removed DropdownMenu imports as they are no longer used here
@@ -89,13 +89,13 @@ export const ListsCarousel: React.FC = () => {
                 "glow-border-inner",
                 isSelected
                   ? "bg-primary/20 text-primary shadow-neon ring-1 ring-primary"
-                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-secondary",
+                  : "bg-card text-neonText hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-secondary", // Reverted text color for non-selected
               )}
               onClick={() => handleSelectList(list.id)}
             >
               <CardTitle className={cn(
                 "text-xs font-semibold truncate flex-grow leading-none",
-                 isSelected ? "text-primary" : "text-neonText"
+                 isSelected ? "text-primary" : "text-neonText" // Keep text color logic
                 )}
               >
                 {list.name}

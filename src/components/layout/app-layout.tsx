@@ -1,6 +1,6 @@
 "use client"; // This component needs client-side hooks like useState, useEffect, usePathname
 
-import React, { useState, useEffect, useCallback, Fragment } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -8,16 +8,15 @@ import {
   LayoutDashboard,
   History,
   Settings,
-  Palette,
   Info,
   Mail,
-  ShieldCheck as Policy, // Renamed ShieldCheck
-  FileText as ArticleIcon, // Renamed FileText
+  Policy, // Ensure this matches your actual import name (might be ShieldCheck)
+  Article, // Ensure this matches your actual import name (might be FileText)
   Star,
-  AppWindow as AppsIcon, // Renamed AppWindow
-  Menu as MenuIcon, // Renamed Menu
+  AppsIcon, // Ensure this matches your actual import name (might be AppWindow)
+  Menu, // Keep Menu as Menu
   X,
-  // Removed duplicate/unused icons
+  DollarSign, // Added for Currency
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -29,19 +28,20 @@ import {
   SheetTitle,
   SheetTrigger,
   SheetClose, // Added SheetClose
-} from "@/components/ui/sheet"; // Keep Sheet related imports
+} from "@/components/ui/sheet";
 import {
-    Sidebar,
-    SidebarHeader,
-    SidebarContent,
-    SidebarMenu,
-    SidebarMenuItem,
-    SidebarMenuButton,
-    SidebarFooter,
-    SidebarInset,
-    SidebarSeparator,
-    // Removed SidebarProvider, useSidebar as they are not used here
-} from '@/components/ui/sidebar'; // Import Sidebar component
+  // Removed SidebarProvider import as it's no longer used
+  // Removed useSidebar import as it's no longer used
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+  SidebarInset,
+  SidebarSeparator, // Added SidebarSeparator
+} from '@/components/ui/sidebar';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
@@ -67,7 +67,7 @@ const MobileHeader: React.FC = () => {
                   exit={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                 {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+                 {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                </motion.div>
              </AnimatePresence>
             <span className="sr-only">Toggle Sidebar</span>
@@ -98,19 +98,18 @@ const MobileSidebarContent: React.FC<{ isOpen: boolean; setIsOpen: (open: boolea
     const pathname = usePathname();
     const isClient = useClientOnly(); // Use the hook
 
-    // Define menu items
+    // Define menu items - reverted to include all main items
     const menuItems = [
         { href: '/list', label: 'Shopping List', icon: ShoppingCart },
         { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/history', label: 'History', icon: History },
         { href: '/settings', label: 'Settings', icon: Settings },
-        { href: '/themes', label: 'Themes', icon: Palette },
         { href: '/about', label: 'About Us', icon: Info },
         { href: '/contact', label: 'Contact Us', icon: Mail },
-        { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-        { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
+        { href: '/privacy', label: 'Privacy Policy', icon: Policy }, // Ensure Policy is imported correctly
+        { href: '/terms', label: 'Terms of Service', icon: Article }, // Ensure Article is imported correctly
         { href: '/rate', label: 'Rate App', icon: Star },
-        { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
+        { href: '/more-apps', label: 'More Apps', icon: AppsIcon }, // Ensure AppsIcon is imported correctly
     ];
 
     const handleLinkClick = (itemHref: string, event?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
@@ -183,21 +182,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isLoading } = appContext;
   const isClientMounted = useClientOnly(); // Use the hook to check if mounted
 
-    // Define menu items for desktop sidebar
+    // Define menu items for desktop sidebar - Reverted to original list
     const mainNavItems = [
         { href: '/list', label: 'Shopping List', icon: ShoppingCart },
         { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/history', label: 'History', icon: History },
-        { href: '/settings', label: 'Settings', icon: Settings },
-        { href: '/themes', label: 'Themes', icon: Palette },
+        { href: '/settings', label: 'Settings', icon: Settings }, // Re-added Settings
+        // Themes removed { href: '/themes', label: 'Themes', icon: Palette },
         { href: '/about', label: 'About Us', icon: Info },
         { href: '/contact', label: 'Contact Us', icon: Mail },
         { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-        { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
+        { href: '/terms', label: 'Terms of Service', icon: Article },
         { href: '/rate', label: 'Rate App', icon: Star },
         { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
     ];
-
 
   const menuItemClasses = cn(
     "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm",
@@ -219,17 +217,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [pathname, isClientMounted]);
 
    useEffect(() => {
-    // Redirect logic needs to run only after client mount and loading is complete
-    if (isClientMounted && !isLoading) {
-      if (appContext.state.lists.length === 0 && pathname !== '/list/create-first' && pathname !== '/auth') {
-        console.log("Redirecting to /list/create-first");
-        router.replace('/list/create-first');
-      } else if (appContext.state.lists.length > 0 && pathname === '/list/create-first') {
-        console.log("Redirecting to /list");
-        router.replace('/list');
-      }
-    }
-  }, [isClientMounted, isLoading, appContext.state.lists.length, pathname, router]);
+     // Redirect logic - simplified to handle initial load and create-first page
+     if (isClientMounted && !isLoading) {
+       if (appContext.state.lists.length === 0 && pathname !== '/list/create-first') {
+          // If no lists and not on the create page, go there
+          router.replace('/list/create-first');
+       } else if (appContext.state.lists.length > 0 && pathname === '/list/create-first') {
+          // If lists exist and on the create page, go to the main list page
+           router.replace('/list');
+       }
+     }
+   }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]);
 
 
   // --- Loading State ---
@@ -241,9 +239,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Prevent rendering main layout if redirection is happening or should happen
+   if (appContext.state.lists.length === 0 && pathname !== '/list/create-first') {
+      // Still loading or redirecting to create-first
+       return (
+         <div className="flex items-center justify-center h-screen bg-background">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+         </div>
+       );
+   }
+
+   if (appContext.state.lists.length > 0 && pathname === '/list/create-first') {
+      // Still loading or redirecting to list
+       return (
+         <div className="flex items-center justify-center h-screen bg-background">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+         </div>
+       );
+   }
+
+
   // --- Render full layout ---
    return (
-    <Fragment> {/* Replaced SidebarProvider with Fragment */}
+    <React.Fragment> {/* Replaced SidebarProvider with Fragment */}
        {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
          <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
@@ -270,10 +288,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                </SidebarMenuItem>
              ))}
            </SidebarMenu>
+            {/* Separator removed from here, footer handles it */}
          </SidebarContent>
-         <SidebarFooter className="p-2 border-t border-sidebar-border">
-           <hr className="my-3 border-sidebar-border/50" />
-           <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
+          <SidebarFooter className="p-2 border-t border-sidebar-border">
+            <hr className="my-3 border-sidebar-border/50" />
+            <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
          </SidebarFooter>
        </Sidebar>
 
@@ -288,6 +307,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
            <ClientOnly><span className='text-muted-foreground/70'>Ad Banner Area</span></ClientOnly>
          </div>
        </SidebarInset>
-     </Fragment>
+     </React.Fragment>
    );
 }

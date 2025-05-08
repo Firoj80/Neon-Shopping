@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,8 +47,13 @@ export default function SettingsPage() {
         const currencies = await getSupportedCurrencies();
         setSupportedCurrencies(currencies);
 
+        // Only auto-detect if the currency is default (USD) or not set
         if (!state.currency.code || state.currency.code === 'USD') {
-          const detectedCurrency = await getUserCurrency();
+            let detectedCurrency = null;
+             if (typeof window !== 'undefined') { // Ensure running in browser
+                detectedCurrency = await getUserCurrency();
+             }
+
           if (detectedCurrency && currencies.some(c => c.code === detectedCurrency.code)) {
             dispatch({ type: 'SET_CURRENCY', payload: detectedCurrency });
             toast({
@@ -58,17 +62,18 @@ export default function SettingsPage() {
               variant: "default",
             });
           } else if (!state.currency.code && currencies.length > 0) {
-            dispatch({ type: 'SET_CURRENCY', payload: currencies.find(c=> c.code === 'USD') || currencies[0] });
+            // If no currency set and detection failed, default to USD or first in list
+            const usd = currencies.find(c => c.code === 'USD') || currencies[0];
+            dispatch({ type: 'SET_CURRENCY', payload: usd });
           }
         }
       } catch (error) {
         console.error("Failed to fetch/detect currency:", error);
         toast({ title: "Currency Error", description: "Could not load currency information. Defaulting to USD.", variant: "destructive" });
-        if (!state.currency.code && supportedCurrencies.length > 0) {
-            const usd = supportedCurrencies.find(c => c.code === 'USD') || supportedCurrencies[0];
-            dispatch({ type: 'SET_CURRENCY', payload: usd });
-        } else if (!state.currency.code) {
-             dispatch({ type: 'SET_CURRENCY', payload: { code: 'USD', symbol: '$', name: 'US Dollar' } });
+        if (!state.currency.code) {
+            // Ensure a default currency is set even if everything fails
+            const fallbackCurrency = supportedCurrencies.find(c => c.code === 'USD') || { code: 'USD', symbol: '$', name: 'US Dollar' };
+            dispatch({ type: 'SET_CURRENCY', payload: fallbackCurrency });
         }
       } finally {
         setIsLoadingCurrencies(false);
@@ -76,7 +81,7 @@ export default function SettingsPage() {
     };
     fetchAndDetectCurrency();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, toast]); // Only run once on mount
+  }, [dispatch, toast]); // Run once on mount
 
   const handleSelectCurrency = (currencyCode: string) => {
     const selected = supportedCurrencies.find(c => c.code === currencyCode);
@@ -154,24 +159,22 @@ export default function SettingsPage() {
 
   const confirmDeleteCategory = () => {
     if (!categoryToDelete) return;
-    
+
     const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id);
     const canReassign = categoriesForReassignment.length > 0;
 
-    if (itemsWithCategory.length > 0 && !reassignCategoryId && canReassign) {
-       toast({ title: "Reassignment Required", description: "Select a category to reassign items to before deleting.", variant: "destructive" });
-      return;
-    }
+    // Use 'uncategorized' as the default reassignment if nothing else is chosen
+    const finalReassignId = itemsWithCategory.length > 0 ? (reassignCategoryId || 'uncategorized') : undefined;
 
     dispatch({
       type: 'REMOVE_CATEGORY',
-      payload: { 
-        categoryId: categoryToDelete.id, 
-        reassignToId: itemsWithCategory.length > 0 ? (reassignCategoryId || 'uncategorized') : undefined 
+      payload: {
+        categoryId: categoryToDelete.id,
+        reassignToId: finalReassignId
       }
     });
     setCategoryToDelete(null);
-    setReassignCategoryId('uncategorized');
+    setReassignCategoryId('uncategorized'); // Reset selection
     toast({ title: "Success", description: "Category deleted." });
   };
 
@@ -180,7 +183,8 @@ export default function SettingsPage() {
 
   const categoriesForReassignment = useMemo(() => {
     if (!categoryToDelete) return [];
-    return categories.filter(c => c.id !== categoryToDelete.id && c.id !== 'uncategorized');
+    // Exclude the category being deleted itself
+    return categories.filter(c => c.id !== categoryToDelete.id);
   }, [categories, categoryToDelete]);
 
   if (isLoading) {
@@ -317,7 +321,7 @@ export default function SettingsPage() {
                                   <AlertDialogTitle>Delete Category: {categoryToDelete?.name}?</AlertDialogTitle>
                                   {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) ? (
                                     <AlertDialogDescription>
-                                      This category is used by some shopping items. Please choose a category to reassign these items to, or they will be marked as 'Uncategorized'.
+                                      This category is used by some shopping items. Choose a category to reassign these items to, or they will be marked as 'Uncategorized'. If no other categories exist, they will become 'Uncategorized'.
                                     </AlertDialogDescription>
                                   ) : (
                                     <AlertDialogDescription>
@@ -331,7 +335,7 @@ export default function SettingsPage() {
                                     <Select
                                       value={reassignCategoryId}
                                       onValueChange={setReassignCategoryId}
-                                      defaultValue="uncategorized"
+                                      defaultValue="uncategorized" // Default to uncategorized
                                     >
                                       <SelectTrigger
                                         id="reassign-category"
@@ -348,20 +352,14 @@ export default function SettingsPage() {
                                         ))}
                                       </SelectContent>
                                     </Select>
-                                     <p className="text-xs text-muted-foreground pt-1">If no category is selected, items assigned to "{categoryToDelete?.name}" will be marked as "Uncategorized".</p>
+                                     <p className="text-xs text-muted-foreground pt-1">Select 'Uncategorized' if you don't want to assign to another specific category.</p>
                                   </div>
-                                )}
-                                 {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length === 0 && (
-                                     <AlertDialogDescription className="pt-2 text-sm text-yellow-500">
-                                         Warning: No other categories available for reassignment. Items will be marked 'Uncategorized'.
-                                    </AlertDialogDescription>
                                 )}
                                 <AlertDialogFooter>
                                   <AlertDialogCancel onClick={() => setCategoryToDelete(null)} className="glow-border-inner">Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={confirmDeleteCategory}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
-                                    disabled={state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && !reassignCategoryId }
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                   </AlertDialogAction>
@@ -381,7 +379,6 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
-      {/* Theme selection UI removed */}
     </div>
   );
 }

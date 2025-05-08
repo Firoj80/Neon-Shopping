@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -24,24 +23,30 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ClientOnly from '@/components/client-only';
-import { AddEditListModal } from '@/components/list/AddEditListModal'; // For creating first list
+import { AddEditListModal } from '@/components/list/AddEditListModal';
+import { useClientOnly } from '@/hooks/use-client-only';
+import CreateFirstListPage from './create-first/page'; // Use the create-first page component
+
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading } = useAppContext();
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AppShoppingListItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
-  const [isAddListModalOpen, setIsAddListModalOpen] = useState(false); // For creating a new list
+  const isClient = useClientOnly(); // Hook to ensure client-side execution for logic depending on state
 
-  const { selectedListId, shoppingListItems } = state;
+  const { selectedListId, shoppingListItems, lists } = state;
 
   const selectedList: List | undefined = useMemo(() => {
-      return state.lists.find(list => list.id === selectedListId);
-  }, [state.lists, selectedListId]);
+      // Ensure lists is an array before finding
+      if (!Array.isArray(lists)) return undefined;
+      return lists.find(list => list.id === selectedListId);
+  }, [lists, selectedListId]);
 
   const handleAddItemClick = () => {
     if (!selectedListId) {
-        alert("Please select or create a list before adding items.");
+        // This scenario should ideally not happen if the create-first page handles it
+        console.error("No list selected, cannot add item.");
         return;
     }
     setEditingItem(null);
@@ -71,12 +76,8 @@ export default function ShoppingListPage() {
         return;
     }
 
-    // Get the default category from the selected list
     const listDefaultCategory = selectedList?.defaultCategory || '';
-
-    // If itemData.category is empty (e.g., modal pre-fill failed or user cleared it, though validation should prevent),
-    // use the list's default category. Otherwise, use the category from the form.
-    const finalCategory = itemData.category || listDefaultCategory;
+    const finalCategory = itemData.category || listDefaultCategory || 'uncategorized'; // Fallback to 'uncategorized'
 
     const itemWithFinalCategoryDetails = {
       ...itemData,
@@ -126,7 +127,7 @@ export default function ShoppingListPage() {
   );
 
   const itemsForSelectedList = useMemo(() => {
-    if (!selectedListId) return [];
+    if (!selectedListId || !Array.isArray(shoppingListItems)) return [];
     return shoppingListItems.filter(item => item.listId === selectedListId);
   }, [selectedListId, shoppingListItems]);
 
@@ -156,61 +157,59 @@ export default function ShoppingListPage() {
     )
   );
 
-  if (isLoading && state.lists.length === 0) {
+  // --- Loading and Initial State Handling ---
+  if (!isClient) {
+      // Render nothing or a minimal loader on the server / before hydration
+       return (
+         <div className="flex items-center justify-center h-screen">
+           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+         </div>
+       );
+  }
+
+  if (isLoading) {
+    // Show skeletons while loading initial data
     return (
-        <div className="flex flex-col h-full gap-4">
-            <BudgetCardSkeleton />
-            <Skeleton className="h-10 w-full rounded-lg" /> {/* Lists Carousel Skeleton - reduced height */}
-            <Skeleton className="h-10 w-full rounded-md" /> {/* TabsList Skeleton */}
+        <div className="flex flex-col h-full gap-4 p-4">
+            {/* Skeletons matching the main layout */}
+            <Skeleton className="h-20 w-full rounded-lg mb-2" /> {/* Budget Card Skeleton */}
+            <Skeleton className="h-12 w-full rounded-lg mb-2" /> {/* Lists Carousel Skeleton */}
+            <Skeleton className="h-10 w-full rounded-md mb-4" /> {/* TabsList Skeleton */}
             <div className="flex-grow overflow-y-auto">
                 {renderSkeletons()}
             </div>
+             <Skeleton className="fixed bottom-[calc(50px+1.5rem+env(safe-area-inset-bottom))] right-6 md:bottom-8 md:right-8 z-20 rounded-full h-14 w-14 p-0" /> {/* FAB Skeleton */}
         </div>
     )
   }
 
-  if (!isLoading && state.lists.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center py-10">
-        <ListPlus className="h-16 w-16 text-primary/50 mb-4" />
-        <h2 className="text-xl font-semibold text-neonText mb-2">No Shopping Lists Yet!</h2>
-        <p className="text-muted-foreground mb-6">
-          Get started by creating your first shopping list.
-        </p>
-        <Button
-          onClick={() => setIsAddListModalOpen(true)}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-neon glow-border"
-        >
-          <PlusCircle className="mr-2 h-5 w-5" /> Create New List
-        </Button>
-        <AddEditListModal
-          isOpen={isAddListModalOpen}
-          onClose={() => setIsAddListModalOpen(false)}
-        />
-      </div>
-    );
+  // --- Create First List State ---
+  if (Array.isArray(lists) && lists.length === 0) {
+    return <CreateFirstListPage />; // Render the dedicated create page
   }
 
-
+  // --- Main Content: List Display ---
   return (
     <div className="flex flex-col h-full">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pt-1 pb-0">
-            <BudgetCard />
-            <ListsCarousel />
-            <ClientOnly>
-                <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2">
-                    <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
-                        <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
-                        <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
-                    </TabsTrigger>
-                </TabsList>
-            </ClientOnly>
+       {/* Sticky Header Section */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-4 md:px-0"> {/* Added padding for mobile */}
+             <BudgetCard />
+             <ListsCarousel />
+             <ClientOnly>
+                 <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2">
+                     <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
+                         <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
+                     </TabsTrigger>
+                     <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
+                         <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
+                     </TabsTrigger>
+                 </TabsList>
+             </ClientOnly>
         </div>
 
-        <div className="flex-grow overflow-y-auto mt-1 pb-[calc(50px+1.5rem+env(safe-area-inset-bottom)+4rem)]"> {/* Adjusted padding-bottom */}
-          {!selectedListId && !isLoading && state.lists.length > 0 ? (
+       {/* Scrollable Item List Area */}
+        <div className="flex-grow overflow-y-auto mt-1 px-4 md:px-0 pb-[calc(50px+1.5rem+env(safe-area-inset-bottom)+4rem)]"> {/* Added padding for mobile & Adjusted padding-bottom */}
+          {!selectedListId && Array.isArray(lists) && lists.length > 0 ? ( // Check if lists is an array
             <div className="flex items-center justify-center h-full text-center py-10">
                 <p className="text-muted-foreground text-neonText">Please select a shopping list to view items.</p>
             </div>
@@ -226,16 +225,18 @@ export default function ShoppingListPage() {
             )}
         </div>
 
+        {/* Add Item Floating Action Button */}
          <Button
             onClick={handleAddItemClick}
             size="lg"
-            className="fixed bottom-[calc(50px+1.5rem+env(safe-area-inset-bottom))] right-6 md:bottom-[calc(50px+2rem+env(safe-area-inset-bottom))] md:right-8 z-20 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="fixed bottom-[calc(50px+1.5rem+env(safe-area-inset-bottom))] right-6 md:right-8 z-30 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
             disabled={!selectedListId || isLoading}
           >
              <PlusCircle className="h-6 w-6" />
          </Button>
 
+        {/* Modals */}
         <AddEditItemModal
             isOpen={isAddItemModalOpen}
             onClose={() => {
@@ -266,37 +267,3 @@ export default function ShoppingListPage() {
     </div>
   );
 }
-
-const BudgetCardSkeleton: React.FC = () => {
-  return (
-    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-1 sm:mb-2 glow-border">
-       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
-        <div className="flex items-center gap-2 w-3/5">
-            <Skeleton className="h-5 w-5 rounded-full" />
-            <div className="flex flex-col gap-1 w-full">
-                 <Skeleton className="h-4 w-3/4" />
-                 {/* <Skeleton className="h-3 w-1/2" />  Removed to make it thinner */}
-            </div>
-        </div>
-        <Skeleton className="h-7 w-20 rounded-md self-center" />
-      </CardHeader>
-       <CardContent className="space-y-1 px-3 pb-2 sm:px-4 sm:pb-3 glow-border-inner">
-        <div className="space-y-0.5">
-          <div className="flex justify-between items-center">
-            <Skeleton className="h-3 w-1/4" />
-            <Skeleton className="h-3 w-1/4" />
-          </div>
-          <Skeleton className="h-1.5 w-full rounded-full glow-border-inner" />
-          <Skeleton className="h-3 w-1/5 ml-auto" />
-        </div>
-         <div className="flex items-center justify-between pt-0.5">
-          <div className="flex items-center gap-1">
-            <Skeleton className="h-3.5 w-3.5 rounded-full" />
-            <Skeleton className="h-3.5 w-1/3" />
-          </div>
-          <Skeleton className="h-4 w-1/4" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
