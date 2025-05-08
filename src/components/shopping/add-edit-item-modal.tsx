@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -63,26 +62,26 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
 
   useEffect(() => {
     if (isOpen) {
-        if (itemData) { // Editing existing item
-            reset({
-                name: itemData.name,
-                quantity: itemData.quantity,
-                price: itemData.price,
-                category: itemData.category,
-            });
-        } else { // Adding new item
-            // Get the selected list's default category
-            const selectedListObject = state.lists.find(list => list.id === currentListId);
-            const listDefaultCategory = selectedListObject?.defaultCategory || '';
+      if (itemData) { // Editing existing item
+        reset({
+          name: itemData.name,
+          quantity: itemData.quantity,
+          price: itemData.price,
+          category: itemData.category,
+        });
+      } else { // Adding new item
+        // Get the selected list's default category
+        const selectedListObject = state.lists.find(list => list.id === currentListId);
+        const listDefaultCategory = selectedListObject?.defaultCategory || '';
 
-            reset({
-                name: '',
-                quantity: 1,
-                price: 0,
-                // Use list's default category if available, otherwise first category, else empty
-                category: listDefaultCategory || (categories.length > 0 ? categories[0].id : ''),
-            });
-        }
+        reset({
+          name: '',
+          quantity: 1,
+          price: 0,
+          // Use list's default category if available, otherwise first category, else empty
+          category: listDefaultCategory || (categories.length > 0 ? categories[0].id : ''),
+        });
+      }
     }
   }, [isOpen, itemData, reset, categories, currentListId, state.lists]);
 
@@ -113,83 +112,84 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
               className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
               aria-invalid={errors.name ? "true" : "false"}
             />
-             {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+            {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
-             <div className="grid gap-2">
-                <Label htmlFor="quantity" className="text-neonText/80">Quantity</Label>
-                <Input
-                    id="quantity"
-                    type="number"
-                    {...register('quantity', { valueAsNumber: true })}
-                    className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
-                    min="1"
-                    aria-invalid={errors.quantity ? "true" : "false"}
-                />
-                {errors.quantity && <p className="text-red-500 text-xs">{errors.quantity.message}</p>}
+            <div className="grid gap-2">
+              <Label htmlFor="quantity" className="text-neonText/80">Quantity</Label>
+              <Input
+                id="quantity"
+                type="number"
+                {...register('quantity', { valueAsNumber: true })}
+                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
+                min="1"
+                aria-invalid={errors.quantity ? "true" : "false"}
+              />
+              {errors.quantity && <p className="text-red-500 text-xs">{errors.quantity.message}</p>}
             </div>
-             <div className="grid gap-2">
-                <Label htmlFor="price" className="text-neonText/80">Price (each)</Label>
-                <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    {...register('price', { valueAsNumber: true })}
-                    className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
-                    min="0"
-                    aria-invalid={errors.price ? "true" : "false"}
-                />
-                {errors.price && <p className="text-red-500 text-xs">{errors.price.message}</p>}
+            <div className="grid gap-2">
+              <Label htmlFor="price" className="text-neonText/80">Price (each)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                placeholder="0.00" // Use placeholder for price
+                {...register('price', { valueAsNumber: true })}
+                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
+                min="0"
+                aria-invalid={errors.price ? "true" : "false"}
+              />
+              {errors.price && <p className="text-red-500 text-xs">{errors.price.message}</p>}
             </div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="category" className="text-neonText/80">Category</Label>
-             <Controller
-                name="category"
-                control={control}
-                render={({ field }) => (
-                    <Select
-                     onValueChange={field.onChange}
-                     value={field.value} // This value will be pre-filled by the useEffect
-                     disabled={categories.length === 0}
-                    >
-                        <SelectTrigger
-                         id="category"
-                         className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-sm glow-border-inner"
-                         aria-invalid={errors.category ? "true" : "false"}
-                         >
-                        <SelectValue placeholder={categories.length > 0 ? "Select a category" : "No categories available"} />
-                        </SelectTrigger>
-                         <SelectContent
-                            className="bg-card border-primary/80 text-neonText glow-border-inner"
-                            position="popper"
-                            sideOffset={5}
-                         >
-                             <ScrollArea className="h-[200px] w-full">
-                                 <SelectGroup>
-                                    <SelectLabel className="text-muted-foreground/80 text-xs px-2">Categories</SelectLabel>
-                                    {categories.map((category) => (
-                                        <SelectItem
-                                            key={category.id}
-                                            value={category.id}
-                                            className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm"
-                                        >
-                                            {category.name}
-                                        </SelectItem>
-                                    ))}
-                                    {categories.length === 0 && <p className='text-center text-muted-foreground text-xs p-2'>No categories defined. Add some in Settings!</p>}
-                                 </SelectGroup>
-                            </ScrollArea>
-                         </SelectContent>
-                    </Select>
-                )}
+            <Controller
+              name="category"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value} // This value will be pre-filled by the useEffect
+                  disabled={categories.length === 0}
+                >
+                  <SelectTrigger
+                    id="category"
+                    className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-sm glow-border-inner"
+                    aria-invalid={errors.category ? "true" : "false"}
+                  >
+                    <SelectValue placeholder={categories.length > 0 ? "Select a category" : "No categories available"} />
+                  </SelectTrigger>
+                  <SelectContent
+                    className="bg-card border-primary/80 text-neonText glow-border-inner"
+                    position="popper"
+                    sideOffset={5}
+                  >
+                    <ScrollArea className="h-[200px] w-full">
+                      <SelectGroup>
+                        <SelectLabel className="text-muted-foreground/80 text-xs px-2">Categories</SelectLabel>
+                        {categories.map((category) => (
+                          <SelectItem
+                            key={category.id}
+                            value={category.id}
+                            className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm"
+                          >
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                        {categories.length === 0 && <p className='text-center text-muted-foreground text-xs p-2'>No categories defined. Add some in Settings!</p>}
+                      </SelectGroup>
+                    </ScrollArea>
+                  </SelectContent>
+                </Select>
+              )}
             />
             {errors.category && <p className="text-red-500 text-xs">{errors.category.message}</p>}
           </div>
           <DialogFooter className="mt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
-             <DialogClose asChild>
-                <Button type="button" variant="secondary" className="w-full sm:w-auto hover:bg-secondary/80 text-sm glow-border-inner">Cancel</Button>
-             </DialogClose>
+            <DialogClose asChild>
+              <Button type="button" variant="secondary" className="w-full sm:w-auto hover:bg-secondary/80 text-sm glow-border-inner">Cancel</Button>
+            </DialogClose>
             <Button type="submit" className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow text-sm glow-border-inner">Save changes</Button>
           </DialogFooter>
         </form>

@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form'; // Import Controller
@@ -32,7 +31,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 const listFormSchema = z.object({
   name: z.string().min(1, "List name is required").max(50, "List name too long"),
   budgetLimit: z.number().min(0, "Budget limit cannot be negative"),
-  defaultCategory: z.string().optional(),
+  defaultCategory: z.string().optional().default(''), // Default to empty string if not provided
 });
 
 type ListFormData = z.infer<typeof listFormSchema>;
@@ -52,7 +51,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
     defaultValues: {
       name: '',
       budgetLimit: 0,
-      defaultCategory: '',
+      defaultCategory: '', // Start with empty string
     }
   });
 
@@ -61,24 +60,30 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
       if (listData) {
         reset({
           name: listData.name,
-          budgetLimit: listData.budgetLimit,
-          defaultCategory: listData.defaultCategory || (categories.length > 0 ? categories[0].id : ''),
+          budgetLimit: listData.budgetLimit || 0, // Ensure it's a number
+          defaultCategory: listData.defaultCategory || '', // Use empty string if undefined/null
         });
       } else {
         reset({
           name: '',
           budgetLimit: 0,
-          defaultCategory: categories.length > 0 ? categories[0].id : '',
+          defaultCategory: '', // Start with empty string for new list
         });
       }
     }
-  }, [isOpen, listData, reset, categories]);
+  }, [isOpen, listData, reset]);
 
   const onSubmit = (data: ListFormData) => {
+    const payload = {
+      ...data,
+      // Ensure defaultCategory is set to 'uncategorized' if left empty or invalid
+      defaultCategory: data.defaultCategory && categories.some(c => c.id === data.defaultCategory) ? data.defaultCategory : 'uncategorized',
+    };
+
     if (listData) {
-      dispatch({ type: 'UPDATE_LIST', payload: { ...listData, ...data } });
+      dispatch({ type: 'UPDATE_LIST', payload: { ...listData, ...payload } });
     } else {
-      dispatch({ type: 'ADD_LIST', payload: data });
+      dispatch({ type: 'ADD_LIST', payload });
     }
     onClose();
   };
@@ -118,8 +123,8 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
               id="listBudgetLimit"
               type="number"
               step="0.01"
+              placeholder="0" // Use placeholder for budget limit
               {...register('budgetLimit', { valueAsNumber: true })}
-              placeholder="e.g., 150"
               className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary text-sm glow-border-inner"
               min="0"
               aria-invalid={errors.budgetLimit ? "true" : "false"}
@@ -127,49 +132,57 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
             {errors.budgetLimit && <p className="text-red-500 text-xs">{errors.budgetLimit.message}</p>}
           </div>
 
-           <div className="grid gap-2">
+          <div className="grid gap-2">
             <Label htmlFor="defaultCategory" className="text-neonText/80">Default Category (Optional)</Label>
             <Controller
-                name="defaultCategory"
-                control={control}
-                render={({ field }) => (
-                    <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={categories.length === 0}
-                    >
-                        <SelectTrigger 
-                            id="defaultCategory"
-                            className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-sm glow-border-inner"
-                            aria-invalid={errors.defaultCategory ? "true" : "false"}>
-                            <SelectValue placeholder={categories.length > 0 ? "Select a default category" : "No categories available"} />
-                        </SelectTrigger>
-                        <SelectContent 
-                            className="bg-card border-primary/80 text-neonText glow-border-inner"
-                            position="popper"
-                            sideOffset={5}
+              name="defaultCategory"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || ''} // Handle null/undefined value for Select
+                >
+                  <SelectTrigger
+                    id="defaultCategory"
+                    className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-sm glow-border-inner"
+                    aria-invalid={errors.defaultCategory ? "true" : "false"}
+                  >
+                    {/* Display selected value or placeholder */}
+                    <SelectValue placeholder="-- No Default --" />
+                  </SelectTrigger>
+                  <SelectContent
+                    className="bg-card border-primary/80 text-neonText glow-border-inner"
+                    position="popper"
+                    sideOffset={5}
+                  >
+                    <ScrollArea className="h-[200px] w-full">
+                      <SelectGroup>
+                        <SelectLabel className="text-muted-foreground/80 text-xs px-2">Categories</SelectLabel>
+                        {/* Add an option for no default category */}
+                        <SelectItem
+                            value="" // Use empty string to represent no selection
+                            className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm text-muted-foreground"
                         >
-                             <ScrollArea className="h-[200px] w-full">
-                                <SelectGroup>
-                                    <SelectLabel className="text-muted-foreground/80 text-xs px-2">Categories</SelectLabel>
-                                    {categories.map((category) => (
-                                        <SelectItem 
-                                            key={category.id} 
-                                            value={category.id}
-                                            className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm"
-                                        >
-                                            {category.name}
-                                        </SelectItem>
-                                    ))}
-                                    {categories.length === 0 && <p className='text-center text-muted-foreground text-xs p-2'>No categories defined. Add some in Settings!</p>}
-                                </SelectGroup>
-                             </ScrollArea>
-                        </SelectContent>
-                    </Select>
-                )}
+                             -- No Default --
+                        </SelectItem>
+                        {categories.filter(cat => cat.id !== 'uncategorized').map((category) => ( // Exclude 'uncategorized' from defaults
+                          <SelectItem
+                            key={category.id}
+                            value={category.id}
+                            className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm"
+                          >
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                        {categories.filter(cat => cat.id !== 'uncategorized').length === 0 && <p className='text-center text-muted-foreground text-xs p-2'>No categories defined yet.</p>}
+                      </SelectGroup>
+                    </ScrollArea>
+                  </SelectContent>
+                </Select>
+              )}
             />
             {errors.defaultCategory && <p className="text-red-500 text-xs">{errors.defaultCategory.message}</p>}
-           </div>
+          </div>
 
           <DialogFooter className="mt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
             <DialogClose asChild>
