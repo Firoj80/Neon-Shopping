@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form'; // Import Controller
@@ -123,8 +124,11 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
               id="listBudgetLimit"
               type="number"
               step="0.01"
-              placeholder="0" // Use placeholder for budget limit
-              {...register('budgetLimit', { valueAsNumber: true })}
+              placeholder="0.00" // Use placeholder for budget limit
+              {...register('budgetLimit', {
+                 setValueAs: (v) => (v === '' ? 0 : parseFloat(v)), // Handle empty string as 0
+                 validate: (value) => value >= 0 || "Budget cannot be negative" // Ensure non-negative
+              })}
               className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary text-sm glow-border-inner"
               min="0"
               aria-invalid={errors.budgetLimit ? "true" : "false"}
@@ -160,7 +164,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
                         <SelectLabel className="text-muted-foreground/80 text-xs px-2">Categories</SelectLabel>
                         {/* Add an option for no default category */}
                         <SelectItem
-                            value="" // Use empty string to represent no selection
+                            value="uncategorized" // Represent no specific selection with 'uncategorized'
                             className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm text-muted-foreground"
                         >
                              -- No Default --

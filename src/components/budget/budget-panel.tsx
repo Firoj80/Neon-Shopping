@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAppContext } from '@/context/app-context';
 import type { List, ShoppingListItem } from '@/context/app-context';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input';
+import { Input } from '@/components/ui/input'; // Corrected import path quotes
 import { Label } from '@/components/ui/label';
 import { Edit2, Wallet, Coins, ShoppingCart } from 'lucide-react';
 import {
@@ -31,17 +32,47 @@ const budgetFormSchema = z.object({
 
 type BudgetFormData = z.infer<typeof budgetFormSchema>;
 
+const BudgetCardSkeleton: React.FC = () => {
+  return (
+    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-1 sm:mb-2 glow-border">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
+        <div className="flex items-center gap-2 w-3/5">
+          <Skeleton className="h-5 w-5 rounded-full" />
+          <div className="flex flex-col gap-1 w-full">
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        </div>
+        <Skeleton className="h-7 w-20 rounded-md self-center" />
+      </CardHeader>
+      <CardContent className="space-y-1 px-3 pb-2 sm:px-4 sm:pb-3 glow-border-inner">
+        <div className="space-y-0.5">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-3 w-1/4" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+          <Skeleton className="h-1.5 w-full rounded-full glow-border-inner" />
+          <Skeleton className="h-3 w-1/5 ml-auto" />
+        </div>
+        <div className="flex items-center justify-between pt-0.5">
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-3.5 w-3.5 rounded-full" />
+            <Skeleton className="h-3.5 w-1/3" />
+          </div>
+          <Skeleton className="h-4 w-1/4" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export const BudgetCard: React.FC = () => {
   const { state, dispatch, formatCurrency, isLoading } = useAppContext();
   const [isEditingBudget, setIsEditingBudget] = useState(false);
 
-
   const selectedList: List | undefined = useMemo(() => {
-    // Ensure lists is an array before finding
     if (!Array.isArray(state.lists)) return undefined;
     return state.lists.find(list => list.id === state.selectedListId);
   }, [state.lists, state.selectedListId]);
-
 
   const itemsForSelectedList: ShoppingListItem[] = useMemo(() => {
     if (!selectedList || !Array.isArray(state.shoppingListItems)) return [];
@@ -49,10 +80,12 @@ export const BudgetCard: React.FC = () => {
   }, [state.shoppingListItems, selectedList]);
 
   // Calculate spent amount only for *checked* items in the *selected list*
+  // For daily budget, you might want to filter by dateAdded as well if it's a daily reset
   const spentForSelectedList: number = useMemo(() => {
     if (!selectedList) return 0;
+    // const today = startOfDay(new Date()); // Uncomment if daily reset logic is needed
     return itemsForSelectedList
-      .filter(item => item.checked) // Consider only checked items for spending
+      .filter(item => item.checked /* && isSameDay(new Date(item.dateAdded), today) */) // Uncomment for daily reset
       .reduce((total, item) => total + (item.price * item.quantity), 0);
   }, [itemsForSelectedList, selectedList]);
 
@@ -65,19 +98,18 @@ export const BudgetCard: React.FC = () => {
   });
 
   useEffect(() => {
-    // Update form default value when selected list changes
     if (selectedList) {
       reset({ budgetLimit: selectedList.budgetLimit || 0 });
     } else {
-      reset({ budgetLimit: 0 }); // Reset if no list is selected
+      reset({ budgetLimit: 0 });
     }
   }, [selectedList, reset]);
 
   if (isLoading || !selectedList) {
-    return <BudgetCardSkeleton selectedListName={selectedList?.name} />;
+    return <BudgetCardSkeleton />;
   }
 
-  const budgetLimit = selectedList.budgetLimit || 0; // Ensure budgetLimit is not undefined
+  const budgetLimit = selectedList.budgetLimit || 0;
   const spentPercentage = budgetLimit > 0 ? Math.min((spentForSelectedList / budgetLimit) * 100, 100) : 0;
   const remaining = budgetLimit - spentForSelectedList;
   const isOverBudget = remaining < 0;
@@ -92,10 +124,10 @@ export const BudgetCard: React.FC = () => {
     setIsEditingBudget(false);
   };
 
-  const budgetLimitDisplay = budgetLimit > 0 ? formatCurrency(budgetLimit) : "Not Set";
+  const budgetLimitDisplay = formatCurrency(budgetLimit);
 
   return (
-    <Card className="w-full bg-card border-primary/30 shadow-neon glow-border-inner mb-1 sm:mb-2">
+    <Card className="w-full bg-card border-primary/30 shadow-neon glow-border-inner mb-1 sm:mb-2 h-auto min-h-[auto]"> {/* Adjusted height */}
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
         <div className="flex items-center gap-2 min-w-0">
           <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
@@ -130,9 +162,11 @@ export const BudgetCard: React.FC = () => {
                     id="budgetLimit"
                     type="number"
                     step="0.01"
-                    // Show placeholder "0" if value is 0, otherwise show the value
-                    placeholder={budgetLimit === 0 ? "0.00" : ""}
-                    {...register('budgetLimit', { valueAsNumber: true })}
+                    placeholder="0.00" // Use placeholder for 0
+                    {...register('budgetLimit', {
+                        setValueAs: (v) => (v === '' ? 0 : parseFloat(v)), // Handle empty string as 0
+                        validate: (value) => value >= 0 || "Budget cannot be negative" // Ensure non-negative
+                     })}
                     className="col-span-3 border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
                     min="0"
                     aria-invalid={errors.budgetLimit ? "true" : "false"}
@@ -157,7 +191,6 @@ export const BudgetCard: React.FC = () => {
         <div className="space-y-0.5">
           <div className="flex justify-between items-center text-xs text-muted-foreground">
             <span>Spent: {formatCurrency(spentForSelectedList)}</span>
-            {/* Show "Not Set" if budget limit is 0 */}
             <span>Limit: {budgetLimitDisplay}</span>
           </div>
           <Progress
@@ -168,7 +201,7 @@ export const BudgetCard: React.FC = () => {
             )}
             aria-label={`${spentPercentage.toFixed(0)}% of budget spent`}
           />
-          {budgetLimit > 0 && ( // Only show percentage if limit is set
+          {budgetLimit > 0 && (
             <p className={cn(
               "text-xs text-right",
               isOverBudget ? 'text-destructive/80' : 'text-muted-foreground'
@@ -185,7 +218,6 @@ export const BudgetCard: React.FC = () => {
               {budgetLimit > 0 ? 'Remaining:' : 'Spent:'}
             </span>
           </div>
-          {/* Show remaining if budget is set, otherwise show total spent */}
           <div className={cn("text-sm font-bold", isOverBudget && budgetLimit > 0 ? 'text-destructive' : 'text-primary')}>
             {budgetLimit > 0 ? formatCurrency(remaining) : formatCurrency(spentForSelectedList)}
           </div>
@@ -195,40 +227,6 @@ export const BudgetCard: React.FC = () => {
             Over budget by {formatCurrency(Math.abs(remaining))}
           </p>
         )}
-      </CardContent>
-    </Card>
-  );
-};
-
-// Skeleton remains the same
-const BudgetCardSkeleton: React.FC<{ selectedListName?: string }> = ({ selectedListName }) => {
-  return (
-    <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-1 sm:mb-2 glow-border">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
-        <div className="flex items-center gap-2 w-3/5">
-          <Skeleton className="h-5 w-5 rounded-full" />
-          <div className="flex flex-col gap-1 w-full">
-            <Skeleton className="h-4 w-3/4" />
-          </div>
-        </div>
-        <Skeleton className="h-7 w-20 rounded-md self-center" />
-      </CardHeader>
-      <CardContent className="space-y-1 px-3 pb-2 sm:px-4 sm:pb-3 glow-border-inner">
-        <div className="space-y-0.5">
-          <div className="flex justify-between items-center">
-            <Skeleton className="h-3 w-1/4" />
-            <Skeleton className="h-3 w-1/4" />
-          </div>
-          <Skeleton className="h-1.5 w-full rounded-full glow-border-inner" />
-          <Skeleton className="h-3 w-1/5 ml-auto" />
-        </div>
-        <div className="flex items-center justify-between pt-0.5">
-          <div className="flex items-center gap-1">
-            <Skeleton className="h-3.5 w-3.5 rounded-full" />
-            <Skeleton className="h-3.5 w-1/3" />
-          </div>
-          <Skeleton className="h-4 w-1/4" />
-        </div>
       </CardContent>
     </Card>
   );

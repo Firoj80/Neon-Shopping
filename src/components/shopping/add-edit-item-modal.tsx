@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -78,8 +79,10 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
           name: '',
           quantity: 1,
           price: 0,
-          // Use list's default category if available, otherwise first category, else empty
-          category: listDefaultCategory || (categories.length > 0 ? categories[0].id : ''),
+          // Use list's default category if available and valid, otherwise first category, else 'uncategorized'
+           category: listDefaultCategory && categories.some(c => c.id === listDefaultCategory)
+                    ? listDefaultCategory
+                    : (categories.length > 0 ? categories.find(c => c.id !== 'uncategorized')?.id || 'uncategorized' : 'uncategorized'),
         });
       }
     }
@@ -133,8 +136,11 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                 id="price"
                 type="number"
                 step="0.01"
-                placeholder="0.00" // Use placeholder for price
-                {...register('price', { valueAsNumber: true })}
+                placeholder="0.00" // Set placeholder for price
+                {...register('price', {
+                    setValueAs: (v) => (v === '' ? 0 : parseFloat(v)), // Handle empty string as 0
+                    validate: (value) => value >= 0 || "Price cannot be negative" // Ensure non-negative
+                 })}
                 className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
                 min="0"
                 aria-invalid={errors.price ? "true" : "false"}
@@ -151,7 +157,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                 <Select
                   onValueChange={field.onChange}
                   value={field.value} // This value will be pre-filled by the useEffect
-                  disabled={categories.length === 0}
+                  disabled={categories.filter(cat => cat.id !== 'uncategorized').length === 0} // Disable if only 'uncategorized' exists
                 >
                   <SelectTrigger
                     id="category"
@@ -173,11 +179,15 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                             key={category.id}
                             value={category.id}
                             className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm"
+                            // Disable the 'Uncategorized' option visually if it's the only one
+                            disabled={category.id === 'uncategorized' && categories.length <= 1}
                           >
                             {category.name}
                           </SelectItem>
                         ))}
-                        {categories.length === 0 && <p className='text-center text-muted-foreground text-xs p-2'>No categories defined. Add some in Settings!</p>}
+                        {categories.filter(cat => cat.id !== 'uncategorized').length === 0 && (
+                           <p className='text-center text-muted-foreground text-xs p-2'>No other categories defined. Add some in Settings!</p>
+                        )}
                       </SelectGroup>
                     </ScrollArea>
                   </SelectContent>
