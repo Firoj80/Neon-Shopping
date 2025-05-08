@@ -1,33 +1,13 @@
-"use client"; // This component needs client-side hooks like useState, useEffect, usePathname
+"use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import {
-  ShoppingCart,
-  LayoutDashboard,
-  History,
-  Settings,
-  Info,
-  Mail,
-  ShieldCheck as Policy, // Renamed ShieldCheck to Policy
-  FileText, // Renamed FileText to Article - Corrected back to FileText
-  Star,
-  AppWindow as AppsIcon, // Corrected AppsIcon to AppWindow
-  Menu, // Keep Menu as Menu
-  X,
-  DollarSign, // Added for Currency
-} from 'lucide-react';
-import { Button } from '../ui/button';
-import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sheet,
-  SheetContent, // Use standard SheetContent
+  SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetClose, // Added SheetClose
+  SheetClose,
 } from "@/components/ui/sheet";
 import {
   Sidebar,
@@ -38,24 +18,43 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
-  SidebarSeparator, // Added SidebarSeparator
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  ShoppingCart,
+  LayoutDashboard,
+  History,
+  Settings,
+  Palette, // Keep Palette for Themes if needed, or remove if Themes page is also removed
+  Info,
+  Mail,
+  ShieldCheck as Policy,
+  FileText as ArticleIcon, // Using FileText for Terms
+  Star,
+  AppWindow as AppsIcon,
+  Menu,
+  X,
+} from 'lucide-react';
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
-import { TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
-import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useClientOnly } from '@/hooks/use-client-only';
 
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false); // Use state for sheet open/close
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    // Use flex with justify-between initially, but center the title with a placeholder
-    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Left Side: Hamburger Menu Trigger */}
        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
+         <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-primary/10 w-10 h-10 flex-shrink-0">
              <AnimatePresence initial={false} mode="wait">
                <motion.div
@@ -70,47 +69,42 @@ const MobileHeader: React.FC = () => {
              </AnimatePresence>
             <span className="sr-only">Toggle Sidebar</span>
            </Button>
-        </SheetTrigger>
-        {/* Mobile Sidebar Content - Use standard SheetContent */}
-        <SheetContent
-            side="left"
-            className="p-0 w-[280px] flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border glow-border" // Apply sidebar styles
-        >
-           <MobileSidebarContent isOpen={isOpen} setIsOpen={setIsOpen}/>
-        </SheetContent>
+         </SheetTrigger>
+         {/* Use SidebarSheetContent for mobile */}
+          <SidebarSheetContent side="left" className="w-[280px]" isOpen={isOpen} setIsOpen={setIsOpen} />
        </Sheet>
 
-      {/* Center: App Name/Logo */}
-      <div className="flex-grow text-center"> {/* Added container to center title */}
-          <Link href="/list" className="inline-flex items-center gap-2 text-lg font-semibold text-primary">
-              <ShoppingCart className="w-6 h-6" />
-              <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
-          </Link>
-      </div>
+       {/* Center: App Name/Logo */}
+       <div className="flex-grow text-center">
+           <Link href="/list" className="inline-flex items-center gap-2 text-lg font-semibold text-primary">
+               <ShoppingCart className="w-6 h-6" />
+                <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
+           </Link>
+       </div>
 
-      {/* Right Side: Placeholder to balance the hamburger menu */}
-       <div className="w-10 h-10 flex-shrink-0"></div> {/* Placeholder with same width as button */}
-
-    </header>
+       {/* Right Side: Placeholder */}
+        <div className="w-10 h-10 flex-shrink-0"></div>
+     </header>
   );
 };
 
-// --- Mobile Sidebar Content Component ---
-const MobileSidebarContent: React.FC<{ isOpen: boolean; setIsOpen: (open: boolean) => void }> = ({ isOpen, setIsOpen }) => {
+// --- Mobile Sidebar Content Component (Now using SidebarSheetContent) ---
+const SidebarSheetContent: React.FC<{ side: "left" | "right"; className?: string; isOpen: boolean; setIsOpen: (open: boolean) => void }> = ({ side, className, isOpen, setIsOpen }) => {
     const router = useRouter();
     const pathname = usePathname();
-    const isClient = useClientOnly(); // Use the hook
+    const isClient = useClientOnly();
 
-    // Define menu items - reverted to include all main items
+    // Define menu items
     const menuItems = [
         { href: '/list', label: 'Shopping List', icon: ShoppingCart },
         { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/history', label: 'History', icon: History },
-        { href: '/settings', label: 'Settings', icon: Settings },
+        { href: '/settings', label: 'Settings', icon: Settings }, // Settings might include Themes now
+        { href: '/themes', label: 'Themes', icon: Palette },
         { href: '/about', label: 'About Us', icon: Info },
         { href: '/contact', label: 'Contact Us', icon: Mail },
         { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-        { href: '/terms', label: 'Terms of Service', icon: FileText }, // Corrected icon
+        { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
         { href: '/rate', label: 'Rate App', icon: Star },
         { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
     ];
@@ -121,7 +115,7 @@ const MobileSidebarContent: React.FC<{ isOpen: boolean; setIsOpen: (open: boolea
         setIsOpen(false); // Close sidebar on link click
     };
 
-     const menuItemClasses = cn(
+    const menuItemClasses = cn(
         "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm",
         "border border-primary/30 hover:border-secondary hover:bg-primary/10 shadow-[0_0_5px_theme(colors.primary.DEFAULT)/0.5] hover:shadow-[0_0_10px_theme(colors.secondary.DEFAULT)/0.7,0_0_4px_theme(colors.secondary.DEFAULT)/0.9]",
         "transition-all duration-300 ease-in-out glow-border-inner",
@@ -140,21 +134,24 @@ const MobileSidebarContent: React.FC<{ isOpen: boolean; setIsOpen: (open: boolea
         return pathname === itemHref;
     }, [pathname, isClient]);
 
-
     return (
-         <React.Fragment> {/* Removed SheetContent wrapper */}
-          <SheetHeader className="p-4 border-b border-sidebar-border shrink-0">
-            <SheetTitle className="sr-only">Navigation Menu</SheetTitle> {/* Accessible Title */}
-            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setIsOpen(false)}>
-                <ShoppingCart className="w-6 h-6" />
-                <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
-            </Link>
-           </SheetHeader>
+         <SheetContent
+            side={side}
+            className={cn("p-0 flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border glow-border", className)}
+            overlayClassName="backdrop-blur-sm" // Example: Add blur to overlay
+            accessibleTitle="Main Navigation Menu"
+        >
+            <SheetHeader className="p-4 border-b border-sidebar-border shrink-0">
+                <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setIsOpen(false)}>
+                    <ShoppingCart className="w-6 h-6" />
+                     <ClientOnly><span className="font-bold text-neonText">Neon Shopping</span></ClientOnly>
+                </Link>
+            </SheetHeader>
             <SidebarContent className="p-2 flex-grow overflow-y-auto">
                 <SidebarMenu className="space-y-1.5">
                     {menuItems.map((item) => (
                         <SidebarMenuItem key={item.href}>
-                             <SidebarMenuButton
+                            <SidebarMenuButton
                                 asChild
                                 isActive={isItemActive(item.href)}
                                 className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
@@ -163,19 +160,18 @@ const MobileSidebarContent: React.FC<{ isOpen: boolean; setIsOpen: (open: boolea
                                 <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
                                 <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
                             </Link>
-                             </SidebarMenuButton>
+                            </SidebarMenuButton>
                         </SidebarMenuItem>
                     ))}
                 </SidebarMenu>
             </SidebarContent>
-             <SidebarFooter className="p-2 border-t border-sidebar-border">
+            <SidebarFooter className="p-2 border-t border-sidebar-border">
                 <hr className="my-3 border-sidebar-border/50" />
                 <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
             </SidebarFooter>
-         </React.Fragment>
+        </SheetContent>
     );
 };
-
 
 // --- Main App Layout Component ---
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -183,18 +179,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const appContext = useAppContext();
   const { isLoading } = appContext;
-  const isClientMounted = useClientOnly(); // Use the hook
+  const isClientMounted = useClientOnly(); // Hook to ensure client-side execution
 
-    // Define menu items for desktop sidebar
+  // Define menu items for desktop sidebar - Removed Currency
     const mainNavItems = [
         { href: '/list', label: 'Shopping List', icon: ShoppingCart },
         { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/history', label: 'History', icon: History },
         { href: '/settings', label: 'Settings', icon: Settings },
+        { href: '/themes', label: 'Themes', icon: Palette },
         { href: '/about', label: 'About Us', icon: Info },
         { href: '/contact', label: 'Contact Us', icon: Mail },
         { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-        { href: '/terms', label: 'Terms of Service', icon: FileText }, // Corrected icon
+        { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
         { href: '/rate', label: 'Rate App', icon: Star },
         { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
     ];
@@ -218,19 +215,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return pathname === itemHref;
   }, [pathname, isClientMounted]);
 
-   useEffect(() => {
-     // Redirect logic - simplified to handle initial load and create-first page
-     if (isClientMounted && !isLoading) {
-       if (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') {
-          // If no lists and not on the create page, go there
-          router.replace('/list/create-first');
-       } else if (Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0 && pathname === '/list/create-first') {
-          // If lists exist and on the create page, go to the main list page
-           router.replace('/list');
-       }
-     }
-   }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]);
-
+  useEffect(() => {
+    // Redirect logic based on list existence
+    if (isClientMounted && !isLoading) {
+      const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+      if (!hasLists && pathname !== '/list/create-first') {
+        router.replace('/list/create-first');
+      } else if (hasLists && pathname === '/list/create-first') {
+        router.replace('/list');
+      }
+    }
+  }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]);
 
   // --- Loading State ---
   if (!isClientMounted || isLoading) {
@@ -243,7 +238,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Prevent rendering main layout if redirection is happening or should happen
    if (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') {
-      // Still loading or redirecting to create-first
        return (
          <div className="flex items-center justify-center h-screen bg-background">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
@@ -252,7 +246,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
    }
 
    if (Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0 && pathname === '/list/create-first') {
-      // Still loading or redirecting to list
        return (
          <div className="flex items-center justify-center h-screen bg-background">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
@@ -300,7 +293,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
        {/* Main Content Area */}
        <SidebarInset className="flex flex-col min-h-screen">
-         <MobileHeader /> {/* Mobile header with sheet trigger */}
+          <MobileHeader />
          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-[calc(1rem+env(safe-area-inset-bottom)+50px)] md:pb-[calc(1.5rem+env(safe-area-inset-bottom)+50px)]">
            {children}
          </main>

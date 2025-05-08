@@ -5,14 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select'; // Keep Select for category reassignment
 import { useAppContext } from '@/context/app-context';
-import type { Currency, Category } from '@/context/app-context';
-import { getSupportedCurrencies, getUserCurrency } from '@/services/currency';
+import type { Category } from '@/context/app-context'; // Only need Category type
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Banknote, Layers, Trash2, Edit, PlusCircle, Save, X } from 'lucide-react';
+import { Layers, Trash2, Edit, PlusCircle, Save, X } from 'lucide-react'; // Removed Banknote
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,83 +28,13 @@ export default function SettingsPage() {
   const { state, dispatch, isLoading: contextLoading } = useAppContext();
   const { toast } = useToast();
 
-  const [supportedCurrencies, setSupportedCurrencies] = useState<Currency[]>([]);
-  const [isLoadingCurrencies, setIsLoadingCurrencies] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-
+  // Removed currency state and effects
   const [categories, setCategories] = useState<Category[]>(state.categories);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [reassignCategoryId, setReassignCategoryId] = useState<string>('uncategorized');
-
-  useEffect(() => {
-    const fetchAndDetectCurrency = async () => {
-      setIsLoadingCurrencies(true);
-      try {
-        const currencies = await getSupportedCurrencies();
-        setSupportedCurrencies(currencies);
-
-        // Only auto-detect if the currency is default (USD) or not set
-        if (!state.currency.code || state.currency.code === 'USD') {
-            let detectedCurrency = null;
-             if (typeof window !== 'undefined') { // Ensure running in browser
-                detectedCurrency = await getUserCurrency();
-             }
-
-          if (detectedCurrency && currencies.some(c => c.code === detectedCurrency.code)) {
-            dispatch({ type: 'SET_CURRENCY', payload: detectedCurrency });
-            toast({
-              title: "Currency Auto-Detected",
-              description: `Currency set to ${detectedCurrency.name} (${detectedCurrency.code}). You can change this below.`,
-              variant: "default",
-            });
-          } else if (!state.currency.code && currencies.length > 0) {
-            // If no currency set and detection failed, default to USD or first in list
-            const usd = currencies.find(c => c.code === 'USD') || currencies[0];
-            dispatch({ type: 'SET_CURRENCY', payload: usd });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch/detect currency:", error);
-        toast({ title: "Currency Error", description: "Could not load currency information. Defaulting to USD.", variant: "destructive" });
-        if (!state.currency.code) {
-            // Ensure a default currency is set even if everything fails
-            const fallbackCurrency = supportedCurrencies.find(c => c.code === 'USD') || { code: 'USD', symbol: '$', name: 'US Dollar' };
-            dispatch({ type: 'SET_CURRENCY', payload: fallbackCurrency });
-        }
-      } finally {
-        setIsLoadingCurrencies(false);
-      }
-    };
-    fetchAndDetectCurrency();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, toast]); // Run once on mount
-
-  const handleSelectCurrency = (currencyCode: string) => {
-    const selected = supportedCurrencies.find(c => c.code === currencyCode);
-    if (selected) {
-      dispatch({ type: 'SET_CURRENCY', payload: selected });
-      toast({
-        title: "Currency Updated",
-        description: `Currency set to ${selected.name} (${selected.code}).`,
-        variant: "default",
-        className: "bg-primary/10 border-primary text-primary-foreground",
-      });
-    }
-  };
-
-  const filteredCurrencies = useMemo(() => {
-    if (!searchTerm) return supportedCurrencies;
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return supportedCurrencies.filter(currency =>
-      currency.name.toLowerCase().includes(lowerSearchTerm) ||
-      currency.code.toLowerCase().includes(lowerSearchTerm) ||
-      currency.symbol.toLowerCase().includes(lowerSearchTerm)
-    );
-  }, [supportedCurrencies, searchTerm]);
-
 
   useEffect(() => {
     setCategories(state.categories);
@@ -161,9 +90,6 @@ export default function SettingsPage() {
     if (!categoryToDelete) return;
 
     const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id);
-    const canReassign = categoriesForReassignment.length > 0;
-
-    // Use 'uncategorized' as the default reassignment if nothing else is chosen
     const finalReassignId = itemsWithCategory.length > 0 ? (reassignCategoryId || 'uncategorized') : undefined;
 
     dispatch({
@@ -178,14 +104,12 @@ export default function SettingsPage() {
     toast({ title: "Success", description: "Category deleted." });
   };
 
-
-  const isLoading = contextLoading || isLoadingCurrencies;
-
   const categoriesForReassignment = useMemo(() => {
     if (!categoryToDelete) return [];
-    // Exclude the category being deleted itself
     return categories.filter(c => c.id !== categoryToDelete.id);
   }, [categories, categoryToDelete]);
+
+  const isLoading = contextLoading; // Only rely on context loading now
 
   if (isLoading) {
     return <SettingsPageSkeleton />;
@@ -195,62 +119,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
 
-      <Card className="bg-card border-primary/30 shadow-neon glow-border">
-        <CardHeader>
-          <CardTitle className="text-secondary flex items-center gap-2">
-            <Banknote className="h-5 w-5" /> Currency
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">Select the currency for displaying prices and budget.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 glow-border-inner p-4">
-          <div className="grid gap-2">
-             <Label htmlFor="currency-search" className="text-neonText/80">Search Currency</Label>
-             <Input
-                id="currency-search"
-                type="text"
-                placeholder="e.g., USD, Euro, $"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
-            />
-
-            <Label htmlFor="currency-select" className="text-neonText/80 mt-3">Select Currency</Label>
-            <Select
-              value={state.currency.code || ''}
-              onValueChange={handleSelectCurrency}
-              disabled={filteredCurrencies.length === 0 && !isLoadingCurrencies}
-            >
-              <SelectTrigger
-                id="currency-select"
-                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary glow-border-inner"
-              >
-                <SelectValue placeholder={state.currency.code ? `${state.currency.name} (${state.currency.symbol})` : (isLoadingCurrencies ? "Loading..." : "Select a currency")} />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 glow-border-inner" position="popper">
-                <ScrollArea className="h-full">
-                  <SelectGroup>
-                    <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Currencies</SelectLabel>
-                    {isLoadingCurrencies && filteredCurrencies.length === 0 ? (
-                         <SelectItem value="loading" disabled>Loading currencies...</SelectItem>
-                    ) : filteredCurrencies.length > 0 ? (
-                      filteredCurrencies.map((currency) => (
-                        <SelectItem key={currency.code} value={currency.code} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2">
-                          {currency.name} ({currency.symbol})
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-results" disabled>No currencies match your search.</SelectItem>
-                    )}
-                  </SelectGroup>
-                </ScrollArea>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground pt-1">
-              Your currency might be auto-detected. You can always change it here.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Currency Section Removed */}
 
       <Card className="bg-card border-secondary/30 shadow-neon glow-border">
         <CardHeader>
@@ -335,7 +204,7 @@ export default function SettingsPage() {
                                     <Select
                                       value={reassignCategoryId}
                                       onValueChange={setReassignCategoryId}
-                                      defaultValue="uncategorized" // Default to uncategorized
+                                      defaultValue="uncategorized"
                                     >
                                       <SelectTrigger
                                         id="reassign-category"
@@ -387,22 +256,7 @@ const SettingsPageSkeleton: React.FC = () => (
   <div className="space-y-6 animate-pulse">
     <Skeleton className="h-8 w-1/4" />
 
-    <Card className="bg-card border-border/20 shadow-md glow-border">
-      <CardHeader>
-        <Skeleton className="h-6 w-1/5 mb-1" />
-        <Skeleton className="h-4 w-3/4" />
-      </CardHeader>
-      <CardContent className="space-y-4 glow-border-inner p-4">
-        <div className="grid gap-2">
-          <Skeleton className="h-4 w-1/3" />
-          <Skeleton className="h-10 w-full rounded-md glow-border-inner" />
-          <Skeleton className="h-4 w-1/4 mt-3" />
-          <Skeleton className="h-10 w-full rounded-md glow-border-inner" />
-          <Skeleton className="h-3 w-2/3 mt-1" />
-        </div>
-      </CardContent>
-    </Card>
-
+    {/* Category Section Skeleton */}
     <Card className="bg-card border-border/20 shadow-md glow-border">
       <CardHeader>
         <Skeleton className="h-6 w-1/4 mb-1" />
