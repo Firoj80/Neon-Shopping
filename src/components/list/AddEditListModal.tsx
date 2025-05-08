@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form'; // Import Controller
@@ -31,7 +30,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 const listFormSchema = z.object({
   name: z.string().min(1, "List name is required").max(50, "List name too long"),
-  budgetLimit: z.number().min(0, "Budget limit cannot be negative"),
+  budgetLimit: z.number().min(0, "Budget limit cannot be negative").nullable().default(0), // Allow null, default to 0
   defaultCategory: z.string().optional().default(''), // Default to empty string if not provided
 });
 
@@ -51,7 +50,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
     resolver: zodResolver(listFormSchema),
     defaultValues: {
       name: '',
-      budgetLimit: 0,
+      budgetLimit: null, // Default to null to show placeholder
       defaultCategory: '', // Start with empty string
     }
   });
@@ -61,13 +60,13 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
       if (listData) {
         reset({
           name: listData.name,
-          budgetLimit: listData.budgetLimit || 0, // Ensure it's a number
+          budgetLimit: listData.budgetLimit, // Use existing value
           defaultCategory: listData.defaultCategory || '', // Use empty string if undefined/null
         });
       } else {
         reset({
           name: '',
-          budgetLimit: 0,
+          budgetLimit: null, // Start with null for new list
           defaultCategory: '', // Start with empty string for new list
         });
       }
@@ -77,6 +76,8 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
   const onSubmit = (data: ListFormData) => {
     const payload = {
       ...data,
+      // Ensure budgetLimit is 0 if null
+      budgetLimit: data.budgetLimit ?? 0,
       // Ensure defaultCategory is set to 'uncategorized' if left empty or invalid
       defaultCategory: data.defaultCategory && categories.some(c => c.id === data.defaultCategory) ? data.defaultCategory : 'uncategorized',
     };
@@ -120,18 +121,27 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
 
           <div className="grid gap-2">
             <Label htmlFor="listBudgetLimit" className="text-neonText/80">Budget Limit ({currency.symbol})</Label>
-            <Input
-              id="listBudgetLimit"
-              type="number"
-              step="0.01"
-              placeholder="0.00" // Use placeholder for budget limit
-              {...register('budgetLimit', {
-                 setValueAs: (v) => (v === '' ? 0 : parseFloat(v)), // Handle empty string as 0
-                 validate: (value) => value >= 0 || "Budget cannot be negative" // Ensure non-negative
-              })}
-              className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary text-sm glow-border-inner"
-              min="0"
-              aria-invalid={errors.budgetLimit ? "true" : "false"}
+            <Controller
+              name="budgetLimit"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id="listBudgetLimit"
+                  type="number"
+                  step="0.01"
+                  {...field}
+                  onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow empty input, handle potential negative, parse as float
+                      field.onChange(value === '' ? null : Math.max(0, parseFloat(value) || 0));
+                  }}
+                  value={field.value === null || field.value === undefined ? '' : field.value} // Show empty string if null/undefined
+                  placeholder="0.00" // Use placeholder
+                  className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary text-sm glow-border-inner"
+                  min="0"
+                  aria-invalid={errors.budgetLimit ? "true" : "false"}
+                />
+              )}
             />
             {errors.budgetLimit && <p className="text-red-500 text-xs">{errors.budgetLimit.message}</p>}
           </div>
@@ -144,7 +154,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
               render={({ field }) => (
                 <Select
                   onValueChange={field.onChange}
-                  value={field.value || ''} // Handle null/undefined value for Select
+                  value={field.value || 'uncategorized'} // Handle null/undefined value, default to 'uncategorized' visual
                 >
                   <SelectTrigger
                     id="defaultCategory"

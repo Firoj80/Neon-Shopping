@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAppContext } from '@/context/app-context';
 import type { List, ShoppingListItem } from '@/context/app-context';
 import { Button } from "@/components/ui/button";
-import { Input } from '@/components/ui/input'; // Corrected import path quotes
+import { Input } from "@/components/ui/input";
 import { Label } from '@/components/ui/label';
 import { Edit2, Wallet, Coins, ShoppingCart } from 'lucide-react';
 import {
@@ -19,15 +18,15 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form'; // Import Controller
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { startOfDay, format, isSameDay } from 'date-fns'; // Import isSameDay
+import { startOfDay, isSameDay } from 'date-fns'; // Import isSameDay
 
 const budgetFormSchema = z.object({
-  budgetLimit: z.number().min(0, "Budget limit cannot be negative"),
+  budgetLimit: z.number().min(0, "Budget limit cannot be negative").nullable().default(0), // Allow null, default to 0
 });
 
 type BudgetFormData = z.infer<typeof budgetFormSchema>;
@@ -81,27 +80,27 @@ export const BudgetCard: React.FC = () => {
 
   // Calculate spent amount only for *checked* items in the *selected list*
   // For daily budget, you might want to filter by dateAdded as well if it's a daily reset
-  const spentForSelectedList: number = useMemo(() => {
-    if (!selectedList) return 0;
-    // const today = startOfDay(new Date()); // Uncomment if daily reset logic is needed
-    return itemsForSelectedList
-      .filter(item => item.checked /* && isSameDay(new Date(item.dateAdded), today) */) // Uncomment for daily reset
-      .reduce((total, item) => total + (item.price * item.quantity), 0);
-  }, [itemsForSelectedList, selectedList]);
+    const today = startOfDay(new Date()); // Use date-fns startOfDay
+    const spentForSelectedList: number = useMemo(() => {
+        if (!selectedList) return 0;
+        return itemsForSelectedList
+        .filter(item => item.checked && isSameDay(new Date(item.dateAdded), today) ) // Filter for checked items added today
+        .reduce((total, item) => total + (item.price * item.quantity), 0);
+    }, [itemsForSelectedList, selectedList, today]); // Add today to dependency array
 
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<BudgetFormData>({
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<BudgetFormData>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
-      budgetLimit: selectedList?.budgetLimit || 0,
+      budgetLimit: selectedList?.budgetLimit ?? null, // Default to null
     }
   });
 
   useEffect(() => {
     if (selectedList) {
-      reset({ budgetLimit: selectedList.budgetLimit || 0 });
+      reset({ budgetLimit: selectedList.budgetLimit ?? null }); // Reset with null if 0 or undefined
     } else {
-      reset({ budgetLimit: 0 });
+      reset({ budgetLimit: null });
     }
   }, [selectedList, reset]);
 
@@ -118,7 +117,7 @@ export const BudgetCard: React.FC = () => {
     if (selectedList) {
       dispatch({
         type: 'UPDATE_LIST',
-        payload: { ...selectedList, budgetLimit: data.budgetLimit }
+        payload: { ...selectedList, budgetLimit: data.budgetLimit ?? 0 } // Ensure 0 if null
       });
     }
     setIsEditingBudget(false);
@@ -137,61 +136,74 @@ export const BudgetCard: React.FC = () => {
             </CardTitle>
           </div>
         </div>
-
-        <Dialog open={isEditingBudget} onOpenChange={setIsEditingBudget}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-primary/80 hover:text-primary hover:bg-primary/10 glow-border-inner text-xs px-1.5 py-1 h-auto sm:px-2">
-              <Edit2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
-              Edit
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[90vw] max-w-md sm:max-w-sm bg-card border-primary/40 shadow-neon rounded-lg glow-border">
-            <DialogHeader>
-              <DialogTitle className="text-primary">Set Budget for "{selectedList.name}"</DialogTitle>
-              <DialogDescription className="text-muted-foreground text-sm pt-1">
-                This budget limit applies to the selected shopping list.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit(handleSaveBudget)}>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="budgetLimit" className="text-right text-neonText/80 text-xs sm:text-sm">
-                    Limit ({state.currency.symbol})
-                  </Label>
-                  <Input
-                    id="budgetLimit"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00" // Use placeholder for 0
-                    {...register('budgetLimit', {
-                        setValueAs: (v) => (v === '' ? 0 : parseFloat(v)), // Handle empty string as 0
-                        validate: (value) => value >= 0 || "Budget cannot be negative" // Ensure non-negative
-                     })}
-                    className="col-span-3 border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
-                    min="0"
-                    aria-invalid={errors.budgetLimit ? "true" : "false"}
-                    autoFocus
-                  />
-                  {errors.budgetLimit && <p className="col-span-4 text-red-500 text-xs text-right">{errors.budgetLimit.message}</p>}
+         <div className="flex items-center">
+             <span className="text-xs text-muted-foreground mr-2">
+                 Daily Limit: {budgetLimitDisplay}
+             </span>
+            <Dialog open={isEditingBudget} onOpenChange={setIsEditingBudget}>
+            <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-primary/80 hover:text-primary hover:bg-primary/10 glow-border-inner text-xs px-1.5 py-1 h-auto sm:px-2">
+                <Edit2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 mr-1" />
+                Edit
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="w-[90vw] max-w-md sm:max-w-sm bg-card border-primary/40 shadow-neon rounded-lg glow-border">
+                <DialogHeader>
+                <DialogTitle className="text-primary">Set Budget for "{selectedList.name}"</DialogTitle>
+                <DialogDescription className="text-muted-foreground text-sm pt-1">
+                    This budget limit applies to the selected shopping list for today.
+                </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit(handleSaveBudget)}>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="budgetLimit" className="text-right text-neonText/80 text-xs sm:text-sm">
+                        Limit ({state.currency.symbol})
+                    </Label>
+                    <Controller
+                        name="budgetLimit"
+                        control={control}
+                        render={({ field }) => (
+                        <Input
+                            id="budgetLimit"
+                            type="number"
+                            step="0.01"
+                            {...field}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                // Allow empty input, handle potential negative, parse as float
+                                field.onChange(value === '' ? null : Math.max(0, parseFloat(value) || 0));
+                            }}
+                            value={field.value === null || field.value === undefined ? '' : field.value} // Show empty string if null/undefined
+                            placeholder="0.00" // Use placeholder
+                            className="col-span-3 border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
+                            min="0"
+                            aria-invalid={errors.budgetLimit ? "true" : "false"}
+                            autoFocus
+                        />
+                        )}
+                    />
+                    {errors.budgetLimit && <p className="col-span-4 text-red-500 text-xs text-right">{errors.budgetLimit.message}</p>}
+                    </div>
                 </div>
-              </div>
-              <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                <DialogClose asChild>
-                  <Button type="button" variant="secondary" className="hover:bg-secondary/80 w-full sm:w-auto glow-border-inner">
-                    Cancel
-                  </Button>
-                </DialogClose>
-                <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow w-full sm:w-auto glow-border-inner">Set Budget</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                    <DialogClose asChild>
+                    <Button type="button" variant="secondary" className="hover:bg-secondary/80 w-full sm:w-auto glow-border-inner">
+                        Cancel
+                    </Button>
+                    </DialogClose>
+                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow w-full sm:w-auto glow-border-inner">Set Budget</Button>
+                </DialogFooter>
+                </form>
+            </DialogContent>
+            </Dialog>
+         </div>
       </CardHeader>
       <CardContent className="space-y-1 px-3 pb-2 sm:px-4 sm:pb-3 glow-border-inner">
         <div className="space-y-0.5">
           <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span>Spent: {formatCurrency(spentForSelectedList)}</span>
-            <span>Limit: {budgetLimitDisplay}</span>
+            <span>Spent Today: {formatCurrency(spentForSelectedList)}</span>
+            {/* <span>Limit: {budgetLimitDisplay}</span> */}
           </div>
           <Progress
             value={spentPercentage}
@@ -215,7 +227,7 @@ export const BudgetCard: React.FC = () => {
           <div className="flex items-center gap-1 text-sm font-medium">
             <Coins className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", isOverBudget && budgetLimit > 0 ? 'text-destructive' : 'text-primary')} />
             <span className={cn("text-neonText text-xs")}>
-              {budgetLimit > 0 ? 'Remaining:' : 'Spent:'}
+              {budgetLimit > 0 ? 'Remaining Today:' : 'Spent Today:'}
             </span>
           </div>
           <div className={cn("text-sm font-bold", isOverBudget && budgetLimit > 0 ? 'text-destructive' : 'text-primary')}>

@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -32,7 +31,7 @@ import { useAppContext } from '@/context/app-context';
 const formSchema = z.object({
   name: z.string().min(1, "Item name is required"),
   quantity: z.number().min(1, "Quantity must be at least 1").int(),
-  price: z.number().min(0, "Price cannot be negative"),
+  price: z.number().min(0, "Price cannot be negative").nullable().default(0), // Allow null, default to 0
   category: z.string().min(1, "Category is required"), // Category is required
 });
 
@@ -49,14 +48,14 @@ interface AddEditItemModalProps {
 
 export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onClose, onSave, itemData, currentListId }) => {
   const { state } = useAppContext();
-  const { categories } = state;
+  const { categories, currency } = state; // Get currency for label
 
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       quantity: 1,
-      price: 0,
+      price: null, // Default price to null initially to show placeholder
       category: '', // Initial default, will be updated by useEffect
     }
   });
@@ -67,22 +66,22 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
         reset({
           name: itemData.name,
           quantity: itemData.quantity,
-          price: itemData.price,
+          price: itemData.price, // Use the existing price
           category: itemData.category,
         });
       } else { // Adding new item
         // Get the selected list's default category
         const selectedListObject = state.lists.find(list => list.id === currentListId);
-        const listDefaultCategory = selectedListObject?.defaultCategory || '';
+        const listDefaultCategory = selectedListObject?.defaultCategory || 'uncategorized'; // Default to uncategorized
 
         reset({
           name: '',
           quantity: 1,
-          price: 0,
+          price: null, // Start with null to show placeholder
           // Use list's default category if available and valid, otherwise first category, else 'uncategorized'
            category: listDefaultCategory && categories.some(c => c.id === listDefaultCategory)
                     ? listDefaultCategory
-                    : (categories.length > 0 ? categories.find(c => c.id !== 'uncategorized')?.id || 'uncategorized' : 'uncategorized'),
+                    : (categories.find(c => c.id !== 'uncategorized')?.id || 'uncategorized'),
         });
       }
     }
@@ -90,8 +89,13 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
 
 
   const onSubmit = (data: FormData) => {
+    // Ensure price is 0 if null before saving
+    const dataToSave = {
+      ...data,
+      price: data.price ?? 0,
+    };
     // listId is handled by the parent component (ShoppingListPage) when dispatching ADD_SHOPPING_ITEM
-    onSave(data);
+    onSave(dataToSave);
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -120,31 +124,54 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="quantity" className="text-neonText/80">Quantity</Label>
-              <Input
-                id="quantity"
-                type="number"
-                {...register('quantity', { valueAsNumber: true })}
-                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
-                min="1"
-                aria-invalid={errors.quantity ? "true" : "false"}
-              />
+              <Controller
+                name="quantity"
+                control={control}
+                defaultValue={1}
+                render={({ field }) => (
+                  <Input
+                    id="quantity"
+                    type="number"
+                    {...field}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow empty input, otherwise parse as int, default to 1 if parsing fails or value < 1
+                      field.onChange(value === '' ? '' : Math.max(1, parseInt(value, 10) || 1));
+                    }}
+                     value={field.value === 0 ? '' : field.value} // Show empty if 0 (though min is 1)
+                     placeholder="1" // Placeholder for quantity
+                    className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
+                    min="1"
+                    aria-invalid={errors.quantity ? "true" : "false"}
+                  />
+                )}
+                />
               {errors.quantity && <p className="text-red-500 text-xs">{errors.quantity.message}</p>}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="price" className="text-neonText/80">Price (each)</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                placeholder="0.00" // Set placeholder for price
-                {...register('price', {
-                    setValueAs: (v) => (v === '' ? 0 : parseFloat(v)), // Handle empty string as 0
-                    validate: (value) => value >= 0 || "Price cannot be negative" // Ensure non-negative
-                 })}
-                className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
-                min="0"
-                aria-invalid={errors.price ? "true" : "false"}
-              />
+              <Label htmlFor="price" className="text-neonText/80">Price ({currency.symbol})</Label>
+               <Controller
+                 name="price"
+                 control={control}
+                 render={({ field }) => (
+                    <Input
+                       id="price"
+                       type="number"
+                       step="0.01"
+                       {...field}
+                       onChange={(e) => {
+                         const value = e.target.value;
+                         // Allow empty input, handle potential negative, parse as float
+                         field.onChange(value === '' ? null : Math.max(0, parseFloat(value) || 0));
+                       }}
+                       value={field.value === null || field.value === undefined ? '' : field.value} // Show empty string if null/undefined
+                       placeholder="0.00" // Use placeholder
+                       className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
+                       min="0"
+                       aria-invalid={errors.price ? "true" : "false"}
+                    />
+                 )}
+               />
               {errors.price && <p className="text-red-500 text-xs">{errors.price.message}</p>}
             </div>
           </div>
