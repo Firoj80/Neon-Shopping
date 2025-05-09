@@ -2,11 +2,16 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAppContext } from './app-context';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'; // Added useSearchParams
+import { useAppContext } from './app-context'; // Ensure this path is correct
 import { fetchFromApi } from '../lib/api';
 import { useToast } from '../hooks/use-toast';
-import Cookies from 'js-cookie';
+import Cookies from 'js-cookie'; // Keep js-cookie import
+
+// Define route constants for clarity
+const AUTH_ROUTE = '/auth';
+const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
+const DEFAULT_AUTHENTICATED_ROUTE = '/list';
 
 export interface User {
   id: string;
@@ -30,17 +35,18 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Initialize to true
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams(); // For reading query parameters
   const { dispatch: appDispatch, state: appState } = useAppContext();
   const { toast } = useToast();
 
-  const API_BASE_URL = appState.apiBaseUrl;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   const checkSession = useCallback(async () => {
     console.log("AuthContext: Checking session...");
-    setIsLoading(true); // Set loading true at the start
+    setIsLoading(true);
     try {
       const response = await fetchFromApi('auth/session_status.php', { method: 'GET' });
       console.log("AuthContext: Session status response", response);
@@ -51,12 +57,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(fetchedUser);
         appDispatch({ type: 'SET_USER_ID', payload: fetchedUser.id });
         appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!fetchedUser.isPremium });
-        console.log("AuthContext: User authenticated:", fetchedUser.id);
+        console.log("AuthContext: User authenticated via session:", fetchedUser.id);
       } else {
         setIsAuthenticated(false);
         setUser(null);
-        appDispatch({ type: 'SET_USER_ID', payload: null }); // Ensure app context reflects logged out state
-        console.log("AuthContext: User not authenticated or session invalid. Message:", response?.message);
+        appDispatch({ type: 'SET_USER_ID', payload: null });
+        console.log("AuthContext: User not authenticated or session invalid. Message:", response?.message || "No active session");
       }
     } catch (error: any) {
       console.error("AuthContext: Error checking session status -", error.message, error.responseBody || error);
@@ -64,16 +70,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       appDispatch({ type: 'SET_USER_ID', payload: null });
     } finally {
-      setIsLoading(false); // Always set loading to false in finally
+      setIsLoading(false);
       console.log("AuthContext: Session check finished. isLoading:", false, "isAuthenticated (after check):", isAuthenticated);
     }
-  }, [appDispatch, API_BASE_URL, isAuthenticated]); // Added isAuthenticated to see its value *before* the new check
+  }, [appDispatch, API_BASE_URL, isAuthenticated]); // isAuthenticated included for logging its state before check
 
   useEffect(() => {
-    // Initial session check when provider mounts
     checkSession();
   }, []); // Run only once on mount
-
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -89,8 +93,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         appDispatch({ type: 'SET_USER_ID', payload: loggedInUser.id });
         appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!loggedInUser.isPremium });
         toast({ title: "Login Successful", description: "Welcome back!" });
-        // Let AppLayout handle redirection based on list state
-        // router.push('/list/create-first'); // This might be premature
+
+        const redirectedFrom = searchParams.get('redirectedFrom');
+        if (redirectedFrom && redirectedFrom !== AUTH_ROUTE && redirectedFrom !== '/') {
+          router.push(redirectedFrom);
+        } else {
+          // Default redirect to /list, AppLayout will handle if /list/create-first is needed
+          router.push(DEFAULT_AUTHENTICATED_ROUTE);
+        }
         return true;
       } else {
         toast({ title: "Login Failed", description: response.message || "Please check your credentials.", variant: "destructive" });
@@ -118,8 +128,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         appDispatch({ type: 'SET_USER_ID', payload: signedUpUser.id });
         appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!signedUpUser.isPremium });
         toast({ title: "Signup Successful", description: "Welcome! Your account has been created." });
-        // Let AppLayout handle redirection
-        // router.push('/list/create-first');
+        // After signup, user definitely has no lists, so redirect to create their first list.
+        router.push(CREATE_FIRST_LIST_ROUTE);
         return true;
       } else {
         toast({ title: "Signup Failed", description: response.message || "Could not create account.", variant: "destructive" });
@@ -142,15 +152,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsAuthenticated(false);
       setUser(null);
-      appDispatch({ type: 'RESET_STATE_FOR_LOGOUT' }); // Resets app state including userId
-      Cookies.remove('auth_token'); // Remove cookie if you were setting one (though PHP session handles it)
-      localStorage.removeItem('user_id'); // Clear any local user ID if used pre-auth
+      appDispatch({ type: 'RESET_STATE_FOR_LOGOUT' });
+      // Cookies.remove('auth_token'); // Not strictly needed if HttpOnly PHP session cookies are used
+      localStorage.removeItem(`${appState.userId}_neonShoppingState_v3`); // Clear specific user's state
+      localStorage.removeItem('anonymous_user_id_neon_shopping'); // Clear anonymous ID as well
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/auth'); // Redirect to auth page
+      router.push(AUTH_ROUTE);
       setIsLoading(false);
     }
   };
-  console.log("AuthProvider rendering. isLoading:", isLoading, "isAuthenticated:", isAuthenticated);
+
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, isLoading, login, signup, logout, checkSession }}>
       {children}
@@ -160,7 +171,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = (): AuthContextProps => {
   const context = useContext(AuthContext);
-  console.log("useAuth called, context value:", context);
   if (context === undefined) {
     console.error("useAuth error: AuthContext is undefined. Ensure AuthProvider wraps this component.");
     throw new Error('useAuth must be used within an AuthProvider');
