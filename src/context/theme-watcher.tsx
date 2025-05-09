@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
-import { useAppContext } from './app-context'; // Corrected: Import the hook
+import { useAppContext } from '@/context/app-context'; // Changed to alias path
 import { defaultThemeId } from '@/config/themes';
 
 interface ThemeWatcherProps {
