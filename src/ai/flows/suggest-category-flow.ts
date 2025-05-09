@@ -59,6 +59,7 @@ export async function suggestCategory(
 
 const suggestCategoryPrompt = ai.definePrompt({
   name: 'suggestCategoryPrompt',
+  model: 'googleai/gemini-pro', // Specify the model to use
   input: { schema: SuggestCategoryInputSchema },
   output: { schema: SuggestCategoryOutputSchema },
   prompt: `You are an intelligent assistant that helps categorize shopping list items.
