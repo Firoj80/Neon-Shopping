@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useAppContext } from '@/context/app-context'; // Import the hook using alias
-import { defaultThemeId } from '@/config/themes'; // Ensure defaultThemeId is correctly imported as string
+import { useAppContext } from './app-context'; // Corrected: Import the hook
+import { defaultThemeId } from '@/config/themes';
 
 interface ThemeWatcherProps {
   children: React.ReactNode;
@@ -13,6 +13,7 @@ export const ThemeWatcher: React.FC<ThemeWatcherProps> = ({ children }) => {
   const context = useAppContext(); // Use the hook to get context
 
   useEffect(() => {
+    // Ensure context and context.state are available before trying to access theme
     const themeId = context?.state?.theme || defaultThemeId;
     const themeClassName = `theme-${themeId}`;
     const htmlElement = document.documentElement;
