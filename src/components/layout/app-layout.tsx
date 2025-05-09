@@ -20,7 +20,7 @@ import {
   SidebarFooter,
   SidebarInset,
   SidebarSeparator,
-  SidebarSheetContent // Use the custom SidebarSheetContent
+  SidebarSheetContent
 } from '@/components/ui/sidebar';
 import {
   Menu as MenuIcon,
@@ -28,17 +28,17 @@ import {
   LayoutDashboard,
   History,
   Settings,
+  Palette,
   Info,
   Mail,
-  ShieldCheck as PolicyIcon, // Renamed for clarity
-  FileText as ArticleIcon,  // Renamed for clarity
+  ShieldCheck as PolicyIcon,
+  FileText as ArticleIcon,
   Star,
-  AppWindow as AppsIcon,    // Corrected actual icon name
+  AppWindow as AppsIcon,
+  Gem,
   X,
-  Palette, // For Themes
-  Gem,     // For Premium
-  LogOut as LogoutIcon, // For Logout
-  UserCircle2 as ProfileIcon // For Profile
+  UserCircle2 as ProfileIcon,
+  LogOut as LogoutIcon,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -46,7 +46,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from '@/context/auth-context'; // Import useAuth
+import { useAuth } from '@/context/auth-context';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -56,22 +56,23 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Toaster } from "@/components/ui/toaster";
-import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
+import { useClientOnly } from '@/hooks/use-client-only';
 
 
 // Define route constants for clarity
 const AUTH_ROUTE = '/auth';
 const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
+const DEFAULT_AUTHENTICATED_ROUTE = '/list'; // Main app page if lists exist
+const APP_ROOT_ROUTE = '/';
 
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { isAuthenticated, isLoading: authIsLoading } = useAuth(); // Removed user as it's not directly used here
+  const { isAuthenticated, isLoading: authIsLoading } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
-      {/* Left Side: Hamburger Menu Trigger */}
        <Sheet open={isOpen} onOpenChange={setIsOpen}>
          <SheetTrigger asChild>
            <Button variant="ghost" size="icon" className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
@@ -107,7 +108,9 @@ const MobileHeader: React.FC = () => {
          ) : isAuthenticated ? (
            <ProfileDropdown />
          ) : (
-           <div className="h-6 w-6"></div> // Placeholder for alignment if not logged in
+           <Button variant="ghost" size="sm" asChild className="text-primary glow-border-inner">
+             <Link href="/auth">Login</Link>
+           </Button>
          )}
        </div>
      </header>
@@ -124,7 +127,7 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, logout } = useAuth(); // Using useAuth to get logout
+  const { isAuthenticated, logout } = useAuth();
 
   const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     if(e) e.preventDefault();
@@ -136,10 +139,9 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();
-    await logout(); // Call logout from AuthContext
+    await logout();
   };
 
-  // Main navigation items, now moved to ProfileDropdown for desktop
   const mainNavItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
@@ -149,9 +151,8 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
   ];
 
   const secondaryMenuItems = [
-    // Premium link might also be in profile or more prominent
     { href: '/premium', label: 'Unlock Premium', icon: Gem },
-    { href: '/premium-plans', label: 'Premium Plans', icon: Gem }, // For specific plans page
+    { href: '/premium-plans', label: 'Premium Plans', icon: Gem },
     { href: '/about', label: 'About Us', icon: Info },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: PolicyIcon },
@@ -167,9 +168,9 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     };
 
     const menuItemContent = (
-       <Link {...commonLinkProps} className="flex items-center gap-2 w-full h-full">
-         <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-         <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+       <Link {...commonLinkProps} className="flex items-center gap-2 w-full h-full p-2"> {/* Added padding to Link */}
+         <item.icon className={cn("transition-colors h-4 w-4", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+         <span className={cn("transition-colors text-sm text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
        </Link>
     );
 
@@ -181,6 +182,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out",
           "text-neonText hover:text-white",
           "hover:border-secondary/50 hover:shadow-neon focus:shadow-neon-lg glow-border-inner",
+           "p-0", // Remove padding from button, apply to Link
           pathname === item.href
             ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30"
             : "hover:bg-primary/10 hover:border-primary/30"
@@ -207,15 +209,19 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
         </Link>
       </SidebarHeader>
       <SidebarContent className="p-2 flex-grow flex flex-col">
-        <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-          {/* For mobile, only secondary items are here directly. Main items via ProfileDropdown simulation or directly if preferred */}
-          {isMobile ? secondaryMenuItems.map(renderMenuItem) : (
+        <SidebarMenu className="flex-grow space-y-1 overflow-y-auto">
+          {isMobile ? (
             <>
-              {/* Desktop shows all, but main ones are better in ProfileDropdown */}
-              {/* For consistency, let's assume main items are handled by ProfileDropdown or a similar top-bar element on desktop */}
-              {/* So, secondary items are always in the main sidebar/drawer area */}
+              {mainNavItems.map(renderMenuItem)}
+              <SidebarSeparator className="my-2" />
               {secondaryMenuItems.map(renderMenuItem)}
             </>
+          ) : (
+             <>
+                {mainNavItems.map(renderMenuItem)}
+                <SidebarSeparator className="my-2" />
+                {secondaryMenuItems.map(renderMenuItem)}
+             </>
           )}
         </SidebarMenu>
       </SidebarContent>
@@ -238,19 +244,20 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
 
 // --- Profile Dropdown Component ---
 const ProfileDropdown: React.FC = () => {
-  const { user, logout } = useAuth(); // Removed isAuthenticated as it's implied if user exists
+  const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  if (!user) return null; // Should not render if no user
+  if (!user) return null;
 
-  const profileMenuItems = [
+   const profileMenuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },
     { href: '/themes', label: 'Themes', icon: Palette },
   ];
+
 
   return (
     <DropdownMenu>
@@ -268,7 +275,7 @@ const ProfileDropdown: React.FC = () => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-border/50" />
-        {profileMenuItems.map(item => (
+         {profileMenuItems.map(item => (
           <DropdownMenuItem key={item.href} asChild className={cn("cursor-pointer focus:bg-accent/20 focus:text-accent-foreground", pathname === item.href && "bg-primary/10 text-primary")}>
             <Link href={item.href} className="flex items-center gap-2">
               <item.icon className="h-4 w-4" />
@@ -299,32 +306,25 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
 
   const isLoading = authState.isLoading || appContext.isLoading || !isClientMounted;
 
-   // --- Redirect Logic ---
-   // Moved inside useEffect to prevent rendering during rendering
    useEffect(() => {
-     if (isClientMounted && !isLoading) {
-       const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+    if (isClientMounted && !isLoading) {
+      const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
 
-       if (!authState.isAuthenticated) {
-         // If not authenticated and not on auth page, redirect to auth
-         if (pathname !== AUTH_ROUTE) { // Allow access to AUTH_ROUTE if not authenticated
-           router.replace(`${AUTH_ROUTE}?redirectedFrom=${pathname}`);
-         }
-       } else { // User is authenticated
-         if (pathname === AUTH_ROUTE) {
-           // Authenticated user on auth page, redirect them
-           const redirectTo = hasLists ? DEFAULT_AUTHENTICATED_ROUTE : CREATE_FIRST_LIST_ROUTE;
-           router.replace(redirectTo);
-         } else if (!hasLists && pathname !== CREATE_FIRST_LIST_ROUTE && pathname !== '/') {
-           // Authenticated user, no lists, and not on create-first page or root -> redirect to create-first
-           // This ensures that if they land on /list or /stats without lists, they go to create-first
-           router.replace(CREATE_FIRST_LIST_ROUTE);
-         }
-         // If authenticated and has lists, they can be on /list or other app pages.
-         // If authenticated, no lists, and on /list/create-first or '/', let them stay.
-       }
-     }
-   }, [isClientMounted, isLoading, authState.isAuthenticated, appContext.state.lists, pathname, router]);
+      if (!authState.isAuthenticated) {
+        if (pathname !== AUTH_ROUTE) {
+          router.replace(`${AUTH_ROUTE}?redirectedFrom=${pathname}`);
+        }
+      } else { // User is authenticated
+        if (pathname === AUTH_ROUTE) {
+          router.replace(CREATE_FIRST_LIST_ROUTE); // Authenticated user on auth page, redirect to create-first
+        } else if (!hasLists && pathname !== CREATE_FIRST_LIST_ROUTE && pathname !== APP_ROOT_ROUTE ) {
+          router.replace(CREATE_FIRST_LIST_ROUTE);
+        } else if (hasLists && pathname === CREATE_FIRST_LIST_ROUTE) {
+          router.replace(DEFAULT_AUTHENTICATED_ROUTE);
+        }
+      }
+    }
+   }, [isClientMounted, isLoading, authState.isAuthenticated, appContext.state.lists, pathname, router, appContext.state.userId]);
 
 
   if (isLoading) {
@@ -336,12 +336,10 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
     );
   }
 
-  // If on auth page, just render children (the auth page itself)
   if (pathname === AUTH_ROUTE) {
     return <>{children}</>;
   }
 
-  // If not authenticated and trying to access other pages (middleware should catch most, but this is a fallback)
   if (!authState.isAuthenticated && pathname !== CREATE_FIRST_LIST_ROUTE) {
      return (
         <div className="flex items-center justify-center h-screen bg-background text-center p-4">
@@ -351,17 +349,12 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
     );
   }
 
-
   return (
      <Fragment>
-       {/* Mobile Header */}
        <MobileHeader />
-
-        {/* Desktop Sidebar */}
         <Sidebar className="hidden md:flex md:flex-col">
          <MainMenuContent isMobile={false} />
         </Sidebar>
-
         <SidebarInset>
           <main className="flex-1 flex flex-col md:px-6 lg:px-8 xl:px-10 md:py-4 bg-background overflow-y-auto max-w-full">
              <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom))]">
@@ -374,8 +367,6 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   );
 }
 
-
-// --- Main AppLayout Component (Wrapper) ---
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <TooltipProvider delayDuration={0}>
