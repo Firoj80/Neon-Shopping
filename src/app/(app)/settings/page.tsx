@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
-import { useAppContext, DEFAULT_CATEGORIES } from '@/context/app-context'; // Import DEFAULT_CATEGORIES
+import { useAppContext, DEFAULT_CATEGORIES } from '@/context/app-context';
 import type { Category } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,14 +23,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import Link from 'next/link'; // For linking to premium page
-
-const FREEMIUM_CUSTOM_CATEGORY_LIMIT = 2; // Allow 2 custom categories on top of defaults
+import Link from 'next/link';
 
 export default function SettingsPage() {
   const { state, dispatch, isLoading: contextLoading } = useAppContext();
   const { toast } = useToast();
-  const { categories: currentCategories, isPremium } = state; // Get premium status
+  const { categories: currentCategories, isPremium } = state;
 
   const [categories, setCategories] = useState<Category[]>(currentCategories);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -43,26 +41,23 @@ export default function SettingsPage() {
     setCategories(currentCategories);
   }, [currentCategories]);
 
-  const canAddMoreCategories = useMemo(() => {
-    if (isPremium) return true;
-    const customCategoriesCount = categories.filter(cat => !DEFAULT_CATEGORIES.some(dc => dc.id === cat.id)).length;
-    return customCategoriesCount < FREEMIUM_CUSTOM_CATEGORY_LIMIT;
-  }, [categories, isPremium]);
+  // Freemium users cannot add any new categories.
+  const canAddCategories = useMemo(() => isPremium, [isPremium]);
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canAddMoreCategories) {
+    if (!canAddCategories) {
         toast({
-            title: "Category Limit Reached",
+            title: "Premium Feature",
             description: (
                 <div className="flex flex-col gap-2">
-                   <span>You've reached the freemium limit for custom categories.</span>
+                   <span>Adding custom categories is a Premium feature.</span>
                    <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
                        <Link href="/premium">Upgrade to Premium</Link>
                    </Button>
                 </div>
             ),
-            variant: "destructive",
+            variant: "default",
         });
         return;
     }
@@ -105,26 +100,65 @@ export default function SettingsPage() {
   };
 
   const handleDeleteCategoryClick = (category: Category) => {
+    const isDefault = DEFAULT_CATEGORIES.some(dc => dc.id === category.id && category.id !== 'uncategorized');
+    if (!isPremium && isDefault) {
+        toast({
+            title: "Action Restricted",
+            description: (
+                <div className="flex flex-col gap-2">
+                   <span>Default categories cannot be deleted by freemium users.</span>
+                   <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
+                       <Link href="/premium">Upgrade to Premium</Link>
+                   </Button>
+                </div>
+            ),
+            variant: "default",
+        });
+        return;
+    }
+    if (category.id === 'uncategorized') {
+        toast({
+            title: "Action Restricted",
+            description: "The 'Uncategorized' category cannot be deleted.",
+            variant: "default",
+        });
+        return;
+    }
     setCategoryToDelete(category);
     const availableCategories = categories.filter(c => c.id !== category.id);
-    setReassignCategoryId(availableCategories.length > 0 ? availableCategories[0].id : 'uncategorized');
+    // Default to 'uncategorized' if no other categories are available for reassignment or if it's the logical default
+    setReassignCategoryId(availableCategories.find(c => c.id !== 'uncategorized')?.id || 'uncategorized');
   };
 
   const confirmDeleteCategory = () => {
     if (!categoryToDelete) return;
+    // Re-check premium status and if it's a default category before actual deletion dispatch
+    // This is a defensive check, main blocking is in handleDeleteCategoryClick
+    const isDefault = DEFAULT_CATEGORIES.some(dc => dc.id === categoryToDelete.id && categoryToDelete.id !== 'uncategorized');
+    if (!isPremium && isDefault) {
+        toast({ title: "Error", description: "Cannot delete default categories on freemium plan.", variant: "destructive" });
+        setCategoryToDelete(null);
+        return;
+    }
+
     const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id);
-    const finalReassignId = itemsWithCategory.length > 0 ? (reassignCategoryId || 'uncategorized') : undefined;
+    // Ensure reassignToId is valid, fallback to 'uncategorized'
+    const finalReassignId = (categoriesForReassignment.some(c => c.id === reassignCategoryId) || reassignCategoryId === 'uncategorized') 
+                            ? reassignCategoryId 
+                            : 'uncategorized';
+
     dispatch({
       type: 'REMOVE_CATEGORY',
-      payload: { categoryId: categoryToDelete.id, reassignToId: finalReassignId }
+      payload: { categoryId: categoryToDelete.id, reassignToId: itemsWithCategory.length > 0 ? finalReassignId : undefined }
     });
     setCategoryToDelete(null);
-    setReassignCategoryId('uncategorized');
+    setReassignCategoryId('uncategorized'); // Reset for next potential deletion
     toast({ title: "Success", description: "Category deleted." });
   };
 
   const categoriesForReassignment = useMemo(() => {
     if (!categoryToDelete) return [];
+    // Exclude the category being deleted and 'uncategorized' should be listed as an option if it's not the one being deleted.
     return categories.filter(c => c.id !== categoryToDelete.id);
   }, [categories, categoryToDelete]);
 
@@ -154,118 +188,136 @@ export default function SettingsPage() {
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="e.g., Clothing"
                 className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
-                disabled={!canAddMoreCategories}
+                disabled={!canAddCategories}
               />
             </div>
-            <Button type="submit" size="icon" className="bg-primary text-primary-foreground h-10 w-10 shrink-0 glow-border-inner" disabled={!canAddMoreCategories}>
-              {canAddMoreCategories ? <PlusCircle className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
+            <Button type="submit" size="icon" className="bg-primary text-primary-foreground h-10 w-10 shrink-0 glow-border-inner" disabled={!canAddCategories}>
+              {canAddCategories ? <PlusCircle className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
               <span className="sr-only">Add Category</span>
             </Button>
           </form>
-          {!canAddMoreCategories && (
+          {!canAddCategories && (
             <p className="text-xs text-yellow-500 text-center mt-2">
-                You've reached the custom category limit for freemium users.
+                Adding custom categories is a Premium feature.
                 <Button variant="link" asChild className="p-0 h-auto text-secondary hover:text-secondary/80 ml-1">
                     <Link href="/premium">Upgrade to Premium</Link>
-                </Button> for unlimited categories.
+                </Button>
             </p>
           )}
           <div className="space-y-2 pt-4">
             <h4 className="text-sm font-medium text-muted-foreground">Your Categories:</h4>
             {categories.length > 0 ? (
               <Card className="p-0 border-border/30 glow-border-inner">
-                <ul className="divide-y divide-border/30">
-                  {categories.map((category) => (
-                    <li key={category.id} className="flex items-center justify-between p-2 hover:bg-muted/10 glow-border-inner">
-                      {editingCategoryId === category.id ? (
-                        <div className="flex-grow flex items-center gap-2">
-                          <Input
-                            value={editingCategoryName}
-                            onChange={(e) => setEditingCategoryName(e.target.value)}
-                            className="h-8 flex-grow border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
-                            autoFocus
-                            onKeyDown={(e) => e.key === 'Enter' && handleSaveEditCategory(category.id)}
-                          />
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:bg-green-900/30 glow-border-inner" onClick={() => handleSaveEditCategory(category.id)}>
-                            <Save className="h-4 w-4" />
-                            <span className="sr-only">Save</span>
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/30 glow-border-inner" onClick={handleCancelEdit}>
-                            <X className="h-4 w-4" />
-                            <span className="sr-only">Cancel</span>
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="text-sm text-neonText">{category.name}</span>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-400 hover:bg-blue-900/30 glow-border-inner" onClick={() => handleStartEditCategory(category)}>
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-900/30 glow-border-inner" onClick={() => handleDeleteCategoryClick(category)} disabled={DEFAULT_CATEGORIES.some(dc => dc.id === category.id) && !isPremium && category.id !== 'uncategorized'}> {/* Disable delete for default non-uncategorized if not premium */}
-                                  {DEFAULT_CATEGORIES.some(dc => dc.id === category.id) && !isPremium && category.id !== 'uncategorized' ? <Lock className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
-                                  <span className="sr-only">Delete</span>
+                <ScrollArea className="h-auto max-h-72"> {/* Added ScrollArea for long lists */}
+                  <ul className="divide-y divide-border/30">
+                    {categories.map((category) => {
+                      const isDefaultNonUncategorized = DEFAULT_CATEGORIES.some(dc => dc.id === category.id && category.id !== 'uncategorized');
+                      const canDeleteThisCategory = isPremium || (!isDefaultNonUncategorized && category.id !== 'uncategorized');
+
+                      return (
+                        <li key={category.id} className="flex items-center justify-between p-2 hover:bg-muted/10 glow-border-inner">
+                          {editingCategoryId === category.id ? (
+                            <div className="flex-grow flex items-center gap-2">
+                              <Input
+                                value={editingCategoryName}
+                                onChange={(e) => setEditingCategoryName(e.target.value)}
+                                className="h-8 flex-grow border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
+                                autoFocus
+                                onKeyDown={(e) => e.key === 'Enter' && handleSaveEditCategory(category.id)}
+                              />
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:bg-green-900/30 glow-border-inner" onClick={() => handleSaveEditCategory(category.id)}>
+                                <Save className="h-4 w-4" />
+                                <span className="sr-only">Save</span>
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/30 glow-border-inner" onClick={handleCancelEdit}>
+                                <X className="h-4 w-4" />
+                                <span className="sr-only">Cancel</span>
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-sm text-neonText">{category.name}</span>
+                              <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-400 hover:bg-blue-900/30 glow-border-inner" onClick={() => handleStartEditCategory(category)}>
+                                  <Edit className="h-4 w-4" />
+                                  <span className="sr-only">Edit</span>
                                 </Button>
-                              </AlertDialogTrigger>
-                               <AlertDialogContent className="glow-border">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Category: {categoryToDelete?.name}?</AlertDialogTitle>
-                                  {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) ? (
-                                    <AlertDialogDescription>
-                                      This category is used by some shopping items. Choose a category to reassign these items to, or they will be marked as 'Uncategorized'. If no other categories exist, they will become 'Uncategorized'.
-                                    </AlertDialogDescription>
-                                  ) : (
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the category.
-                                    </AlertDialogDescription>
-                                  )}
-                                </AlertDialogHeader>
-                                {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && (
-                                  <div className="py-4 grid gap-2">
-                                    <Label htmlFor="reassign-category" className="text-neonText/80">Reassign Items To</Label>
-                                    <Select
-                                      value={reassignCategoryId}
-                                      onValueChange={setReassignCategoryId}
-                                      defaultValue="uncategorized"
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-7 w-7 text-red-500 hover:bg-red-900/30 glow-border-inner" 
+                                      onClick={() => handleDeleteCategoryClick(category)} 
+                                      disabled={!canDeleteThisCategory}
                                     >
-                                      <SelectTrigger
-                                        id="reassign-category"
-                                        className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
-                                      >
-                                        <SelectValue placeholder="Select a category..." />
-                                      </SelectTrigger>
-                                      <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
-                                         <SelectItem value="uncategorized" className="focus:bg-secondary/30 focus:text-secondary">Uncategorized</SelectItem>
-                                        {categoriesForReassignment.map((cat) => (
-                                          <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
-                                            {cat.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                     <p className="text-xs text-muted-foreground pt-1">Select 'Uncategorized' if you don't want to assign to another specific category.</p>
-                                  </div>
-                                )}
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel onClick={() => setCategoryToDelete(null)} className="glow-border-inner">Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={confirmDeleteCategory}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                                      {!canDeleteThisCategory ? <Lock className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                                      <span className="sr-only">Delete</span>
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  {categoryToDelete && categoryToDelete.id === category.id && ( // Only render content if this category is the one to delete
+                                     <AlertDialogContent className="glow-border">
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Category: {categoryToDelete?.name}?</AlertDialogTitle>
+                                        {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) ? (
+                                          <AlertDialogDescription>
+                                            This category is used by some shopping items. Choose a category to reassign these items to, or they will be marked as 'Uncategorized'.
+                                          </AlertDialogDescription>
+                                        ) : (
+                                          <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete the category.
+                                          </AlertDialogDescription>
+                                        )}
+                                      </AlertDialogHeader>
+                                      {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && (
+                                        <div className="py-4 grid gap-2">
+                                          <Label htmlFor={`reassign-category-${categoryToDelete.id}`} className="text-neonText/80">Reassign Items To</Label>
+                                          <Select
+                                            value={reassignCategoryId}
+                                            onValueChange={setReassignCategoryId}
+                                          >
+                                            <SelectTrigger
+                                              id={`reassign-category-${categoryToDelete.id}`}
+                                              className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
+                                            >
+                                              <SelectValue placeholder="Select a category..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
+                                              {/* Always include Uncategorized as the first option for reassignment */}
+                                              <SelectItem value="uncategorized" className="focus:bg-secondary/30 focus:text-secondary">Uncategorized</SelectItem>
+                                              {categoriesForReassignment.filter(c => c.id !== 'uncategorized').map((cat) => (
+                                                <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
+                                                  {cat.name}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <p className="text-xs text-muted-foreground pt-1">Items will be reassigned to 'Uncategorized' if no other selection is made.</p>
+                                        </div>
+                                      )}
+                                       {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length === 0 && (
+                                         <p className="text-sm text-muted-foreground py-2">Items will be moved to 'Uncategorized'.</p>
+                                       )}
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={() => setCategoryToDelete(null)} className="glow-border-inner">Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={confirmDeleteCategory}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  )}
+                                </AlertDialog>
+                              </div>
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </ScrollArea>
               </Card>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">No categories added yet.</p>
@@ -277,12 +329,9 @@ export default function SettingsPage() {
   );
 }
 
-// ... (SettingsPageSkeleton remains the same)
 const SettingsPageSkeleton: React.FC = () => (
   <div className="space-y-6 animate-pulse">
     <Skeleton className="h-8 w-1/4" />
-
-    {/* Category Section Skeleton */}
     <Card className="bg-card border-border/20 shadow-md glow-border">
       <CardHeader>
         <Skeleton className="h-6 w-1/4 mb-1" />
@@ -299,17 +348,19 @@ const SettingsPageSkeleton: React.FC = () => (
         <div className="space-y-2 pt-4">
           <Skeleton className="h-5 w-1/3" />
           <Card className="p-0 border-border/30 glow-border-inner">
-            <ul className="divide-y divide-border/30">
-              {[1, 2].map(i => (
-                <li key={i} className="flex items-center justify-between p-2 glow-border-inner">
-                  <Skeleton className="h-4 w-2/5" />
-                  <div className="flex items-center gap-1">
-                    <Skeleton className="h-7 w-7 rounded-md glow-border-inner" />
-                    <Skeleton className="h-7 w-7 rounded-md glow-border-inner" />
-                  </div>
-                </li>
-              ))}
-            </ul>
+             <ScrollArea className="h-auto max-h-72">
+                <ul className="divide-y divide-border/30">
+                {[1, 2].map(i => (
+                    <li key={i} className="flex items-center justify-between p-2 glow-border-inner">
+                    <Skeleton className="h-4 w-2/5" />
+                    <div className="flex items-center gap-1">
+                        <Skeleton className="h-7 w-7 rounded-md glow-border-inner" />
+                        <Skeleton className="h-7 w-7 rounded-md glow-border-inner" />
+                    </div>
+                    </li>
+                ))}
+                </ul>
+            </ScrollArea>
           </Card>
         </div>
       </CardContent>

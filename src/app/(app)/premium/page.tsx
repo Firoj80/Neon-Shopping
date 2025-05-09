@@ -5,7 +5,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown } from 'lucide-react';
-import { useAppContext } from '@/context/app-context'; // Import AppContext
+import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context'; // Import AppContext and constants
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 
@@ -28,8 +28,8 @@ export default function PremiumPage() {
     { text: "No Dashboard Access", icon: <XCircle className="h-5 w-5 text-red-500" /> },
     { text: "No Purchase History Access", icon: <XCircle className="h-5 w-5 text-red-500" /> },
     { text: "No Financial Analytics or Export", icon: <XCircle className="h-5 w-5 text-red-500" /> },
-    { text: "Limited to 3 Shopping Lists", icon: <ListPlus className="h-5 w-5 text-yellow-500" /> },
-    { text: "Limited to Pre-Created Categories", icon: <PlusCircle className="h-5 w-5 text-yellow-500" /> },
+    { text: `Limited to ${FREEMIUM_LIST_LIMIT} Shopping Lists`, icon: <ListPlus className="h-5 w-5 text-yellow-500" /> },
+    { text: `Limited to ${DEFAULT_CATEGORIES.filter(c => c.id !== 'uncategorized').length} Pre-Created Categories (cannot add or delete defaults)`, icon: <PlusCircle className="h-5 w-5 text-yellow-500" /> },
     { text: "Default Theme Only", icon: <Palette className="h-5 w-5 text-yellow-500" /> },
   ];
 

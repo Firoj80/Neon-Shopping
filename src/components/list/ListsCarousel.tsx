@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { useAppContext } from '@/context/app-context';
+import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context';
 import type { List } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Trash2 } from 'lucide-react'; // Removed Edit2 and MoreHorizontal
+import { PlusCircle, Trash2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AddEditListModal } from './AddEditListModal';
-// Removed DropdownMenu imports as they are no longer used here
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,9 +22,11 @@ import {
 
 export const ListsCarousel: React.FC = () => {
   const { state, dispatch } = useAppContext();
-  const { lists, selectedListId } = state;
+  const { lists, selectedListId, isPremium } = state; // Added isPremium
+  const { toast } = useToast(); // For showing premium messages
+
   const [isAddEditListModalOpen, setIsAddEditListModalOpen] = useState(false);
-  const [editingList, setEditingList] = useState<List | null>(null); // Keep for Add/Edit modal
+  const [editingList, setEditingList] = useState<List | null>(null);
   const [listToDelete, setListToDelete] = useState<List | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -49,18 +52,27 @@ export const ListsCarousel: React.FC = () => {
   };
 
   const handleAddNewList = () => {
+    if (!isPremium && lists.length >= FREEMIUM_LIST_LIMIT) {
+      toast({
+        title: "List Limit Reached",
+        description: (
+          <div className="flex flex-col gap-2">
+            <span>You've reached the freemium limit of {FREEMIUM_LIST_LIMIT} lists.</span>
+            <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
+              <Link href="/premium">Upgrade to Premium</Link>
+            </Button>
+          </div>
+        ),
+        variant: "default", // Using default, can be destructive for more alert-like
+      });
+      return;
+    }
     setEditingList(null);
     setIsAddEditListModalOpen(true);
   };
 
-  // Function to handle initiating edit from somewhere else if needed, but not from carousel card
-  // const handleEditList = (list: List) => {
-  //   setEditingList(list);
-  //   setIsAddEditListModalOpen(true);
-  // };
-
   const handleDeleteListClick = (list: List, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent card selection when clicking delete
+    event.stopPropagation();
     setListToDelete(list);
   };
 
@@ -70,6 +82,8 @@ export const ListsCarousel: React.FC = () => {
       setListToDelete(null);
     }
   };
+
+  const canCreateMoreLists = isPremium || lists.length < FREEMIUM_LIST_LIMIT;
 
   return (
     <div className="mb-2">
@@ -89,18 +103,17 @@ export const ListsCarousel: React.FC = () => {
                 "glow-border-inner",
                 isSelected
                   ? "bg-primary/20 text-primary shadow-neon ring-1 ring-primary"
-                  : "bg-card text-neonText hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-secondary", // Reverted text color for non-selected
+                  : "bg-card text-neonText hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-secondary",
               )}
               onClick={() => handleSelectList(list.id)}
             >
               <CardTitle className={cn(
                 "text-xs font-semibold truncate flex-grow leading-none",
-                 isSelected ? "text-primary" : "text-neonText" // Keep text color logic
+                 isSelected ? "text-primary" : "text-neonText"
                 )}
               >
                 {list.name}
               </CardTitle>
-              {/* Direct Delete Button */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -123,8 +136,9 @@ export const ListsCarousel: React.FC = () => {
             "border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 text-primary glow-border-inner"
           )}
           onClick={handleAddNewList}
+          disabled={!canCreateMoreLists && !isPremium} // Disable if limit reached for freemium
         >
-          <PlusCircle className="h-4 w-4 mr-1" />
+          {canCreateMoreLists ? <PlusCircle className="h-4 w-4 mr-1" /> : <Lock className="h-4 w-4 mr-1" />}
           <span className="text-xs">New List</span>
         </Button>
       </div>
@@ -132,7 +146,7 @@ export const ListsCarousel: React.FC = () => {
       <AddEditListModal
         isOpen={isAddEditListModalOpen}
         onClose={() => setIsAddEditListModalOpen(false)}
-        listData={editingList} // This modal can still be used for adding and potentially editing if triggered elsewhere
+        listData={editingList}
       />
 
       <AlertDialog open={!!listToDelete} onOpenChange={(open) => !open && setListToDelete(null)}>
