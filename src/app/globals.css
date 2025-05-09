@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -212,7 +211,7 @@
     --chart-4: 30 100% 50%;
     --chart-5: 120 100% 50%;
   }
-
+  
   html.theme-glitch-red {
     --background: 0 0% 0%;
     --foreground: 0 0% 95%;
