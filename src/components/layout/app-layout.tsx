@@ -5,11 +5,9 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetClose, // Added SheetClose
+  SheetClose,
 } from "@/components/ui/sheet";
 import {
-  // Removed SidebarProvider import as it's no longer used
-  // Removed useSidebar import as it's no longer used
   Sidebar,
   SidebarHeader,
   SidebarContent,
@@ -18,7 +16,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
-  SidebarSeparator, // Added SidebarSeparator
+  SidebarSeparator,
   SidebarSheetContent // Use the custom SidebarSheetContent
 } from '@/components/ui/sidebar';
 import {
@@ -30,8 +28,8 @@ import {
   Palette, // Keep Palette for Themes if needed
   Info,
   Mail,
-  ShieldCheck as Policy, // Renamed ShieldCheck to Policy
-  FileText as Article, // Renamed FileText to Article
+  ShieldCheck as PolicyIcon, // Renamed ShieldCheck to PolicyIcon
+  FileText as ArticleIcon, // Renamed FileText to ArticleIcon
   Star,
   AppWindow as AppsIcon, // Corrected AppsIcon to AppWindow
   X,
@@ -46,6 +44,99 @@ import { TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvi
 import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
 import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import Link from 'next/link'; // Import Link
+
+
+// Define menu items arrays (could be moved to a config file)
+const primaryMenuItems = [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/themes', label: 'Themes', icon: Palette },
+];
+
+const secondaryMenuItems = [
+    { href: '/about', label: 'About Us', icon: Info },
+    { href: '/contact', label: 'Contact Us', icon: Mail },
+    { href: '/privacy', label: 'Privacy Policy', icon: PolicyIcon },
+    { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
+    { href: '/rate', label: 'Rate App', icon: Star },
+    { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
+];
+
+
+// --- Main Menu Content Component ---
+// This component renders the actual menu items and can be reused
+const MainMenuContent: React.FC = () => {
+    const pathname = usePathname();
+    const isClientMounted = useClientOnly();
+
+    const isItemActive = useCallback((itemHref: string) => {
+        if (!isClientMounted) return false;
+        return pathname === itemHref;
+    }, [pathname, isClientMounted]);
+
+     const menuItemClasses = cn(
+        "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm",
+        "border border-primary/30 hover:border-secondary hover:bg-primary/10 shadow-[0_0_5px_theme(colors.primary.DEFAULT)/0.5] hover:shadow-[0_0_10px_theme(colors.secondary.DEFAULT)/0.7,0_0_4px_theme(colors.secondary.DEFAULT)/0.9]",
+        "transition-all duration-300 ease-in-out glow-border-inner",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.secondary.DEFAULT)/0.6,0_0_4px_theme(colors.secondary.DEFAULT)/0.8)]",
+        "[&_svg]:size-5 [&_svg]:shrink-0",
+        "[&_span:last-child]:truncate"
+        );
+
+    const activeItemClasses = cn(
+        "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary.DEFAULT)/0.8]",
+        "hover:text-secondary hover:border-secondary hover:shadow-[0_0_15px_3px_theme(colors.secondary.DEFAULT)/0.7,0_0_5px_theme(colors.secondary.DEFAULT)/0.9)]"
+    );
+
+
+    return (
+         <div className="flex flex-col flex-grow"> {/* Ensure content takes available space */}
+             {/* Primary Menu Items */}
+             <SidebarMenu className="space-y-1.5 flex-grow">
+                 {primaryMenuItems.map((item) => (
+                     <SidebarMenuItem key={item.href}>
+                         <SidebarMenuButton
+                             asChild
+                             isActive={isItemActive(item.href)}
+                             tooltip={item.label}
+                             className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
+                         >
+                             <Link href={item.href}>
+                                 <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                                 <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                             </Link>
+                         </SidebarMenuButton>
+                     </SidebarMenuItem>
+                 ))}
+             </SidebarMenu>
+
+              {/* Separator */}
+              <SidebarSeparator className="my-2" />
+
+               {/* Secondary Menu Items */}
+                <SidebarMenu className="space-y-1.5">
+                    {secondaryMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                            asChild
+                            isActive={isItemActive(item.href)}
+                            tooltip={item.label}
+                            className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
+                        >
+                        <Link href={item.href}>
+                            <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                            <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                        </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    ))}
+                </SidebarMenu>
+        </div>
+    );
+};
+
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
@@ -73,26 +164,42 @@ const MobileHeader: React.FC = () => {
     // Use flex with justify-between initially, but center the title with a placeholder
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Left Side: Hamburger Menu Trigger */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10 w-10 h-10 flex-shrink-0">
-            <AnimatePresence initial={false} mode="wait">
-              <motion.div
-                key={isOpen ? "x" : "menu"}
-                initial={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-              </motion.div>
-            </AnimatePresence>
-            <span className="sr-only">Toggle Sidebar</span>
-          </Button>
-        </SheetTrigger>
-        {/* Mobile Sidebar Content using SheetContent */}
-        <SidebarSheetContent side="left" className="w-[280px]" isOpen={isOpen} setIsOpen={setIsOpen} />
-      </Sheet>
+       <Sheet open={isOpen} onOpenChange={setIsOpen}>
+         <SheetTrigger asChild>
+           <Button variant="ghost" size="icon" /* onClick removed, Sheet handles it */ className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+             <AnimatePresence initial={false} mode="wait">
+               <motion.div
+                 key={isOpen ? "x" : "menu"}
+                 initial={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
+                 animate={{ rotate: 0, opacity: 1 }}
+                 exit={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
+                 transition={{ duration: 0.2 }}
+               >
+                 {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+               </motion.div>
+             </AnimatePresence>
+             <span className="sr-only">Toggle Sidebar</span>
+           </Button>
+         </SheetTrigger>
+         {/* Mobile Sidebar Content using SheetContent */}
+         {/* Pass setIsOpen to allow closing from within */}
+         <SidebarSheetContent side="left" className="w-[280px]" isOpen={isOpen} setIsOpen={setIsOpen}>
+             {/* Render the menu content within the mobile sheet */}
+              <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
+                 <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setIsOpen(false)}>
+                     <ShoppingCart className="w-6 h-6" />
+                     <ClientOnly><span>Neon Shopping</span></ClientOnly>
+                 </Link>
+             </SidebarHeader>
+             <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
+                  <MainMenuContent />
+             </SidebarContent>
+             <SidebarFooter className="p-2 border-t border-sidebar-border">
+                 <hr className="my-3 border-sidebar-border/50" />
+                 <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
+             </SidebarFooter>
+         </SidebarSheetContent>
+       </Sheet>
 
       {/* Center: App Name/Logo */}
       <div className="flex-grow text-center">
@@ -119,12 +226,6 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
   const { isLoading } = appContext;
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Define useCallback here, BEFORE conditional returns
-  const isItemActive = useCallback((itemHref: string) => {
-    if (!isClientMounted) return false; // Check mount status
-    return pathname === itemHref;
-  }, [pathname, isClientMounted]);
-
 
   // --- Loading State Handling ---
   useEffect(() => {
@@ -133,20 +234,21 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
     }
   }, [isLoading]);
 
-  // --- Redirect Logic ---
-  // Moved inside useEffect to prevent rendering during rendering
+  // --- Redirect Logic (Now inside useEffect) ---
   useEffect(() => {
-    if (!isLoading && isClientMounted && initialLoadComplete) {
+    if (isClientMounted && initialLoadComplete && !isLoading) {
       // Redirect to create-first page if no lists exist and not already there
       if (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') {
+        console.log("Redirecting to /list/create-first");
         router.replace('/list/create-first');
       }
       // Redirect to list page if lists exist and currently on create page
       else if (Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0 && pathname === '/list/create-first') {
+        console.log("Redirecting to /list");
         router.replace('/list');
       }
     }
-  }, [isClientMounted, initialLoadComplete, isLoading, appContext.state.lists, pathname, router]);
+  }, [isClientMounted, initialLoadComplete, isLoading, appContext.state.lists, pathname, router]); // Added isClientMounted
 
 
   // --- Loading State ---
@@ -172,41 +274,9 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
    }
 
 
-  const primaryMenuItems = [
-    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/history', label: 'History', icon: History },
-    { href: '/settings', label: 'Settings', icon: Settings },
-     { href: '/themes', label: 'Themes', icon: Palette },
-  ];
-
-  const secondaryMenuItems = [
-    { href: '/about', label: 'About Us', icon: Info },
-    { href: '/contact', label: 'Contact Us', icon: Mail },
-    { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-    { href: '/terms', label: 'Terms of Service', icon: Article },
-    { href: '/rate', label: 'Rate App', icon: Star },
-    { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
-  ];
-
-   const menuItemClasses = cn(
-      "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm",
-      "border border-primary/30 hover:border-secondary hover:bg-primary/10 shadow-[0_0_5px_theme(colors.primary.DEFAULT)/0.5] hover:shadow-[0_0_10px_theme(colors.secondary.DEFAULT)/0.7,0_0_4px_theme(colors.secondary.DEFAULT)/0.9]",
-      "transition-all duration-300 ease-in-out glow-border-inner",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.secondary.DEFAULT)/0.6,0_0_4px_theme(colors.secondary.DEFAULT)/0.8)]",
-      "[&_svg]:size-5 [&_svg]:shrink-0",
-      "[&_span:last-child]:truncate"
-    );
-
-    const activeItemClasses = cn(
-      "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary.DEFAULT)/0.8]",
-      "hover:text-secondary hover:border-secondary hover:shadow-[0_0_15px_3px_theme(colors.secondary.DEFAULT)/0.7,0_0_5px_theme(colors.secondary.DEFAULT)/0.9)]"
-    );
-
-
   // --- Render full layout ---
    return (
-      <Fragment>
+      <>
         {/* Mobile Header */}
        <MobileHeader />
 
@@ -219,47 +289,8 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
             </Link>
           </SidebarHeader>
           <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-             {/* Primary Menu Items */}
-             <SidebarMenu className="space-y-1.5 flex-grow">
-                 {primaryMenuItems.map((item) => (
-                 <SidebarMenuItem key={item.href}>
-                     <SidebarMenuButton
-                         asChild
-                         isActive={isItemActive(item.href)}
-                         tooltip={item.label}
-                         className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
-                     >
-                     <Link href={item.href}>
-                         <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                         <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-                     </Link>
-                     </SidebarMenuButton>
-                 </SidebarMenuItem>
-                 ))}
-             </SidebarMenu>
-
-              {/* Separator */}
-              <SidebarSeparator className="my-2" />
-
-               {/* Secondary Menu Items */}
-                <SidebarMenu className="space-y-1.5">
-                    {secondaryMenuItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                            asChild
-                            isActive={isItemActive(item.href)}
-                            tooltip={item.label}
-                            className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
-                        >
-                        <Link href={item.href}>
-                            <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                            <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-                        </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    ))}
-                </SidebarMenu>
-
+             {/* Render the menu content within the desktop sidebar */}
+              <MainMenuContent />
           </SidebarContent>
            <SidebarFooter className="p-2 border-t border-sidebar-border">
              <hr className="my-3 border-sidebar-border/50" />
@@ -273,7 +304,7 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
                {children}
             </main>
           </SidebarInset>
-      </Fragment>
+      </>
    );
 });
 AppLayoutContent.displayName = 'AppLayoutContent'; // Add display name

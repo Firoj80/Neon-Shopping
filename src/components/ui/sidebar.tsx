@@ -4,9 +4,9 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, X } from "lucide-react" // Import X icon
-import { motion, AnimatePresence } from "framer-motion" // Import Framer Motion
+// Removed Framer Motion imports as they are used in AppLayout now
 
-import { useIsMobile } from "@/hooks/use-mobile"
+// Removed useIsMobile import, handle responsiveness externally if needed
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,161 +20,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-// --- Sidebar Context --- (This part remains unchanged)
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem" // Adjusted for potentially better mobile view
-const SIDEBAR_WIDTH_ICON = "3rem"
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
-
-// type SidebarContext = {
-//   state: "expanded" | "collapsed"
-//   open: boolean
-//   setOpen: (open: boolean) => void
-//   openMobile: boolean
-//   setOpenMobile: (open: boolean) => void
-//   isMobile: boolean
-//   toggleSidebar: () => void
-// }
-
-// const SidebarContext = React.createContext<SidebarContext | null>(null)
-
-// function useSidebar() {
-//   const context = React.useContext(SidebarContext)
-//   if (!context) {
-//     throw new Error("useSidebar must be used within a SidebarProvider.")
-//   }
-
-//   return context
-// }
-
-// const SidebarProvider = React.forwardRef<
-//   HTMLDivElement,
-//   React.ComponentProps<"div"> & {
-//     defaultOpen?: boolean
-//     open?: boolean
-//     onOpenChange?: (open: boolean) => void
-//     children: React.ReactNode; // Ensure children prop is explicitly typed
-//   }
-// >(
-//   (
-//     {
-//       defaultOpen = true,
-//       open: openProp,
-//       onOpenChange: setOpenProp,
-//       className,
-//       style,
-//       children, // Destructure children
-//       ...props
-//     },
-//     ref
-//   ) => {
-//     const isMobile = useIsMobile()
-//     const [openMobile, setOpenMobile] = React.useState(false)
-
-//     // This is the internal state of the sidebar.
-//     // We use openProp and setOpenProp for control from outside the component.
-//     const [_open, _setOpen] = React.useState(defaultOpen)
-//     const open = openProp ?? _open
-//     const setOpen = React.useCallback(
-//       (value: boolean | ((value: boolean) => boolean)) => {
-//         const openState = typeof value === "function" ? value(open) : value
-//         if (setOpenProp) {
-//           setOpenProp(openState)
-//         } else {
-//           _setOpen(openState)
-//         }
-
-//         // This sets the cookie to keep the sidebar state.
-//         if (typeof window !== 'undefined') { // Check if running in browser
-//           document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
-//         }
-//       },
-//       [setOpenProp, open]
-//     )
-
-//     // Helper to toggle the sidebar.
-//     const toggleSidebar = React.useCallback(() => {
-//       return isMobile
-//         ? setOpenMobile((currentOpenMobile) => !currentOpenMobile)
-//         : setOpen((currentOpen) => !currentOpen)
-//     }, [isMobile, setOpen, setOpenMobile])
-
-//     // Adds a keyboard shortcut to toggle the sidebar.
-//     React.useEffect(() => {
-//       const handleKeyDown = (event: KeyboardEvent) => {
-//         if (
-//           event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-//           (event.metaKey || event.ctrlKey)
-//         ) {
-//           event.preventDefault()
-//           toggleSidebar()
-//         }
-//       }
-
-//       window.addEventListener("keydown", handleKeyDown)
-//       return () => window.removeEventListener("keydown", handleKeyDown)
-//     }, [toggleSidebar])
-
-//     // We add a state so that we can do data-state="expanded" or "collapsed".
-//     // This makes it easier to style the sidebar with Tailwind classes.
-//     const state = open ? "expanded" : "collapsed"
-
-//     const contextValue = React.useMemo<SidebarContext>(
-//       () => ({
-//         state,
-//         open,
-//         setOpen,
-//         isMobile,
-//         openMobile,
-//         setOpenMobile,
-//         toggleSidebar,
-//       }),
-//       [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
-//     )
-
-//     // Render children directly within the provider context wrapper
-//     return (
-//       <SidebarContext.Provider value={contextValue}>
-//         <TooltipProvider delayDuration={0}>
-//           <div
-//             style={
-//               {
-//                 "--sidebar-width": SIDEBAR_WIDTH,
-//                 "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-//                 ...style,
-//               } as React.CSSProperties
-//             }
-//             className={cn(
-//               // Ensure the provider wrapper itself doesn't add layout styles unless necessary
-//               className
-//             )}
-//             ref={ref}
-//             {...props}
-//           >
-//             {children} {/* Render the actual layout children */}
-//           </div>
-//         </TooltipProvider>
-//       </SidebarContext.Provider>
-//     )
-//   }
-// )
-// SidebarProvider.displayName = "SidebarProvider"
+// --- Sidebar Context and Provider Removed ---
+// State management (open/closed) is handled by AppLayout or Sheet component directly
 
 // --- Custom SidebarSheetContent Component ---
 interface SidebarSheetContentProps extends React.ComponentProps<typeof SheetContent> {
-    isOpen: boolean; // State managed by parent (MobileHeader)
-    setIsOpen: (open: boolean) => void; // Function to close the sheet
+    // Removed isOpen and setIsOpen props as SheetContent doesn't need them directly
     children?: React.ReactNode; // Explicitly define children prop
 }
 
-// Renamed to SidebarSheetContent and adjusted to accept props for controlled state
+// Adjusted to accept props for controlled state via parent Sheet
 const SidebarSheetContent = React.forwardRef<
   React.ElementRef<typeof SheetContent>,
-  SidebarSheetContentProps
->(({ className, side = 'left', isOpen, setIsOpen, children, ...props }, ref) => {
-    // No need for useSidebar context here, state is passed down
+  SidebarSheetContentProps // Use the simplified props interface
+>(({ className, side = 'left', children, ...props }, ref) => {
+    // No context needed here
     return (
         <SheetContent
             ref={ref}
@@ -184,10 +44,8 @@ const SidebarSheetContent = React.forwardRef<
                className
              )}
             {...props}
-            // SheetContent itself doesn't directly need isOpen/setIsOpen,
-            // it's controlled by the parent Sheet component
         >
-          {/* Render the actual sidebar content (passed as children or defined here) */}
+          {/* Render the actual sidebar content (passed as children) */}
            {children}
         </SheetContent>
     );
@@ -217,16 +75,13 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-     // Assume context provides these values. If not, provide defaults or handle appropriately.
-     const isMobile = false; // Placeholder - replace with actual hook call if context is restored
-     const state = 'expanded'; // Placeholder - replace with actual context state
+     // Removed context usage, assuming desktop view based on class in AppLayout
+     const isMobile = false; // Simulating non-mobile for desktop logic
+     const state = 'expanded'; // Placeholder, actual state driven by classes
 
-    // Render nothing for mobile if collapsible is offcanvas (handled by AppLayout)
-    if (isMobile && collapsible === "offcanvas") {
-      return null;
-    }
+    // Removed mobile-specific return null logic
 
-    // Logic for non-collapsible desktop sidebar
+    // Logic for non-collapsible desktop sidebar (remains the same)
     if (collapsible === "none" && !isMobile) {
       return (
         <div
@@ -242,38 +97,39 @@ const Sidebar = React.forwardRef<
       )
     }
 
-    // Desktop Collapsible Sidebar Logic (unchanged)
+    // Desktop Collapsible Sidebar Logic (unchanged, relies on group-data classes set externally)
     if (!isMobile) {
       return (
         <div
           ref={ref}
           className={cn("group peer hidden md:block text-sidebar-foreground", className)}
-          data-state={state}
-          data-collapsible={state === "collapsed" ? collapsible : ""}
+          data-state={state} // State might need to be managed externally if truly dynamic collapsing needed
+          data-collapsible={collapsible} // Indicate the type of collapsing
           data-variant={variant}
           data-side={side}
         >
           {/* This is what handles the sidebar gap on desktop */}
           <div
             className={cn(
-              "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
+              "duration-200 relative h-svh w-[var(--sidebar-width)] bg-transparent transition-[width] ease-linear",
+              "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]",
               "group-data-[collapsible=offcanvas]:w-0",
               "group-data-[side=right]:rotate-180",
               variant === "floating" || variant === "inset"
                 ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-                : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
+                : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]"
             )}
           />
           <div
             className={cn(
-              "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
+              "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[var(--sidebar-width)] transition-[left,right,width] ease-linear md:flex",
               side === "left"
-                ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-                : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
+                ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]"
+                : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]",
               // Adjust the padding for floating and inset variants.
               variant === "floating" || variant === "inset"
                 ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-                : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
+                : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)] group-data-[side=left]:border-r group-data-[side=right]:border-l",
               className
             )}
             {...props}
@@ -289,19 +145,20 @@ const Sidebar = React.forwardRef<
       )
     }
 
-    // Default return null if none of the conditions match (shouldn't happen with current logic)
+    // Default return null if none of the conditions match
     return null;
   }
 )
 Sidebar.displayName = "Sidebar"
 
 
-// Simplified SidebarTrigger - Icon rendering and animation are handled externally
+// --- Simplified SidebarTrigger ---
+// Trigger logic is handled by the SheetTrigger in AppLayout for mobile
+// This component might not be needed unless you have a desktop toggle button
 const SidebarTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button> & { asChild?: boolean }
 >(({ className, onClick, asChild = false, children, ...props }, ref) => {
-   // Removed useSidebar hook - toggle logic is handled by parent now
   const Comp = asChild ? Slot : Button;
 
   // If asChild is true, render the child component directly.
@@ -320,7 +177,7 @@ const SidebarTrigger = React.forwardRef<
     );
   }
 
-  // If not asChild, render a default Button (less common now)
+  // Default Button rendering (mostly for potential desktop toggle)
   return (
     <Comp
       ref={ref}
@@ -348,17 +205,14 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  // Removed useSidebar hook
-  // Toggle logic needs to be handled by the parent/context if this is intended to toggle
-  // Or if it's purely visual, it might not need an onClick
-
+  // This component is mainly visual for desktop resizing hint
   return (
     <button
       ref={ref}
       data-sidebar="rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      // onClick={toggleSidebar} // Removed - handle toggle elsewhere if needed
+      // onClick might be needed if implementing desktop collapse via this rail
       title="Toggle Sidebar"
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
@@ -385,9 +239,10 @@ const SidebarInset = React.forwardRef<
       className={cn(
         "relative flex min-h-svh flex-1 flex-col bg-background",
         // Apply inset styling based on peer state (Desktop sidebar)
+        // These classes now rely on the parent div having the correct group-data attributes
         "md:ml-[var(--sidebar-width)] transition-[margin-left] ease-in-out duration-200", // Default margin for expanded desktop sidebar
-        "peer-data-[state=collapsed]:md:ml-[var(--sidebar-width-icon)]", // Margin when collapsed
-        // Removed inset-specific styles as SidebarProvider context is gone
+        "peer-data-[collapsible=icon]:md:ml-[var(--sidebar-width-icon)]", // Margin when icon collapsed
+        "peer-data-[collapsible=offcanvas]:md:ml-0", // No margin when offcanvas collapsed
         className
       )}
       {...props}
@@ -407,6 +262,8 @@ const SidebarInput = React.forwardRef<
       data-sidebar="input"
       className={cn(
         "h-8 w-full bg-background shadow-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+        // Apply changes based on group state (collapsible=icon)
+        "group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:border-transparent",
         className
       )}
       {...props}
@@ -423,7 +280,12 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-4", className)} // Increased padding for header
+      className={cn(
+          "flex flex-col gap-2 p-4",
+          // Apply changes based on group state (collapsible=icon)
+          "group-data-[collapsible=icon]:p-2",
+          className
+      )}
       {...props}
     />
   )
@@ -438,7 +300,12 @@ const SidebarFooter = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-4 mt-auto", className)} // Use mt-auto to push footer down
+      className={cn(
+          "flex flex-col gap-2 p-4 mt-auto",
+          // Apply changes based on group state (collapsible=icon)
+          "group-data-[collapsible=icon]:p-2",
+          className
+      )}
       {...props}
     />
   )
@@ -453,7 +320,11 @@ const SidebarSeparator = React.forwardRef<
     <Separator
       ref={ref}
       data-sidebar="separator"
-      className={cn("mx-2 w-auto bg-sidebar-border", className)}
+      className={cn(
+        "mx-2 w-auto bg-sidebar-border",
+         // Apply changes based on group state (collapsible=icon)
+         "group-data-[collapsible=icon]:mx-0",
+         className)}
       {...props}
     />
   )
@@ -470,7 +341,7 @@ const SidebarContent = React.forwardRef<
       data-sidebar="content"
       className={cn(
         "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2", // Added padding and vertical scroll
-        "group-data-[collapsible=icon]:overflow-hidden",
+        "group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:p-0", // Adjust padding for icon mode
         className
       )}
       {...props}
@@ -487,7 +358,11 @@ const SidebarGroup = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
+      className={cn(
+        "relative flex w-full min-w-0 flex-col p-2",
+        // Apply changes based on group state (collapsible=icon)
+        "group-data-[collapsible=icon]:p-0",
+        className)}
       {...props}
     />
   )
@@ -505,8 +380,8 @@ const SidebarGroupLabel = React.forwardRef<
       ref={ref}
       data-sidebar="group-label"
       className={cn(
-        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opa] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
+        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opacity] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:m-0 group-data-[collapsible=icon]:pointer-events-none",
         className
       )}
       {...props}
@@ -558,7 +433,12 @@ const SidebarMenu = React.forwardRef<
   <ul
     ref={ref}
     data-sidebar="menu"
-    className={cn("flex w-full min-w-0 flex-col gap-1", className)}
+    className={cn(
+      "flex w-full min-w-0 flex-col gap-1",
+      // Apply changes based on group state (collapsible=icon)
+       "group-data-[collapsible=icon]:gap-2",
+       className
+       )}
     {...props}
   />
 ))
@@ -620,9 +500,9 @@ const SidebarMenuButton = React.forwardRef<
     ref
   ) => {
     const Comp = asChild ? Slot : "button"
-    // Placeholder values since context is removed
+     // Placeholder values, assuming desktop context here
      const isMobile = false;
-     const state = 'expanded';
+     const state = 'expanded'; // Or 'collapsed' based on actual state if managed externally
 
 
     const button = (
@@ -652,7 +532,7 @@ const SidebarMenuButton = React.forwardRef<
         <TooltipContent
           side="right"
           align="center"
-          hidden={state !== "collapsed" || isMobile}
+          hidden={state !== "collapsed" || isMobile} // Tooltip hidden when expanded or on mobile
           {...tooltip}
         />
       </Tooltip>
@@ -824,10 +704,9 @@ export {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  //SidebarProvider, // Removed export
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  SidebarSheetContent // Added export
-  // useSidebar, // Removed export
+  SidebarSheetContent // Keep the custom sheet content export
+  // Removed SidebarProvider and useSidebar exports
 }
