@@ -1,3 +1,4 @@
+
 "use client"; // Add this directive
 
 import React from 'react';
@@ -37,24 +38,42 @@ export default function PremiumPage() {
       </header>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="bg-card border-primary/40 shadow-neon glow-border">
-          <CardHeader>
-            <CardTitle className="text-xl text-primary flex items-center gap-2">
-              <Shield className="h-6 w-6" /> Premium Benefits
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Everything you need for ultimate financial control.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 glow-border-inner p-4">
-            {premiumFeatures.map((feature, index) => (
-              <div key={index} className="flex items-center gap-3 p-2 rounded-md bg-muted/10 glow-border-inner">
-                {React.cloneElement(feature.icon, { className: `${feature.icon.props.className} shrink-0` })}
-                <span className="text-neonText text-sm">{feature.text}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-6"> {/* Wrapper for Premium Card and Button */}
+          <Card className="bg-card border-primary/40 shadow-neon glow-border">
+            <CardHeader>
+              <CardTitle className="text-xl text-primary flex items-center gap-2">
+                <Shield className="h-6 w-6" /> Premium Benefits
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Everything you need for ultimate financial control.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 glow-border-inner p-4">
+              {premiumFeatures.map((feature, index) => (
+                <div key={index} className="flex items-center gap-3 p-2 rounded-md bg-muted/10 glow-border-inner">
+                  {React.cloneElement(feature.icon, { className: `${feature.icon.props.className} shrink-0` })}
+                  <span className="text-neonText text-sm">{feature.text}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <div className="text-center"> {/* Moved button container here */}
+            <Button
+              size="lg"
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon-lg hover:shadow-xl hover:shadow-secondary/60 transition-all duration-300 ease-in-out glow-border text-base px-8 py-3"
+              onClick={() => {
+                // Placeholder for actual upgrade logic
+                alert("Upgrade to Premium clicked! (Implement payment flow here)");
+              }}
+            >
+              <Crown className="mr-2 h-5 w-5" /> Upgrade to Premium Now
+            </Button>
+            <p className="text-xs text-muted-foreground mt-3">
+              Secure payment processing. Cancel anytime.
+            </p>
+          </div>
+        </div>
 
         <Card className="bg-card border-border/30 shadow-md glow-border">
           <CardHeader>
@@ -74,22 +93,6 @@ export default function PremiumPage() {
             ))}
           </CardContent>
         </Card>
-      </div>
-
-      <div className="text-center pt-6">
-        <Button
-          size="lg"
-          className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon-lg hover:shadow-xl hover:shadow-secondary/60 transition-all duration-300 ease-in-out glow-border text-base px-8 py-3"
-          onClick={() => {
-            // Placeholder for actual upgrade logic
-            alert("Upgrade to Premium clicked! (Implement payment flow here)");
-          }}
-        >
-          <Crown className="mr-2 h-5 w-5" /> Upgrade to Premium Now
-        </Button>
-        <p className="text-xs text-muted-foreground mt-3">
-          Secure payment processing. Cancel anytime.
-        </p>
       </div>
     </div>
   );
