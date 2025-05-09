@@ -8,11 +8,9 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetClose, // Added SheetClose
+  SheetClose,
 } from "@/components/ui/sheet";
 import {
-  // Removed SidebarProvider import as it's no longer used
-  // Removed useSidebar import as it's no longer used
   Sidebar,
   SidebarHeader,
   SidebarContent,
@@ -21,33 +19,34 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
-  SidebarSeparator, // Added SidebarSeparator
-  SidebarSheetContent // Use the custom SidebarSheetContent
+  SidebarSeparator,
+  SidebarSheetContent
 } from '@/components/ui/sidebar';
 import {
-  Menu as MenuIcon, // Renamed Menu to avoid conflict
+  Menu as MenuIcon,
   ShoppingCart,
   LayoutDashboard,
   History,
   Settings,
   Info,
   Mail,
-  ShieldCheck as Policy, // Renamed ShieldCheck to Policy
-  FileText as Article, // Renamed FileText to Article
+  ShieldCheck as PolicyIcon,
+  FileText as ArticleIcon,
   Star,
-  AppWindow as AppsIcon, // Corrected AppsIcon to AppWindow
+  AppWindow as AppsIcon,
+  Palette,
+  Gem,
   X,
-  DollarSign, // Added for Currency
-  Palette, // For Themes
-  Gem, // For Premium
+  UserCircle2 as ProfileIcon,
+  LogOut as LogoutIcon,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
-import { TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
-import { useAuth } from '@/context/auth-context'; // Import useAuth
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAuth } from '@/context/auth-context';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -56,9 +55,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut as LogoutIcon, UserCircle2 as ProfileIcon } from 'lucide-react'; // Moved from main list
 import { Toaster } from "@/components/ui/toaster";
 import { useClientOnly } from '@/hooks/use-client-only';
+
+// Define route constants
+const AUTH_ROUTE = '/auth';
+const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
+const PREMIUM_PLANS_ROUTE = '/premium-plans';
+const PREMIUM_ROUTE = '/premium';
 
 
 // --- Mobile Header Component ---
@@ -91,7 +95,6 @@ const MobileHeader: React.FC = () => {
          </SidebarSheetContent>
        </Sheet>
 
-      {/* Center: App Name/Logo */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
          <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
            <ShoppingCart className="w-6 h-6" />
@@ -99,15 +102,13 @@ const MobileHeader: React.FC = () => {
          </Link>
        </div>
 
-
-       {/* Right Side: Profile Icon/Login Status */}
-       <div className="w-10 h-10 flex items-center justify-center"> {/* Ensure consistent size */}
+       <div className="w-10 h-10 flex items-center justify-center">
          {authIsLoading ? (
            <div className="h-6 w-6 animate-pulse rounded-full bg-muted"></div>
          ) : isAuthenticated && user ? (
            <ProfileDropdown />
          ) : (
-           <div className="h-6 w-6"></div> // Placeholder for consistent layout
+           <div className="h-6 w-6"></div>
          )}
        </div>
      </header>
@@ -124,24 +125,21 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
 
   const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     if(e) e.preventDefault();
     if (onLinkClick) {
-      onLinkClick(); // Close sheet on mobile
+      onLinkClick();
     }
     router.push(href);
   }, [onLinkClick, router]);
 
   const handleLogout = async () => {
-    if (onLinkClick) onLinkClick(); // Close sheet if on mobile
+    if (onLinkClick) onLinkClick();
     await logout();
-    // router.push('/auth') is handled by logout function or middleware
   };
 
-
-  // Main navigation items previously in profile dropdown
   const mainNavItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
@@ -151,11 +149,11 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
   ];
 
   const secondaryMenuItems = [
-    { href: '/premium', label: 'Unlock Premium', icon: Gem },
+    { href: PREMIUM_PLANS_ROUTE, label: 'Premium Plans', icon: Gem },
     { href: '/about', label: 'About Us', icon: Info },
     { href: '/contact', label: 'Contact Us', icon: Mail },
-    { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-    { href: '/terms', label: 'Terms of Service', icon: Article },
+    { href: '/privacy', label: 'Privacy Policy', icon: PolicyIcon },
+    { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
     { href: '/rate', label: 'Rate App', icon: Star },
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
   ];
@@ -212,6 +210,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           {secondaryMenuItems.map(renderMenuItem)}
         </SidebarMenu>
       </SidebarContent>
+      {isAuthenticated && (
        <SidebarFooter className="p-2 border-t border-sidebar-border">
            <SidebarMenuButton
               variant="outline"
@@ -222,6 +221,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
               Log Out
             </SidebarMenuButton>
         </SidebarFooter>
+      )}
     </Fragment>
   );
 };
@@ -229,18 +229,23 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
 
 // --- Profile Dropdown Component ---
 const ProfileDropdown: React.FC = () => {
-  const { user, logout } = useAuth(); // Removed isAuthenticated as it's implied if user exists
-  const router = useRouter(); // Using Next.js router
+  const { user, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     await logout();
   };
 
-  if (!user) return null; // Should not happen if used correctly, but a safeguard
+  if (!isAuthenticated || !user) return null;
 
-  // Profile dropdown items are now in MainMenuContent for sidebar consistency
-  // This dropdown can be simplified or repurposed if needed, or removed entirely
-  // For now, let's keep it very simple, showing user info and logout
+  const profileMenuItems = [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/themes', label: 'Themes', icon: Palette },
+  ];
 
   return (
     <DropdownMenu>
@@ -258,7 +263,15 @@ const ProfileDropdown: React.FC = () => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-border/50" />
-        {/* Menu items previously here are now in MainMenuContent */}
+        {profileMenuItems.map(item => (
+          <DropdownMenuItem key={item.href} asChild className={cn("cursor-pointer focus:bg-accent/20 focus:text-accent-foreground", pathname === item.href && "bg-primary/10 text-primary")}>
+            <Link href={item.href} className="flex items-center gap-2">
+              <item.icon className="h-4 w-4" />
+              <span>{item.label}</span>
+            </Link>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator className="bg-border/50" />
         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 hover:bg-destructive/20 hover:text-red-400 focus:bg-destructive/30 glow-border-inner flex items-center gap-2">
           <LogoutIcon className="h-4 w-4" />
           <span>Log out</span>
@@ -282,40 +295,26 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   const isLoading = authState.isLoading || appContext.isLoading || !isClientMounted;
 
    // --- Redirect Logic ---
-   // Redirect after ensuring client-side and loading is complete
    useEffect(() => {
-     if (isClientMounted && !isLoading) { // Ensure not loading and client mounted
+     if (isClientMounted && !isLoading) {
        const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
 
        if (!authState.isAuthenticated) {
-         // If not authenticated and not on auth page or create-first page, redirect to auth
          if (pathname !== AUTH_ROUTE && pathname !== CREATE_FIRST_LIST_ROUTE) {
-           console.log(`AppLayoutContent: Unauthenticated. Current path: ${pathname}. Redirecting to ${AUTH_ROUTE}.`);
+           console.log(`AppLayoutContent: Unauthenticated. Path: ${pathname}. Redirecting to ${AUTH_ROUTE}.`);
            router.replace(`${AUTH_ROUTE}?redirectedFrom=${pathname}`);
          }
        } else {
-         // Authenticated
          if (pathname === AUTH_ROUTE) {
-           // Authenticated user on auth page, redirect to create-first or list
            const redirectTo = hasLists ? '/list' : CREATE_FIRST_LIST_ROUTE;
            console.log(`AppLayoutContent: Authenticated on ${AUTH_ROUTE}. Redirecting to ${redirectTo}.`);
            router.replace(redirectTo);
-         } else if (!hasLists && pathname !== CREATE_FIRST_LIST_ROUTE) {
-           // Authenticated, no lists, and not on create-first page -> redirect to create-first
-           // This allows access to other pages like /settings if needed, but guides to create list first
-           // If you want to strictly force list creation before anything else, remove this condition
-           if (['/list', '/stats', '/history'].includes(pathname)) { // Only redirect for list-dependent pages
-                console.log(`AppLayoutContent: Authenticated, no lists. Current path: ${pathname}. Redirecting to ${CREATE_FIRST_LIST_ROUTE}.`);
-                router.replace(CREATE_FIRST_LIST_ROUTE);
-           }
-         } else if (hasLists && pathname === CREATE_FIRST_LIST_ROUTE) {
-           // Authenticated, has lists, but on create-first page -> redirect to /list
-           console.log(`AppLayoutContent: Authenticated, has lists, on create-first. Redirecting to /list.`);
-           router.replace('/list');
          }
+         // No automatic redirect from CREATE_FIRST_LIST_ROUTE to /list if lists exist
+         // This allows user to stay on create-first page even if they navigate back after creating a list
        }
      }
-   }, [isClientMounted, isLoading, authState.isAuthenticated, appContext.state.lists, pathname, router]);
+   }, [isClientMounted, isLoading, authState.isAuthenticated, appContext.state.lists, pathname, router, AUTH_ROUTE, CREATE_FIRST_LIST_ROUTE]);
 
 
   if (isLoading) {
@@ -327,13 +326,10 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
     );
   }
 
-  // If on auth page, just render children (the auth page itself)
   if (pathname === AUTH_ROUTE) {
     return <>{children}</>;
   }
 
-  // If unauthenticated and not on auth page, useEffect should handle redirect.
-  // This is a fallback before redirect, or if on CREATE_FIRST_LIST_ROUTE unauthenticated.
   if (!authState.isAuthenticated && pathname !== CREATE_FIRST_LIST_ROUTE) {
      return (
         <div className="flex items-center justify-center h-screen bg-background text-center p-4">
@@ -343,21 +339,15 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
     );
   }
 
-  // --- Render full layout ---
   return (
      <Fragment>
-       {/* Mobile Header */}
        <MobileHeader />
-
-        {/* Desktop Sidebar */}
         <Sidebar className="hidden md:flex md:flex-col">
          <MainMenuContent isMobile={false} />
         </Sidebar>
-
-        {/* Main Content Area */}
         <SidebarInset>
           <main className="flex-1 flex flex-col md:px-6 lg:px-8 xl:px-10 md:py-4 bg-background overflow-y-auto max-w-full">
-             <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom))]"> {/* Adjusted padding-bottom */}
+             <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom))]">
               {children}
             </div>
           </main>
