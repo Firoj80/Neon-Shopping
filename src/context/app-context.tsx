@@ -3,12 +3,11 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { format, startOfDay, isSameDay } from 'date-fns';
-import { themes, defaultThemeId } from '@/config/themes';
 import { v4 as uuidv4 } from 'uuid';
 import { getUserCurrency, type Currency } from '../services/currency'; // Corrected path
 import { fetchFromApi } from '../lib/api'; // Corrected path
 
-const LOCAL_STORAGE_KEY = 'neonShoppingState_v3';
+const LOCAL_STORAGE_KEY = 'neonShoppingState_v3'; // Updated key for new structure
 export const FREEMIUM_LIST_LIMIT = 3;
 export const FREEMIUM_CATEGORY_LIMIT = 5; // User-defined categories, excluding defaults
 
@@ -50,7 +49,7 @@ export interface List {
 interface AppState {
   userId: string | null;
   apiBaseUrl: string;
-  theme: string;
+  theme: string; // Theme is now a string ID
   currency: Currency;
   lists: List[];
   selectedListId: string | null;
@@ -68,10 +67,11 @@ interface AppContextProps {
 }
 
 const defaultCurrency: Currency = { code: 'USD', symbol: '$', name: 'US Dollar' };
+const defaultThemeId = 'cyberpunk-cyan'; // Default theme ID
 
 const initialState: AppState = {
   userId: null, // Will be set to anonymous UUID or actual user ID
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://digitalfiroj.com/neon/api',
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://digitalfiroj.com/neon/api',
   theme: defaultThemeId,
   currency: defaultCurrency,
   lists: [],
@@ -91,12 +91,12 @@ type Action =
   | { type: 'UPDATE_LIST'; payload: List }
   | { type: 'DELETE_LIST'; payload: string }
   | { type: 'SELECT_LIST'; payload: string | null }
-  | { type: 'ADD_SHOPPING_ITEM'; payload: ShoppingListItem } // Changed to full ShoppingListItem
+  | { type: 'ADD_SHOPPING_ITEM'; payload: Omit<ShoppingListItem, 'id' | 'dateAdded' | 'checked'> }
   | { type: 'UPDATE_SHOPPING_ITEM'; payload: ShoppingListItem }
   | { type: 'REMOVE_SHOPPING_ITEM'; payload: string }
   | { type: 'TOGGLE_SHOPPING_ITEM'; payload: string }
-  | { type: 'ADD_CATEGORY'; payload: Category } // Changed to full Category
-  | { type: 'UPDATE_CATEGORY'; payload: Category }
+  | { type: 'ADD_CATEGORY'; payload: { name: string } }
+  | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } }
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_PREMIUM_STATUS'; payload: boolean }
@@ -107,7 +107,6 @@ function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'LOAD_STATE':
       newState = { ...state, ...action.payload, isLoading: false };
-      // Ensure default categories are always present and unique
       if (action.payload.categories) {
         const uniqueCategories = new Map<string, Category>();
         DEFAULT_CATEGORIES.forEach(cat => uniqueCategories.set(cat.id, cat));
@@ -116,10 +115,15 @@ function appReducer(state: AppState, action: Action): AppState {
       } else if (!state.categories || state.categories.length === 0) {
         newState.categories = [...DEFAULT_CATEGORIES];
       }
-      // Ensure selectedListId is valid
-      if (newState.lists.length > 0 && !newState.lists.find(l => l.id === newState.selectedListId)) {
+      if (newState.lists.length > 0 && newState.userId) {
         const userLists = newState.lists.filter(l => l.userId === newState.userId);
-        newState.selectedListId = userLists.length > 0 ? userLists[0].id : null;
+        if (userLists.length > 0) {
+            if (!userLists.find(l => l.id === newState.selectedListId)) {
+                newState.selectedListId = userLists[0].id;
+            }
+        } else {
+            newState.selectedListId = null;
+        }
       } else if (newState.lists.length === 0) {
         newState.selectedListId = null;
       }
@@ -131,7 +135,7 @@ function appReducer(state: AppState, action: Action): AppState {
         newState.shoppingListItems = [];
         newState.selectedListId = null;
         newState.categories = [...DEFAULT_CATEGORIES];
-        newState.isPremium = false; // Reset premium status on logout
+        newState.isPremium = false;
       }
       break;
     case 'SET_THEME':
@@ -141,15 +145,14 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = { ...state, currency: action.payload };
       break;
     case 'ADD_LIST':
-      if (!newState.userId) return state;
-      const userListsCount = state.lists.filter(l => l.userId === newState.userId).length;
-      if (!state.isPremium && userListsCount >= FREEMIUM_LIST_LIMIT) {
+      if (!newState.userId) return state; // Cannot add list without user
+      const userListsCountOnAdd = state.lists.filter(l => l.userId === newState.userId).length;
+      if (!state.isPremium && userListsCountOnAdd >= FREEMIUM_LIST_LIMIT) {
         console.warn("Freemium list limit reached.");
-        // Potentially show a toast here
         return state;
       }
-      newState.lists = [...state.lists, action.payload]; // Assuming payload has id and userId
-      if (!state.selectedListId || state.lists.filter(l => l.userId === newState.userId).length === 0) {
+      newState.lists = [...state.lists, action.payload];
+      if (state.lists.filter(l => l.userId === newState.userId).length === 1) { // If this is the first list for the user
         newState.selectedListId = action.payload.id;
       }
       break;
@@ -161,12 +164,13 @@ function appReducer(state: AppState, action: Action): AppState {
       break;
     case 'DELETE_LIST':
       const listToDelete = state.lists.find(l => l.id === action.payload);
-      if (!listToDelete || listToDelete.userId !== newState.userId) return state;
+      if (!listToDelete || !newState.userId || listToDelete.userId !== newState.userId) return state;
+
       newState.lists = state.lists.filter(list => list.id !== action.payload);
-      newState.shoppingListItems = state.shoppingListItems.filter(item => item.listId !== action.payload);
+      newState.shoppingListItems = state.shoppingListItems.filter(item => item.listId !== action.payload || item.userId !== newState.userId);
       if (state.selectedListId === action.payload) {
-        const userLists = newState.lists.filter(l => l.userId === newState.userId);
-        newState.selectedListId = userLists.length > 0 ? userLists[0].id : null;
+        const userListsAfterDelete = newState.lists.filter(l => l.userId === newState.userId);
+        newState.selectedListId = userListsAfterDelete.length > 0 ? userListsAfterDelete[0].id : null;
       }
       break;
     case 'SELECT_LIST':
@@ -176,10 +180,20 @@ function appReducer(state: AppState, action: Action): AppState {
       }
       newState.selectedListId = action.payload;
       break;
-    case 'ADD_SHOPPING_ITEM':
-      if (!newState.userId || action.payload.userId !== newState.userId) return state;
-      newState.shoppingListItems = [...state.shoppingListItems, action.payload];
+    case 'ADD_SHOPPING_ITEM': {
+      if (!action.payload.listId || !action.payload.userId) {
+        console.error("Attempted to add item without listId or userId");
+        return state;
+      }
+      const newItem: ShoppingListItem = {
+        ...action.payload,
+        id: uuidv4(),
+        dateAdded: Date.now(),
+        checked: false,
+      };
+      newState.shoppingListItems = [...state.shoppingListItems, newItem];
       break;
+    }
     case 'UPDATE_SHOPPING_ITEM':
       if (!newState.userId || action.payload.userId !== newState.userId) return state;
       newState.shoppingListItems = state.shoppingListItems.map(item =>
@@ -198,21 +212,27 @@ function appReducer(state: AppState, action: Action): AppState {
         item.id === action.payload ? { ...item, checked: !item.checked, dateAdded: Date.now() } : item
       );
       break;
-    case 'ADD_CATEGORY':
-      if (!newState.userId) return state;
+    case 'ADD_CATEGORY': {
+      if (!newState.userId) return state; // Cannot add category without user
       const userCustomCategoriesCount = state.categories.filter(c => c.userId === newState.userId).length;
       if (!state.isPremium && userCustomCategoriesCount >= FREEMIUM_CATEGORY_LIMIT) {
          console.warn("Freemium custom category limit reached.");
          return state;
       }
-      newState.categories = [...state.categories, action.payload]; // Assuming payload has id and userId
+      const newCategory: Category = {
+        id: uuidv4(),
+        name: action.payload.name,
+        userId: newState.userId,
+      };
+      newState.categories = [...state.categories, newCategory];
       break;
+    }
     case 'UPDATE_CATEGORY':
       const categoryToUpdate = state.categories.find(c => c.id === action.payload.id);
       if (!categoryToUpdate || (categoryToUpdate.userId && categoryToUpdate.userId !== newState.userId)) return state;
       if (categoryToUpdate.userId === null && !state.isPremium) return state; // Freemium cannot edit defaults
       newState.categories = state.categories.map(cat =>
-        cat.id === action.payload.id ? action.payload : cat
+        cat.id === action.payload.id ? { ...cat, name: action.payload.name } : cat
       );
       break;
     case 'REMOVE_CATEGORY':
@@ -246,13 +266,12 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = {
         ...initialState,
         userId: null,
-        apiBaseUrl: state.apiBaseUrl, // Keep API base URL
-        theme: state.theme, // Keep theme
-        currency: state.currency, // Keep currency (or reset to default/re-detect)
-        categories: [...DEFAULT_CATEGORIES], // Reset categories
+        apiBaseUrl: state.apiBaseUrl,
+        theme: state.theme,
+        currency: state.currency,
+        categories: [...DEFAULT_CATEGORIES],
         isLoading: false,
       };
-      // Clear user-specific localStorage on logout
       if (state.userId && typeof window !== 'undefined') {
         localStorage.removeItem(`${LOCAL_STORAGE_KEY}_${state.userId}`);
       }
@@ -261,10 +280,9 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = state;
   }
 
-  // Persist state to localStorage if a user ID is present (anonymous or authenticated)
-  if (newState.userId && typeof window !== 'undefined') {
+  if (newState.userId && typeof window !== 'undefined' && action.type !== 'SET_LOADING') {
     try {
-      const stateToSave = { ...newState, isLoading: undefined }; // Don't save isLoading
+      const stateToSave = { ...newState, isLoading: undefined };
       localStorage.setItem(`${LOCAL_STORAGE_KEY}_${newState.userId}`, JSON.stringify(stateToSave));
     } catch (error) {
       console.error("Failed to save state to localStorage for user:", newState.userId, error);
@@ -286,8 +304,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.log("AppProvider: Loading initial data (anonymous or from localStorage)...");
 
       let userIdFromAuth = state.userId; // Check if AuthProvider already set a real userId
-      let localStateKey = LOCAL_STORAGE_KEY;
-      let loadedState: Partial<AppState> = {};
+      let localStateKey = LOCAL_STORAGE_KEY; // Default for anonymous
+      let loadedState: Partial<AppState> = {}; // Initialize as Partial<AppState>
 
       if (userIdFromAuth && !userIdFromAuth.startsWith('anon_')) {
         // Authenticated user ID is already set by AuthProvider
@@ -300,53 +318,79 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           localStorage.setItem('anonymous_user_id_neon_shopping', anonymousUserId);
         }
         localStateKey = `${LOCAL_STORAGE_KEY}_${anonymousUserId}`;
-        loadedState.userId = anonymousUserId; // Tentatively set, AuthProvider might override
+        loadedState.userId = anonymousUserId; // Set userId in loadedState
         console.log("AppProvider: No authenticated user from AuthContext yet, using/generating anonymous ID:", anonymousUserId);
       }
 
       const savedStateRaw = localStorage.getItem(localStateKey);
       if (savedStateRaw) {
         try {
-          const parsedState = JSON.parse(savedStateRaw);
+          const parsedState = JSON.parse(savedStateRaw) as Partial<AppState>;
           // Merge, ensuring userId from AuthProvider (if set) or anonymous takes precedence
-          loadedState = { ...parsedState, ...loadedState };
+          loadedState = { ...parsedState, ...loadedState }; // ...loadedState ensures userId from above is kept if parsedState doesn't have it
         } catch (e) {
           console.error(`Failed to parse saved state from key ${localStateKey}, using defaults:`, e);
+          // Ensure userId is still set if parsing fails but we have an anonymous or auth ID
+          if (!loadedState.userId && userIdFromAuth) loadedState.userId = userIdFromAuth;
+          else if (!loadedState.userId) { // if userIdFromAuth was also null/anon
+            const anonymousUserIdFallback = localStorage.getItem('anonymous_user_id_neon_shopping') || `anon_${uuidv4()}`;
+            loadedState.userId = anonymousUserIdFallback;
+          }
+        }
+      } else {
+        // No saved state, ensure userId is set if it was determined
+        if (!loadedState.userId && userIdFromAuth) loadedState.userId = userIdFromAuth;
+        else if (!loadedState.userId) {
+           const anonymousUserIdFallback = localStorage.getItem('anonymous_user_id_neon_shopping') || `anon_${uuidv4()}`;
+           loadedState.userId = anonymousUserIdFallback;
         }
       }
       
+      // Ensure currency is initialized
       if (!loadedState.currency || loadedState.currency.code === defaultCurrency.code) {
         try {
           const detectedCurrency = await getUserCurrency();
           loadedState.currency = detectedCurrency || defaultCurrency;
+          if (detectedCurrency) {
+            console.log("AppProvider: Currency auto-detected:", detectedCurrency);
+          } else {
+             console.log("AppProvider: Currency auto-detection failed or not available, using default.");
+          }
         } catch (e) {
           console.error("AppProvider: Currency auto-detection failed:", e);
           loadedState.currency = defaultCurrency;
         }
       }
 
-      const finalCategories = new Map<string, Category>();
-      DEFAULT_CATEGORIES.forEach(cat => finalCategories.set(cat.id, cat));
-      (loadedState.categories || []).forEach(cat => finalCategories.set(cat.id, cat));
-      loadedState.categories = Array.from(finalCategories.values());
-
-      // If AuthProvider already set a real userId, ensure it's used.
-      // Otherwise, the anonymous or loaded userId will be used.
-      if (userIdFromAuth && !userIdFromAuth.startsWith('anon_')) {
-        loadedState.userId = userIdFromAuth;
-      }
+      // Ensure categories are initialized with defaults, then merge saved ones
+      const finalCategoriesMap = new Map<string, Category>();
+      DEFAULT_CATEGORIES.forEach(cat => finalCategoriesMap.set(cat.id, cat));
+      (loadedState.categories || []).forEach(cat => finalCategoriesMap.set(cat.id, cat));
+      loadedState.categories = Array.from(finalCategoriesMap.values());
       
+      // Ensure selectedListId is valid or reset
+      if (loadedState.lists && loadedState.lists.length > 0) {
+        const userLists = loadedState.lists.filter(l => l.userId === loadedState.userId);
+        if (userLists.length > 0) {
+          if (!loadedState.selectedListId || !userLists.some(l => l.id === loadedState.selectedListId)) {
+            loadedState.selectedListId = userLists[0].id;
+          }
+        } else {
+          loadedState.selectedListId = null; // No lists for this user
+        }
+      } else {
+        loadedState.selectedListId = null; // No lists at all
+      }
+
       dispatch({ type: 'LOAD_STATE', payload: loadedState });
       setIsInitialDataLoaded(true); // Mark initial load as complete
-      // SET_LOADING to false is handled by LOAD_STATE
-      console.log("AppProvider: Initial data processing finished. Current user ID in context:", newState.userId);
+      // SET_LOADING to false is handled by LOAD_STATE reducer
+      console.log("AppProvider: Initial data processing finished. Current user ID to be set in context:", loadedState.userId);
     };
 
     // Only run if initial data hasn't been loaded yet.
-    // AuthProvider will update state.userId, which can then trigger data fetch for authenticated users.
     if (!isInitialDataLoaded) {
       loadInitialData().finally(() => {
-        // Ensure loading is false even if loadInitialData itself has an unhandled issue in its try/finally
          dispatch({ type: 'SET_LOADING', payload: false });
       });
     }
@@ -355,7 +399,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Effect for fetching API data for authenticated users
   useEffect(() => {
     const fetchApiDataForUser = async () => {
-      // Only fetch if we have a real (non-anonymous) userId and initial local/anonymous load is done
       if (state.userId && !state.userId.startsWith('anon_') && isInitialDataLoaded) {
         dispatch({ type: 'SET_LOADING', payload: true });
         console.log(`AppProvider: Fetching API data for user ${state.userId}...`);
@@ -369,20 +412,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             DEFAULT_CATEGORIES.forEach(cat => finalCategoriesMap.set(cat.id, cat));
             (apiCategories as Category[]).forEach(cat => finalCategoriesMap.set(cat.id, cat));
 
-            dispatch({
-              type: 'LOAD_STATE',
-              payload: {
-                lists,
-                shoppingListItems: items,
-                categories: Array.from(finalCategoriesMap.values()),
-                selectedListId: lists.length > 0 ? (lists.find((l:List) => l.userId === state.userId)?.id || lists[0].id) : null,
-                currency: user_preferences.currency || state.currency,
-                isPremium: user_preferences.is_premium !== undefined ? user_preferences.is_premium : state.isPremium,
-              },
-            });
+            const payload: Partial<AppState> = {
+              lists,
+              shoppingListItems: items,
+              categories: Array.from(finalCategoriesMap.values()),
+              isPremium: user_preferences.is_premium !== undefined ? user_preferences.is_premium : state.isPremium,
+            };
+
+            // Set selectedListId intelligently
+            if (lists.length > 0) {
+                const userApiLists = lists.filter((l: List) => l.userId === state.userId);
+                if (userApiLists.length > 0) {
+                    // Try to keep current selectedListId if it's in the new API lists
+                    const currentSelectedListStillExists = userApiLists.some((l:List) => l.id === state.selectedListId);
+                    payload.selectedListId = currentSelectedListStillExists ? state.selectedListId : userApiLists[0].id;
+                } else {
+                    payload.selectedListId = null; // No lists for this user from API
+                }
+            } else {
+                payload.selectedListId = null; // No lists at all from API
+            }
+
+            // Set currency from API if available and different
+            if (user_preferences.currency && user_preferences.currency.code !== state.currency.code) {
+                 payload.currency = user_preferences.currency;
+            }
+
+            dispatch({ type: 'LOAD_STATE', payload });
           } else {
             console.error("Failed to fetch data from API for authenticated user:", apiResponse.message);
-            // If API fails for an authenticated user, consider if local storage for that user should be cleared or used as fallback
           }
         } catch (error) {
           console.error("Error fetching API data for authenticated user:", error);
@@ -394,7 +452,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     fetchApiDataForUser();
-  }, [state.userId, state.apiBaseUrl, isInitialDataLoaded]);
+  }, [state.userId, state.apiBaseUrl, isInitialDataLoaded, state.selectedListId, state.currency.code, state.isPremium]);
 
 
   const formatCurrency = useCallback((amount: number) => {
@@ -422,3 +480,4 @@ export const useAppContext = (): AppContextProps => {
   }
   return context;
 };
+
