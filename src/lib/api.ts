@@ -1,21 +1,9 @@
 // src/lib/api.ts
 
-/**
- * Represents options for the fetchFromApi function.
- * Extends the standard RequestInit interface.
- */
 interface FetchOptions extends RequestInit {
-  // Add any custom options specific to your API calls if needed
+  // Custom options can be added here if needed later
 }
 
-/**
- * A utility function to make API calls to the PHP backend.
- *
- * @param endpoint - The API endpoint to call (e.g., 'auth/login.php').
- * @param options - Optional fetch options (method, body, headers, etc.).
- * @returns A promise that resolves to the JSON response from the API.
- * @throws An error if the API call fails or returns a non-OK status.
- */
 export async function fetchFromApi(
   endpoint: string,
   options: FetchOptions = {}
@@ -23,20 +11,20 @@ export async function fetchFromApi(
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   if (!API_BASE_URL) {
-    console.error("API_BASE_URL is not defined. Please set NEXT_PUBLIC_API_URL in your environment variables.");
-    throw new Error("API base URL is not configured.");
+    const errorMessage = "API_BASE_URL is not defined. Please set NEXT_PUBLIC_API_URL in your environment variables (.env.local or hosting provider settings).";
+    console.error(errorMessage);
+    // For client-side errors, we might not be able to throw in a way that Next.js error overlay catches it
+    // but we can return a promise that rejects, which should be caught by the calling code.
+    return Promise.reject(new Error(errorMessage));
   }
 
-  // Ensure API_BASE_URL does not end with a slash & endpoint does not start with one for clean join
   const cleanApiBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const url = `${cleanApiBaseUrl}/${cleanEndpoint}`;
 
-
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
-    // If you implement token-based authentication later, you would add the Authorization header here:
-    // 'Authorization': `Bearer ${your_auth_token}`,
+    // 'Accept': 'application/json', // Often good to include
   };
 
   const config: RequestInit = {
@@ -45,61 +33,90 @@ export async function fetchFromApi(
       ...defaultHeaders,
       ...options.headers,
     },
-    credentials: 'include', 
+    credentials: 'include', // Essential for sending/receiving session cookies
   };
 
-  try {
-    console.log(`Calling API: ${config.method || 'GET'} ${url}`);
-    if (config.body && typeof config.body === 'string') { // Check if body is string before logging potentially large objects
-        // console.log('With body:', config.body); // Be cautious logging request bodies in production
-    }
+  // Add a cache-busting parameter for GET requests to avoid overly aggressive caching
+  // if (config.method === 'GET' || !config.method) {
+  //   const cacheBust = `_cb=${new Date().getTime()}`;
+  //   url = url.includes('?') ? `${url}&${cacheBust}` : `${url}?${cacheBust}`;
+  // }
 
+
+  console.log(`Calling API: ${config.method || 'GET'} ${url}`);
+  if (config.body && typeof config.body === 'string' && config.body.length < 500) { // Log small bodies
+     // console.log('With body:', config.body); // Be cautious logging request bodies
+  }
+
+
+  try {
     const response = await fetch(url, config);
 
+    // Try to get text first to see what the server actually sent, especially for errors
+    const responseText = await response.text();
+    // console.log(`API raw response text from ${url} (status ${response.status}):`, responseText);
+
+
     if (!response.ok) {
-      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      let errorData = { message: `API Error: ${response.status} ${response.statusText}`, responseBody: responseText };
       try {
-        const errorData = await response.json();
-        if (errorData && (errorData.message || errorData.error)) {
-          errorMessage = errorData.message || errorData.error;
+        // Attempt to parse error response as JSON if it looks like one
+        if (responseText && (responseText.startsWith('{') || responseText.startsWith('['))) {
+          const parsedError = JSON.parse(responseText);
+          if (parsedError && (parsedError.message || parsedError.error)) {
+            errorData.message = parsedError.message || parsedError.error;
+          }
         }
       } catch (e) {
-        console.warn("Could not parse error response as JSON from API.");
+        console.warn("Could not parse non-OK API response as JSON from API:", e);
       }
-      console.error(`API call to ${url} failed with status ${response.status}:`, errorMessage);
-      // Throw an error object that includes the status for better handling
-      const error = new Error(errorMessage) as any;
+      console.error(`API call to ${url} failed with status ${response.status}:`, errorData.message, "Full response:", responseText);
+      // Throw an error object that includes the status and potentially the body for better handling
+      const error = new Error(errorData.message) as any;
       error.status = response.status;
+      error.responseBody = responseText; 
       throw error;
     }
 
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const responseData = await response.json();
-      // console.log(`API JSON response from ${url}:`, responseData);
-      return responseData;
-    }
-    
-    const textResponse = await response.text();
-    // console.log(`API text response from ${url}:`, textResponse);
-    try {
-        return JSON.parse(textResponse);
-    } catch (e) {
-        // This means the response was successful (2xx) but not valid JSON.
-        // It might be an empty response for a successful POST/DELETE, or just plain text.
-        // For now, we'll return an object indicating success.
-        // You might want to handle this differently based on specific endpoint expectations.
-        if (response.status >= 200 && response.status < 300 && textResponse.trim() === '') {
+    // If response.ok, then try to parse as JSON
+    if (responseText && (responseText.startsWith('{') || responseText.startsWith('['))) {
+      try {
+        const jsonData = JSON.parse(responseText);
+        // console.log(`API JSON response from ${url}:`, jsonData);
+        return jsonData;
+      } catch (e) {
+        console.error(`Failed to parse successful response as JSON from ${url}:`, e, "Response text:", responseText);
+        // If parsing fails but status was OK, it might be an issue with the server sending non-JSON for a 2xx.
+        // Or it could be an empty successful response which is fine.
+        if (responseText.trim() === '') {
             return { success: true, message: "Operation successful, no content." };
         }
-        return { success: true, data: textResponse || "Operation successful, text response." };
+        // If it's not empty and not JSON, this is unexpected for a successful response.
+        throw new Error("Received successful HTTP status, but response was not valid JSON and not empty.");
+      }
+    } else if (responseText.trim() === '' && response.status >= 200 && response.status < 300) {
+      // Handle empty successful responses (e.g., for DELETE or some POSTs)
+      // console.log(`API call to ${url} successful with empty response (status ${response.status}).`);
+      return { success: true, message: `Operation successful with status ${response.status}, no content.` };
     }
+    
+    // If it's not JSON and not an empty successful response, but still response.ok (e.g. plain text for some reason)
+    // This case should be rare if your API consistently returns JSON.
+    // console.log(`API call to ${url} returned non-JSON text:`, responseText);
+    return { success: true, data: responseText };
+
 
   } catch (error: any) {
-    // Log network errors or errors from the !response.ok block
+    // This catches network errors (e.g., DNS, no connection, CORS blocked by browser *before* response)
+    // or errors thrown from the !response.ok block.
     console.error(`Error during API call to ${url}:`, error.message);
-    // Re-throw the error or return a structured error object
-    // Ensuring the status code is passed along if available
-    throw error; 
+    // Ensure the error thrown here is an actual Error object
+    if (error instanceof Error) {
+        throw error;
+    } else {
+        throw new Error(String(error)); // Convert to string if it's not an error object
+    }
   }
 }
+
+    

@@ -1,19 +1,19 @@
 // src/context/auth-context.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAppContext } from './app-context';
-import { fetchFromApi } from '@/lib/api';
+import { useAppContext } from './app-context'; // Ensure this path is correct
+import { fetchFromApi } from '@/lib/api'; // Ensure this path is correct
+import { useToast } from '@/hooks/use-toast';
 
-// Define types
 export interface User {
   id: string;
   name: string;
   email: string;
   isPremium?: boolean;
-  subscriptionStatus?: 'free' | 'premium';
-  subscriptionExpiryDate?: string | null;
+  // subscriptionStatus?: 'free' | 'premium'; // Redundant if isPremium is used
+  // subscriptionExpiryDate?: string | null;
 }
 
 interface AuthContextProps {
@@ -22,7 +22,7 @@ interface AuthContextProps {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>; // Make logout async
   checkSession: () => Promise<void>;
 }
 
@@ -34,10 +34,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { dispatch: appDispatch } = useAppContext(); // Removed appState as it's not directly used here for redirection logic
+  const { dispatch: appDispatch } = useAppContext();
+  const { toast } = useToast();
 
-  // API_BASE_URL is handled by fetchFromApi utility
-  // const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/neon/api';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL; // Used for constructing full URLs if needed, but fetchFromApi handles it
 
   const checkSession = useCallback(async () => {
     console.log("AuthContext: Checking session...");
@@ -47,41 +47,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log("AuthContext: Session status response", response);
 
       if (response && response.isAuthenticated && response.user) {
-        setIsAuthenticated(true);
         const fetchedUser = response.user as User;
+        setIsAuthenticated(true);
         setUser(fetchedUser);
         appDispatch({ type: 'SET_USER_ID', payload: fetchedUser.id });
         appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!fetchedUser.isPremium });
-        // Load user-specific data now that we know the user ID
-        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: fetchedUser.id, apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || '/neon/api' } });
-
+        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: fetchedUser.id, apiBaseUrl: API_BASE_URL || '/api' } });
 
         if (pathname === '/auth') {
           console.log("AuthContext: Authenticated, on /auth, redirecting to /list/create-first");
-          router.replace('/list/create-first');
+          router.replace('/list/create-first'); // Or to '/list' if lists might exist
         }
       } else {
+        // This case means session is not valid or API returned isAuthenticated: false
         setIsAuthenticated(false);
         setUser(null);
         appDispatch({ type: 'SET_USER_ID', payload: null });
-        if (pathname !== '/auth' && !isLoading) {
-           // Let middleware handle primary redirection
+        if (pathname !== '/auth' && !pathname.startsWith('/_next/')) { // Don't redirect internal Next.js routes
+             console.log("AuthContext: Not authenticated, current path:", pathname, "Redirecting to /auth");
+             // router.push('/auth'); // Consider if middleware should primarily handle this
         }
       }
     } catch (error: any) {
-      console.error("AuthContext: Error checking session status -", error.message);
+      console.error("AuthContext: Error checking session status -", error.message, error.responseBody || error);
       setIsAuthenticated(false);
       setUser(null);
       appDispatch({ type: 'SET_USER_ID', payload: null });
+       // If on a protected route, redirect to auth
+      if (pathname !== '/auth' && !isLoading && !pathname.startsWith('/_next/')) {
+          // console.log("AuthContext: Error, current path:", pathname, "Redirecting to /auth");
+          // router.push('/auth');
+      }
     } finally {
       setIsLoading(false);
-      console.log("AuthContext: Session check finished. isLoading:", false, "isAuthenticated:", isAuthenticated);
+      console.log("AuthContext: Session check finished. isLoading:", isLoading, "isAuthenticated:", isAuthenticated);
     }
-  }, [router, pathname, appDispatch, isLoading, isAuthenticated]); // Added isAuthenticated to dependencies
+  }, [router, pathname, appDispatch, API_BASE_URL, isLoading, isAuthenticated]); // Added isLoading and isAuthenticated
 
-  useEffect(() => {
-    checkSession();
-  }, [pathname]);
+   useEffect(() => {
+    // Avoid running checkSession if already loading to prevent race conditions
+    if (!isLoading) {
+        checkSession();
+    }
+    // Intentionally not including checkSession in deps to avoid loop if it causes state changes that re-trigger this effect.
+    // Pathname is a good trigger. isLoading ensures it doesn't run prematurely.
+  }, [pathname, isLoading]);
 
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -92,25 +102,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify({ email, password }),
       });
       if (response.success && response.user) {
-        setIsAuthenticated(true);
         const loggedInUser = response.user as User;
+        setIsAuthenticated(true);
         setUser(loggedInUser);
         appDispatch({ type: 'SET_USER_ID', payload: loggedInUser.id });
         appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!loggedInUser.isPremium });
-        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: loggedInUser.id, apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || '/neon/api' } });
-        // Redirection to /list or /list/create-first will be handled by AppLayout after data loads
+        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: loggedInUser.id, apiBaseUrl: API_BASE_URL || '/api' } });
+        toast({ title: "Login Successful", description: "Welcome back!" });
+        router.push('/list/create-first'); // Redirect after successful login
         return true;
       } else {
-        console.error("Login failed:", response.message);
-        // Use toast for user feedback
-        // toast({ title: "Login Failed", description: response.message || "Please check your credentials.", variant: "destructive" });
-        alert(response.message || "Login failed. Please check your credentials.");
+        toast({ title: "Login Failed", description: response.message || "Please check your credentials.", variant: "destructive" });
         return false;
       }
     } catch (error: any) {
-      console.error("Login error:", error);
-      // toast({ title: "Login Error", description: error.message || "An error occurred during login.", variant: "destructive" });
-      alert(error.message || "An error occurred during login.");
+      toast({ title: "Login Error", description: error.message || "An error occurred during login.", variant: "destructive" });
       return false;
     } finally {
       setIsLoading(false);
@@ -125,24 +131,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify({ name, email, password }),
       });
       if (response.success && response.user) {
-        setIsAuthenticated(true);
         const signedUpUser = response.user as User;
+        setIsAuthenticated(true);
         setUser(signedUpUser);
         appDispatch({ type: 'SET_USER_ID', payload: signedUpUser.id });
         appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!signedUpUser.isPremium });
-        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: signedUpUser.id, apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || '/neon/api' } });
-        // Redirection handled by AppLayout
+        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: signedUpUser.id, apiBaseUrl: API_BASE_URL || '/api' } });
+        toast({ title: "Signup Successful", description: "Welcome! Your account has been created." });
+        router.push('/list/create-first'); // Redirect after successful signup
         return true;
       } else {
-        console.error("Signup failed:", response.message);
-        // toast({ title: "Signup Failed", description: response.message || "Could not create account.", variant: "destructive" });
-        alert(response.message || "Signup failed. Please try again.");
+        toast({ title: "Signup Failed", description: response.message || "Could not create account.", variant: "destructive" });
         return false;
       }
     } catch (error: any) {
-      console.error("Signup error:", error);
-      // toast({ title: "Signup Error", description: error.message || "An error occurred during signup.", variant: "destructive" });
-      alert(error.message || "An error occurred during signup.");
+      toast({ title: "Signup Error", description: error.message || "An error occurred during signup.", variant: "destructive" });
       return false;
     } finally {
       setIsLoading(false);
@@ -158,7 +161,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsAuthenticated(false);
       setUser(null);
-      appDispatch({ type: 'RESET_STATE_FOR_LOGOUT' });
+      appDispatch({ type: 'RESET_STATE_FOR_LOGOUT' }); // Ensure app state is reset
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
       router.push('/auth');
       setIsLoading(false);
     }
@@ -173,9 +177,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = (): AuthContextProps => {
   const context = useContext(AuthContext);
+  // console.log("useAuth called, context value:", context); // Debug log
   if (context === undefined) {
     console.error("useAuth error: AuthContext is undefined. Ensure AuthProvider wraps this component.");
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
+
+    
