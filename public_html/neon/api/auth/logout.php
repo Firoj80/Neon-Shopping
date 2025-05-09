@@ -1,4 +1,3 @@
-
 <?php
 // api/auth/logout.php
 
@@ -6,11 +5,10 @@
 error_reporting(0);
 @ini_set('display_errors', 0);
 
-require_once '../utils.php'; 
-
+require_once '../utils.php';
 handle_options_request(); // Must be called before any output
 
-start_secure_session(); 
+start_secure_session();
 
 $_SESSION = array();
 
@@ -26,5 +24,3 @@ session_destroy();
 
 send_json_response(['success' => true, 'message' => 'Logged out successfully.']);
 ?>
-
-    

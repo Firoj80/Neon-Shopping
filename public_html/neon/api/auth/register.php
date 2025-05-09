@@ -1,4 +1,3 @@
-
 <?php
 // api/auth/register.php
 
@@ -6,10 +5,11 @@
 error_reporting(0);
 @ini_set('display_errors', 0);
 
-require_once '../utils.php'; 
+require_once '../utils.php';
+handle_options_request(); // Must be called before any output including db_config.php if it outputs on error
+
 require_once '../db_config.php';
 
-handle_options_request(); // Must be called before any output
 
 $conn = get_db_connection();
 $input = json_decode(file_get_contents('php://input'), true);
@@ -20,7 +20,7 @@ if (!$input) {
 
 $name = sanitize_input($input['name'] ?? '');
 $email = sanitize_input($input['email'] ?? '');
-$password = $input['password'] ?? ''; 
+$password = $input['password'] ?? '';
 
 if (empty($name) || empty($email) || empty($password)) {
     send_json_response(['success' => false, 'message' => 'Name, email, and password are required.'], 400);
@@ -30,7 +30,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     send_json_response(['success' => false, 'message' => 'Invalid email format.'], 400);
 }
 
-if (strlen($password) < 6) { 
+if (strlen($password) < 6) {
     send_json_response(['success' => false, 'message' => 'Password must be at least 6 characters long.'], 400);
 }
 
@@ -38,25 +38,27 @@ try {
     $stmt_check = $conn->prepare("SELECT id FROM users WHERE email = ?");
     $stmt_check->execute([$email]);
     if ($stmt_check->fetch()) {
-        send_json_response(['success' => false, 'message' => 'Email already registered.'], 409); 
+        send_json_response(['success' => false, 'message' => 'Email already registered.'], 409);
     }
 } catch (PDOException $e) {
     error_log("Register Check DB Error: " . $e->getMessage());
     send_json_response(['success' => false, 'message' => 'Error checking email.'], 500);
 }
 
-$user_id = bin2hex(random_bytes(16)); 
+$user_id = bin2hex(random_bytes(16));
 $password_hash = password_hash($password, PASSWORD_DEFAULT);
+$default_subscription_status = 'free'; // Default for new users
+$default_subscription_expiry = null;   // No expiry for free tier
 
 try {
-    $stmt_insert = $conn->prepare("INSERT INTO users (id, name, email, password_hash, subscription_status, subscription_expiry_date) VALUES (?, ?, ?, ?, 'free', NULL)");
-    if ($stmt_insert->execute([$user_id, $name, $email, $password_hash])) {
-        start_secure_session(); 
+    $stmt_insert = $conn->prepare("INSERT INTO users (id, name, email, password_hash, subscription_status, subscription_expiry_date) VALUES (?, ?, ?, ?, ?, ?)");
+    if ($stmt_insert->execute([$user_id, $name, $email, $password_hash, $default_subscription_status, $default_subscription_expiry])) {
+        start_secure_session();
         $_SESSION['user_id'] = $user_id;
         $_SESSION['user_name'] = $name;
         $_SESSION['user_email'] = $email;
-        $_SESSION['subscription_status'] = 'free'; 
-        $_SESSION['subscription_expiry_date'] = null;
+        $_SESSION['subscription_status'] = $default_subscription_status;
+        $_SESSION['subscription_expiry_date'] = $default_subscription_expiry;
 
         send_json_response([
             'success' => true,
@@ -71,5 +73,3 @@ try {
     send_json_response(['success' => false, 'message' => 'Database error during registration.'], 500);
 }
 ?>
-
-    

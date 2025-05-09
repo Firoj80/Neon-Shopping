@@ -1,4 +1,3 @@
-
 <?php
 // api/auth/login.php
 
@@ -6,10 +5,10 @@
 error_reporting(0);
 @ini_set('display_errors', 0);
 
-require_once '../utils.php'; 
-require_once '../db_config.php';
-
+require_once '../utils.php';
 handle_options_request(); // Must be called before any output
+
+require_once '../db_config.php';
 
 $conn = get_db_connection();
 $input = json_decode(file_get_contents('php://input'), true);
@@ -31,25 +30,27 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user && password_verify($password, $user['password_hash'])) {
-        start_secure_session(); 
+        start_secure_session();
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['user_email'] = $user['email'];
-        
+
         $is_premium = false;
         if ($user['subscription_status'] === 'premium') {
             $is_premium = $user['subscription_expiry_date'] === null || strtotime($user['subscription_expiry_date']) > time();
         }
-        
-        if ($user['subscription_status'] === 'premium' && !$is_premium) {
-            $_SESSION['subscription_status'] = 'free'; 
+
+        if ($user['subscription_status'] === 'premium' && !$is_premium) { // Subscription expired
+            $_SESSION['subscription_status'] = 'free';
             $_SESSION['subscription_expiry_date'] = null;
+            // Downgrade in DB
             $stmt_update = $conn->prepare("UPDATE users SET subscription_status = 'free', subscription_expiry_date = NULL WHERE id = ?");
             $stmt_update->execute([$user['id']]);
         } else {
             $_SESSION['subscription_status'] = $user['subscription_status'];
             $_SESSION['subscription_expiry_date'] = $user['subscription_expiry_date'];
         }
+
 
         send_json_response([
             'success' => true,
@@ -58,7 +59,7 @@ try {
                 'id' => $user['id'],
                 'name' => $user['name'],
                 'email' => $user['email'],
-                'isPremium' => $is_premium, 
+                'isPremium' => $is_premium,
             ]
         ]);
     } else {
@@ -69,5 +70,3 @@ try {
     send_json_response(['success' => false, 'message' => 'Database error during login.'], 500);
 }
 ?>
-
-    

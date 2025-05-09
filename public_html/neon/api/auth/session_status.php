@@ -6,14 +6,14 @@
 error_reporting(0);
 @ini_set('display_errors', 0);
 
-require_once '../utils.php'; 
-require_once '../db_config.php'; 
-
+require_once '../utils.php';
 handle_options_request(); // Crucial: Must be called first for CORS preflight
 
-error_log("session_status.php: Accessed at " . date("Y-m-d H:i:s")); 
+require_once '../db_config.php';
 
-$user_id = get_current_user_id(); 
+error_log("session_status.php: Accessed at " . date("Y-m-d H:i:s"));
+
+$user_id = get_current_user_id(); // This also starts the session
 
 if ($user_id) {
     error_log("session_status.php: User ID '{$user_id}' found in session.");
@@ -29,35 +29,38 @@ if ($user_id) {
                  $is_premium = $user_data['subscription_expiry_date'] === null || strtotime($user_data['subscription_expiry_date']) > time();
             }
 
+            // If DB status is premium but expired, update DB and session
             if ($user_data['subscription_status'] === 'premium' && !$is_premium) {
                 $stmt_update = $conn->prepare("UPDATE users SET subscription_status = 'free', subscription_expiry_date = NULL WHERE id = ?");
                 $stmt_update->execute([$user_id]);
-                $user_data['subscription_status'] = 'free'; 
+                $user_data['subscription_status'] = 'free'; // Reflect change in local var
                 $user_data['subscription_expiry_date'] = null;
                 error_log("session_status.php: User '{$user_id}' subscription found expired. Downgraded to free in DB.");
             }
 
-             if (!isset($_SESSION['subscription_status']) || 
+             // Sync session with (potentially updated) DB status
+             if (!isset($_SESSION['subscription_status']) ||
                  $_SESSION['subscription_status'] !== $user_data['subscription_status'] ||
                  $_SESSION['subscription_expiry_date'] !== $user_data['subscription_expiry_date']) {
-                 
+
                  $_SESSION['subscription_status'] = $user_data['subscription_status'];
                  $_SESSION['subscription_expiry_date'] = $user_data['subscription_expiry_date'];
                  error_log("session_status.php: Session synced with DB for user '{$user_id}'. Status: {$user_data['subscription_status']}");
             }
 
+
             send_json_response([
                 'isAuthenticated' => true,
                 'user' => [
                     'id' => $user_id,
-                    'name' => $_SESSION['user_name'] ?? $user_data['name'], 
+                    'name' => $_SESSION['user_name'] ?? $user_data['name'],
                     'email' => $_SESSION['user_email'] ?? $user_data['email'],
-                    'isPremium' => $is_premium, 
+                    'isPremium' => $is_premium,
                 ]
             ]);
         } else {
             error_log("session_status.php: User ID '{$user_id}' in session, but not found in DB. Destroying session.");
-            session_destroy(); 
+            session_destroy();
             send_json_response(['isAuthenticated' => false, 'message' => 'Session invalid, user not found.'], 401);
         }
 
@@ -71,5 +74,3 @@ if ($user_id) {
     send_json_response(['isAuthenticated' => false, 'user' => null]);
 }
 ?>
-
-    

@@ -1,10 +1,11 @@
 <?php
 // public_html/api/payments/verify_payment.php
 require_once '../utils.php'; 
+handle_options_request(); // Must be called before any output
+
 require_once '../db_config.php'; 
 require_once '../razorpay_config.php'; 
 
-handle_options_request(); // Must be called before any output
 
 $user_id = ensure_authenticated(); 
 $conn = get_db_connection();
@@ -16,16 +17,15 @@ if (!$input || !isset($input['razorpay_payment_id']) || !isset($input['razorpay_
 
 $razorpay_payment_id = sanitize_input($input['razorpay_payment_id']);
 $razorpay_order_id = sanitize_input($input['razorpay_order_id']);
-$razorpay_signature = $input['razorpay_signature']; // Signature should not be sanitized in a way that alters it
+$razorpay_signature = $input['razorpay_signature']; // Signature should not be sanitized 
 $plan_id = sanitize_input($input['plan_id']); 
 
 // --- Verify Razorpay Signature ---
 $key_secret = RAZORPAY_KEY_SECRET;
 
-// Check if Razorpay Key Secret is configured
 if (empty($key_secret) || $key_secret === 'YOUR_RAZORPAY_KEY_SECRET') {
     error_log('Razorpay Key Secret is not configured or is using placeholder values.');
-    send_json_response(['success' => false, 'message' => 'Payment gateway secret not configured. Cannot verify payment.'], 503); // Service Unavailable
+    send_json_response(['success' => false, 'message' => 'Payment gateway secret not configured. Cannot verify payment.'], 503); 
 }
 
 
@@ -41,28 +41,27 @@ if (!hash_equals($expected_signature, $razorpay_signature)) {
 try {
     $new_status = 'premium';
     $expiry_date_sql = null;
-    $current_date = new DateTime(); // Use current server time
+    $current_date = new DateTime(); 
 
-    // Fetch plan duration from premium_plans table instead of hardcoding
-    $stmt_plan = $conn->prepare("SELECT id, name FROM premium_plans WHERE id = ?"); // You might have duration in this table
+    // Fetch plan duration from premium_plans table
+    $stmt_plan = $conn->prepare("SELECT id, name, price_monthly, price_yearly FROM premium_plans WHERE id = ? AND is_active = TRUE");
     $stmt_plan->execute([$plan_id]);
     $plan_details = $stmt_plan->fetch(PDO::FETCH_ASSOC);
 
     if (!$plan_details) {
-        send_json_response(['success' => false, 'message' => 'Invalid plan ID.'], 400);
+        send_json_response(['success' => false, 'message' => 'Invalid or inactive plan ID.'], 400);
     }
 
-    // Example: Determine duration based on plan name or a duration column
-    // This logic needs to be robust based on how you store plan durations.
-    // For this example, I'll assume plan IDs directly indicate duration type.
-    if ($plan_id === 'monthly_basic' || strpos(strtolower($plan_details['name']), 'monthly') !== false) {
+    // Determine duration based on plan_id or other plan details
+    // This logic assumes plan_id directly corresponds to a duration or plan name contains duration info
+    // A more robust way would be to have a 'duration_months' or 'duration_days' column in premium_plans
+    if ($plan_id === 'monthly_basic' || ($plan_details['price_monthly'] && !$plan_details['price_yearly'])) {
         $current_date->modify('+1 month');
-    } elseif ($plan_id === 'three_month_standard' || strpos(strtolower($plan_details['name']), '3 month') !== false || strpos(strtolower($plan_details['name']), 'quarterly') !== false ) {
+    } elseif ($plan_id === 'three_month_standard') { // Example, adjust if your plan IDs differ
         $current_date->modify('+3 months');
-    } elseif ($plan_id === 'yearly_premium' || strpos(strtolower($plan_details['name']), 'yearly') !== false || strpos(strtolower($plan_details['name']), 'annual') !== false) {
+    } elseif ($plan_id === 'yearly_premium' || $plan_details['price_yearly']) {
         $current_date->modify('+1 year');
     } else {
-        // Fallback or error if plan duration not determinable or unknown plan_id
         error_log("Could not determine subscription duration for plan ID: $plan_id, Name: {$plan_details['name']}");
         send_json_response(['success' => false, 'message' => 'Invalid plan ID for subscription duration determination.'], 400);
     }
@@ -71,22 +70,14 @@ try {
 
     $stmt_update = $conn->prepare("UPDATE users SET subscription_status = ?, subscription_expiry_date = ? WHERE id = ?");
     if ($stmt_update->execute([$new_status, $expiry_date_sql, $user_id])) {
-        // Update session
-        start_secure_session(); // Ensure session is active
+        start_secure_session(); 
         $_SESSION['subscription_status'] = $new_status;
         $_SESSION['subscription_expiry_date'] = $expiry_date_sql;
-         if (isset($_SESSION['user'])) { // If you store full user object in session
-            $_SESSION['user']['isPremium'] = true; 
-            // $_SESSION['user']['subscriptionStatus'] = $new_status; 
-            // $_SESSION['user']['subscriptionExpiryDate'] = $expiry_date_sql;
+         if (isset($_SESSION['user'])) { 
+            // If you are storing a user object in session, update its premium status too
+            // Example: $_SESSION['user']['isPremium'] = true; 
+            // Example: $_SESSION['user']['subscriptionStatus'] = $new_status; 
         }
-
-
-        // Optionally, log the transaction in a 'payment_transactions' table for auditing
-        // $amount_paid = $input['amount_paid'] ?? 0; // Get amount from input if client sends it, or fetch order from Razorpay
-        // $currency_paid = $input['currency_paid'] ?? 'INR'; // Get currency
-        // $stmt_log = $conn->prepare("INSERT INTO payment_transactions (user_id, razorpay_order_id, razorpay_payment_id, plan_id, amount_paid, currency_paid, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'success', NOW())");
-        // $stmt_log->execute([$user_id, $razorpay_order_id, $razorpay_payment_id, $plan_id, $amount_paid, $currency_paid]);
 
         send_json_response([
             'success' => true,
@@ -102,12 +93,8 @@ try {
 } catch (PDOException $e) {
     error_log("Verify Payment DB Error: " . $e->getMessage());
     send_json_response(['success' => false, 'message' => 'Database error during subscription update.'], 500);
-} catch (Exception $e) { // Catch general exceptions (e.g., from DateTime)
+} catch (Exception $e) { 
     error_log("Verify Payment General Error: " . $e->getMessage());
     send_json_response(['success' => false, 'message' => 'Error processing subscription update.'], 500);
 }
 ?>
-
-    
-
-    
