@@ -2,9 +2,9 @@
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, ShoppingCart, CheckCircle, ListPlus, Lock } from 'lucide-react'; // Added Lock
+import { PlusCircle, Trash2, ShoppingCart, CheckCircle, ListPlus } from 'lucide-react';
 import { ItemCard } from '@/components/shopping/item-card';
-import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context'; // Added FREEMIUM_LIST_LIMIT
+import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context';
 import type { ShoppingListItem as AppShoppingListItem, List } from '@/context/app-context';
 import { AddEditItemModal } from '@/components/shopping/add-edit-item-modal';
 import { BudgetCard } from '@/components/budget/budget-panel';
@@ -26,9 +26,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ClientOnly from '@/components/client-only';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
-import { useRouter } from 'next/navigation';
-import CreateFirstListPage from './create-first/page'; 
-import { useAuth } from '@/context/auth-context'; // Import useAuth
+import { useRouter, usePathname } from 'next/navigation'; // Added usePathname
+import CreateFirstListPage from './create-first/page';
+import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -38,6 +38,7 @@ export default function ShoppingListPage() {
   const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname(); // Instantiate pathname
 
   const isLoading = contextIsLoading || authIsLoading;
 
@@ -59,7 +60,11 @@ export default function ShoppingListPage() {
   const handleAddItemClick = () => {
     if (!selectedListId) {
       console.error("No list selected, cannot add item.");
-      // Potentially show a toast or disable button if no list is selected
+      toast({
+        title: "No List Selected",
+        description: "Please select or create a list before adding items.",
+        variant: "destructive"
+      });
       return;
     }
     setEditingItem(null);
@@ -166,7 +171,7 @@ export default function ShoppingListPage() {
     )
   );
 
-   if (!isClient || isLoading) { // Added isLoading check here
+   if (!isClient || isLoading) {
        return (
             <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
                 <Skeleton className="h-[88px] w-full rounded-lg mb-2" /> {/* BudgetCard Skeleton */}
@@ -176,18 +181,19 @@ export default function ShoppingListPage() {
        );
    }
    
-   // Redirect to create-first if authenticated but no lists for the user
-   if (isAuthenticated && userLists.length === 0 && pathname !== '/list/create-first') {
+   // Redirect to create-first if no lists for the user (regardless of authentication, handled by middleware too)
+   if (userLists.length === 0 && pathname !== '/list/create-first') {
         return <CreateFirstListPage />;
    }
 
 
   return (
     <div className="flex flex-col h-full">
+        {/* Sticky Header for Budget, Lists, and Tabs */}
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
             <BudgetCard />
             <ListsCarousel />
-            <ClientOnly>
+            <ClientOnly> {/* Ensure Tabs are client-side only */}
                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'current' | 'purchased')} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2">
                         <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
@@ -201,6 +207,7 @@ export default function ShoppingListPage() {
             </ClientOnly>
         </div>
 
+        {/* Scrollable Item List Area */}
         <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
           {!selectedListId && userLists.length > 0 ? (
             <div className="flex items-center justify-center h-full text-center py-10">
@@ -208,7 +215,7 @@ export default function ShoppingListPage() {
             </div>
            ) : (
              <ClientOnly>
-                 <Tabs value={activeTab} className="w-full"> 
+                 <Tabs value={activeTab} className="w-full"> {/* This Tabs instance is fine here, as it's inside ClientOnly */}
                      <TabsContent value="current" className="mt-0 pt-2">
                          {renderItemList(currentItems, "No current items in this list. Add some!")}
                      </TabsContent>
@@ -220,16 +227,24 @@ export default function ShoppingListPage() {
            )}
         </div>
 
+        {/* Floating Action Button */}
         <Button
             onClick={() => {
-                // Check if trying to add item to a list owned by current user, or if no list selected (which implies creating new one potentially)
                 const canProceed = selectedListId ? userLists.some(l => l.id === selectedListId) : true;
 
-                if (!canProceed) {
+                if (!canProceed && selectedListId) { // Ensure selectedListId exists before showing this specific error
                      toast({ title: "Error", description: "Cannot add item to this list.", variant: "destructive" });
                      return;
                 }
-                 handleAddItemClick(); // No premium check for adding items, only for list creation
+                 if (!selectedListId) {
+                     toast({
+                         title: "No List Selected",
+                         description: "Please select or create a list first.",
+                         variant: "default",
+                     });
+                     return;
+                 }
+                 handleAddItemClick();
             }}
             size="lg"
             className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-6 md:right-8 z-30 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
