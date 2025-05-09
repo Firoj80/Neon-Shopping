@@ -1,3 +1,4 @@
+// src/components/budget/budget-panel.tsx
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAppContext } from '@/context/app-context';
 import type { List, ShoppingListItem } from '@/context/app-context';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Edit2, Wallet, Coins, ShoppingCart } from 'lucide-react';
 import {
@@ -18,20 +19,20 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useForm, Controller } from 'react-hook-form'; // Import Controller
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { startOfDay, isSameDay } from 'date-fns'; // Import isSameDay
+import { startOfDay, isSameDay } from 'date-fns';
 
 const budgetFormSchema = z.object({
-  budgetLimit: z.number().min(0, "Budget limit cannot be negative").nullable().default(0), // Allow null, default to 0
+  budgetLimit: z.number().min(0, "Budget limit cannot be negative").nullable().default(0),
 });
 
 type BudgetFormData = z.infer<typeof budgetFormSchema>;
 
-const BudgetCardSkeleton: React.FC = () => {
+export const BudgetCardSkeleton: React.FC = () => { // Added export
   return (
     <Card className="w-full bg-card border-border/20 shadow-md animate-pulse mb-1 sm:mb-2 glow-border">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
@@ -78,27 +79,25 @@ export const BudgetCard: React.FC = () => {
     return state.shoppingListItems.filter(item => item.listId === selectedList.id);
   }, [state.shoppingListItems, selectedList]);
 
-  // Calculate spent amount only for *checked* items in the *selected list*
-  // For daily budget, you might want to filter by dateAdded as well if it's a daily reset
-    const today = startOfDay(new Date()); // Use date-fns startOfDay
-    const spentForSelectedList: number = useMemo(() => {
-        if (!selectedList) return 0;
-        return itemsForSelectedList
-        .filter(item => item.checked && isSameDay(new Date(item.dateAdded), today) ) // Filter for checked items added today
-        .reduce((total, item) => total + (item.price * item.quantity), 0);
-    }, [itemsForSelectedList, selectedList, today]); // Add today to dependency array
+  const today = startOfDay(new Date());
+  const spentForSelectedList: number = useMemo(() => {
+    if (!selectedList) return 0;
+    return itemsForSelectedList
+      .filter(item => item.checked /* && isSameDay(new Date(item.dateAdded), today) */) // Daily reset logic commented out for now
+      .reduce((total, item) => total + (item.price * item.quantity), 0);
+  }, [itemsForSelectedList, selectedList/*, today*/]);
 
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<BudgetFormData>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
-      budgetLimit: selectedList?.budgetLimit ?? null, // Default to null
+      budgetLimit: selectedList?.budgetLimit ?? null,
     }
   });
 
   useEffect(() => {
     if (selectedList) {
-      reset({ budgetLimit: selectedList.budgetLimit ?? null }); // Reset with null if 0 or undefined
+      reset({ budgetLimit: selectedList.budgetLimit === 0 ? null : selectedList.budgetLimit });
     } else {
       reset({ budgetLimit: null });
     }
@@ -117,7 +116,7 @@ export const BudgetCard: React.FC = () => {
     if (selectedList) {
       dispatch({
         type: 'UPDATE_LIST',
-        payload: { ...selectedList, budgetLimit: data.budgetLimit ?? 0 } // Ensure 0 if null
+        payload: { ...selectedList, budgetLimit: data.budgetLimit ?? 0 }
       });
     }
     setIsEditingBudget(false);
@@ -126,7 +125,7 @@ export const BudgetCard: React.FC = () => {
   const budgetLimitDisplay = formatCurrency(budgetLimit);
 
   return (
-    <Card className="w-full bg-card border-primary/30 shadow-neon glow-border-inner mb-1 sm:mb-2 h-auto min-h-[auto]"> {/* Adjusted height */}
+    <Card className="w-full bg-card border-primary/30 shadow-neon glow-border-inner mb-1 sm:mb-2 h-auto min-h-[auto]">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-2 px-3 sm:px-4">
         <div className="flex items-center gap-2 min-w-0">
           <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
@@ -138,7 +137,7 @@ export const BudgetCard: React.FC = () => {
         </div>
          <div className="flex items-center">
              <span className="text-xs text-muted-foreground mr-2">
-                 Daily Limit: {budgetLimitDisplay}
+                 Limit: {budgetLimitDisplay}
              </span>
             <Dialog open={isEditingBudget} onOpenChange={setIsEditingBudget}>
             <DialogTrigger asChild>
@@ -151,7 +150,7 @@ export const BudgetCard: React.FC = () => {
                 <DialogHeader>
                 <DialogTitle className="text-primary">Set Budget for "{selectedList.name}"</DialogTitle>
                 <DialogDescription className="text-muted-foreground text-sm pt-1">
-                    This budget limit applies to the selected shopping list for today.
+                    This budget limit applies to the selected shopping list.
                 </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(handleSaveBudget)}>
@@ -171,11 +170,10 @@ export const BudgetCard: React.FC = () => {
                             {...field}
                             onChange={(e) => {
                                 const value = e.target.value;
-                                // Allow empty input, handle potential negative, parse as float
                                 field.onChange(value === '' ? null : Math.max(0, parseFloat(value) || 0));
                             }}
-                            value={field.value === null || field.value === undefined ? '' : field.value} // Show empty string if null/undefined
-                            placeholder="0.00" // Use placeholder
+                            value={field.value === null || field.value === undefined ? '' : String(field.value)}
+                            placeholder="0.00"
                             className="col-span-3 border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
                             min="0"
                             aria-invalid={errors.budgetLimit ? "true" : "false"}
@@ -202,8 +200,7 @@ export const BudgetCard: React.FC = () => {
       <CardContent className="space-y-1 px-3 pb-2 sm:px-4 sm:pb-3 glow-border-inner">
         <div className="space-y-0.5">
           <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span>Spent Today: {formatCurrency(spentForSelectedList)}</span>
-            {/* <span>Limit: {budgetLimitDisplay}</span> */}
+            <span>Spent: {formatCurrency(spentForSelectedList)}</span>
           </div>
           <Progress
             value={spentPercentage}
@@ -227,7 +224,7 @@ export const BudgetCard: React.FC = () => {
           <div className="flex items-center gap-1 text-sm font-medium">
             <Coins className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", isOverBudget && budgetLimit > 0 ? 'text-destructive' : 'text-primary')} />
             <span className={cn("text-neonText text-xs")}>
-              {budgetLimit > 0 ? 'Remaining Today:' : 'Spent Today:'}
+              {budgetLimit > 0 ? 'Remaining:' : 'Total Spent:'}
             </span>
           </div>
           <div className={cn("text-sm font-bold", isOverBudget && budgetLimit > 0 ? 'text-destructive' : 'text-primary')}>
