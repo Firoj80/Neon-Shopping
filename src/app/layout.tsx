@@ -1,23 +1,30 @@
-
 "use client"; // Keep this as layout uses hooks
 
 import { Inter } from 'next/font/google';
-import type { Metadata } from 'next';
+// Removed Metadata export as it conflicts with "use client" for now
+// import type { Metadata } from 'next';
 import { cn } from '@/lib/utils';
 import './globals.css';
 import { Providers } from './providers'; // Providers includes AppProvider
 import { AppLayout } from '@/components/layout/app-layout'; // Corrected import path
 import { Toaster } from "@/components/ui/toaster";
-// Removed AuthProvider import as it's now part of Providers
-import ClientOnly from '@/components/client-only'; // Import ClientOnly
-import { ThemeWatcher } from '@/context/theme-watcher'; // Re-add ThemeWatcher
+// AuthProvider is now inside Providers
+// import { AuthProvider } from '@/context/auth-context';
+// ClientOnly component wrapper removed, useClientOnly hook is used inside AppLayoutContent
+// import ClientOnly from '@/components/client-only';
+import { ThemeWatcher } from '@/context/theme-watcher';
+
 
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
 });
 
-// Removed Metadata export as it conflicts with "use client"
+// export const metadata: Metadata = {
+//   title: 'Neon Shopping',
+//   description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
+//   icons: [{ rel: 'icon', url: '/favicon.ico' }],
+// };
 
 export default function RootLayout({
   children,
@@ -34,12 +41,11 @@ export default function RootLayout({
       >
         <Providers> {/* Providers now includes AuthProvider */}
            <ThemeWatcher>
-             <ClientOnly> {/* Wrap AppLayout and Toaster */}
+             {/* ClientOnly component wrapper removed here */}
                 <AppLayout>
                   {children}
                 </AppLayout>
                 <Toaster />
-             </ClientOnly>
            </ThemeWatcher>
         </Providers>
       </body>
