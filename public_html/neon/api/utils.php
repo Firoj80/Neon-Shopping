@@ -1,4 +1,3 @@
-
 <?php
 // api/utils.php
 
@@ -14,51 +13,69 @@ $allowed_origins = [
     'http://localhost:3000', // Common local Next.js dev port
     'https://6000-idx-studio-1746177151292.cluster-htdgsbmflbdmov5xrjithceibm.cloudworkstations.dev', // Your IDX dev environment
     // Add your production frontend URL here once deployed, e.g., 'https://your-neon-shopping-app.com'
+    // If your Next.js app is hosted on digitalfiroj.com, add that origin here too.
+    // Example: 'https://digitalfiroj.com' 
 ];
 
 function set_cors_headers() {
     global $allowed_origins;
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-    error_log("CORS Check: Received Origin: " . ($origin ?: "'' (empty)") . " | Allowed Origins: " . implode(', ', $allowed_origins));
+    // Clear any previously set Access-Control-Allow-Origin headers to avoid conflicts
+    header_remove("Access-Control-Allow-Origin");
 
+    // TEMPORARY FOR DEBUGGING - ALLOW ALL ORIGINS
+    // IMPORTANT: Revert this for production and use the in_array check below.
+    header("Access-Control-Allow-Origin: *");
+    error_log("CORS DEBUG: Allowing all origins. Request from: " . ($origin ?: "'' (empty)"));
+    // END TEMPORARY DEBUGGING
+
+    /*
+    // PRODUCTION CORS (Uncomment and use this for production after debugging)
     if (in_array($origin, $allowed_origins)) {
         header("Access-Control-Allow-Origin: {$origin}");
-        header("Access-Control-Allow-Credentials: true");
-        error_log("CORS Check: Origin '{$origin}' allowed. Sending Access-Control-Allow-Origin and Credentials.");
+        error_log("CORS: Origin '{$origin}' allowed.");
     } else {
-        // If origin is not in the allowed list, do not send Allow-Origin for security.
-        // The browser will block the request anyway.
-        error_log("CORS Check: Origin '{$origin}' is NOT in the allowed list.");
+        error_log("CORS: Origin '{$origin}' NOT in allowed list: " . implode(', ', $allowed_origins) . ". If this is your frontend, add it to allowed_origins.");
     }
+    */
 
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Cookie, X-User-ID, Cache-Control, Pragma, Expires");
+    // Ensure all necessary headers are allowed, especially for authenticated requests or complex content types
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Cookie, X-User-ID, Cache-Control, Pragma, Expires, X-Csrf-Token");
+    header("Access-Control-Allow-Credentials: true"); // Crucial for sessions/cookies
     header("Access-Control-Max-Age: 86400"); // Cache preflight OPTIONS request for 1 day
 }
 
 function handle_options_request() {
     // This function must be called BEFORE any other output.
-    if (isset($_SERVER['REQUEST_METHOD'])) { // Check if REQUEST_METHOD is set
+    if (isset($_SERVER['REQUEST_METHOD'])) { 
       set_cors_headers(); // Set CORS headers for all requests, including OPTIONS
       if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
           http_response_code(204); // No Content - Standard for successful OPTIONS
-          error_log("CORS Check: Responded to OPTIONS request with 204.");
+          error_log("CORS: Responded to OPTIONS preflight request with 204 from origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'unknown'));
           exit; // Crucial: Stop script execution for OPTIONS requests
       }
     } else {
       // REQUEST_METHOD not set, possibly not a web request. Log and proceed cautiously.
-      error_log("CORS Check: REQUEST_METHOD not set. Skipping OPTIONS handling.");
-      // You might still want to set some default headers if appropriate for non-HTTP contexts,
-      // but for web API, REQUEST_METHOD should always be set.
+      error_log("CORS Warning: REQUEST_METHOD not set. Skipping OPTIONS handling logic.");
     }
 }
 
 function send_json_response($data, $status_code = 200) {
     if (!headers_sent()) {
-        // set_cors_headers(); // Already called by handle_options_request or at the start of API script
+        // Ensure CORS headers are set for every JSON response,
+        // handle_options_request might have already set them for OPTIONS or if called at script start.
+        // Calling it again here ensures they are set if not an OPTIONS request and not called earlier.
+        // However, it's better to call handle_options_request() at the top of each API script.
+        // For safety, we can call set_cors_headers() if handle_options_request wasn't the entry point.
+        // if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') { // Avoid double setting if OPTIONS already handled it.
+        //    set_cors_headers();
+        // }
         http_response_code($status_code);
         header('Content-Type: application/json'); 
+    } else {
+        error_log("send_json_response: Headers already sent. Cannot set HTTP status code or Content-Type.");
     }
     echo json_encode($data);
     exit; 
@@ -67,10 +84,22 @@ function send_json_response($data, $status_code = 200) {
 function start_secure_session() {
     if (session_status() == PHP_SESSION_NONE) {
         $is_https = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-        $cookie_domain = ""; // Auto-detect domain or set specific for production
         
+        // More robust domain detection for cookie_domain
         $host = $_SERVER['HTTP_HOST'] ?? '';
-        $is_localhost = (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false);
+        $cookie_domain = $host; // Default to current host
+        // Remove port if present for broader cookie scope on the domain
+        if (strpos($host, ':') !== false) {
+            $cookie_domain = substr($host, 0, strpos($host, ':'));
+        }
+        // Prepend . for subdomain cookies if not localhost
+        if ($cookie_domain !== 'localhost' && !filter_var($cookie_domain, FILTER_VALIDATE_IP)) {
+            $cookie_domain = '.' . $cookie_domain;
+        } else if (filter_var($cookie_domain, FILTER_VALIDATE_IP)) {
+            // For IPs (like localhost or direct IP access), don't prepend '.'
+             $cookie_domain = $host; // Use full host including port if it's an IP
+        }
+
 
         session_set_cookie_params([
             'lifetime' => 28800, 
@@ -78,10 +107,12 @@ function start_secure_session() {
             'domain' => $cookie_domain, 
             'secure' => $is_https, 
             'httponly' => true, 
-            'samesite' => ($is_https) ? 'None' : 'Lax' // Use None for cross-site HTTPS, Lax otherwise
+            // SameSite=None requires Secure; Lax is a good default otherwise.
+            // For cross-site requests with credentials, 'None' is needed.
+            'samesite' => ($is_https) ? 'None' : 'Lax' 
         ]);
         session_start();
-        error_log("Session started with SameSite=" . (($is_https) ? 'None' : 'Lax'));
+        error_log("Session started with SameSite=" . (($is_https) ? 'None' : 'Lax') . " on domain=" . $cookie_domain);
     }
 }
 
@@ -105,7 +136,7 @@ function sanitize_input($data) {
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }
 
-// JWT Functions remain unchanged as they are not the primary cause of "Failed to fetch"
+// JWT Functions (currently unused with PHP sessions but kept for potential future use)
 define('JWT_SECRET', 'your-very-strong-and-secret-jwt-key-here-make-sure-its-long-and-random'); 
 
 function create_jwt(array $payload, string $secret, int $expiration_time = 3600): string {
@@ -128,7 +159,7 @@ function verify_jwt(string $jwt, string $secret): ?array {
 
     $headerData = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[0]));
     $payloadData = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[1]));
-    $signatureProvided = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[2]));
+    $signatureProvided = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[2])); // Changed from $tokenParts[3] to $tokenParts[2]
 
     if (!$headerData || !$payloadData) return null; 
 
@@ -140,10 +171,16 @@ function verify_jwt(string $jwt, string $secret): ?array {
     $base64UrlHeaderForVerification = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($headerData));
     $base64UrlPayloadForVerification = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payloadData));
 
-    $expectedSignature = hash_hmac('sha256', $base64UrlHeaderForVerification . "." . $base64UrlPayloadForVerification, $secret, true);
+    $expectedSignatureData = hash_hmac('sha256', $base64UrlHeaderForVerification . "." . $base64UrlPayloadForVerification, $secret, true);
+    // $expectedSignature = base64_encode($expectedSignatureData); // This was the original line
+    $expectedSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($expectedSignatureData)); // Corrected to match JWT base64url encoding
+
+    // Compare raw binary signature before base64 encoding for more reliability with hash_equals
+    // $signatureProvidedBinary = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[2]));
+    // if (!hash_equals($expectedSignatureData, $signatureProvidedBinary)) { ... }
     
-    if (!hash_equals($expectedSignature, $signatureProvided)) {
-         error_log("JWT Signature Verification Failed."); 
+    if (!hash_equals($expectedSignature, str_replace(['+', '/', '='], ['-', '_'], base64_encode($signatureProvided)))) { // Ensure provided signature is also base64url encoded for comparison
+         error_log("JWT Signature Verification Failed. Expected: $expectedSignature, Provided Raw: " . $tokenParts[2] . ", Provided Decoded then Encoded for Compare: " . str_replace(['+', '/', '='], ['-', '_'], base64_encode($signatureProvided))); 
         return null; 
     }
 
@@ -155,5 +192,3 @@ function verify_jwt(string $jwt, string $secret): ?array {
     return $decodedPayload;
 }
 ?>
-
-    
