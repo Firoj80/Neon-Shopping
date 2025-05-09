@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, ShoppingCart, CheckCircle, ListPlus } from 'lucide-react';
+import { PlusCircle, Trash2, ShoppingCart, CheckCircle, ListPlus, Lock } from 'lucide-react';
 import { ItemCard } from '@/components/shopping/item-card';
 import { useAppContext } from '@/context/app-context';
 import type { ShoppingListItem as AppShoppingListItem, List } from '@/context/app-context';
@@ -25,29 +25,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ClientOnly from '@/components/client-only';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
-// Removed Auth related imports
-// import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import CreateFirstListPage from './create-first/page'; // Corrected import path to relative
+import CreateFirstListPage from './create-first/page'; 
+import { useToast } from '@/hooks/use-toast'; // For showing premium messages
+import Link from 'next/link'; // For linking to premium page
+
+
+const FREEMIUM_LIST_LIMIT = 3;
 
 export default function ShoppingListPage() {
-  // Hooks called unconditionally at the top level
   const { state, dispatch, isLoading } = useAppContext();
-  const router = useRouter(); // Get router
+  const { toast } = useToast();
+  const router = useRouter();
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AppShoppingListItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'current' | 'purchased'>('current'); // Default to current tab
-  const isClient = useClientOnly(); // Hook to ensure client-side execution
+  const [activeTab, setActiveTab] = useState<'current' | 'purchased'>('current');
+  const isClient = useClientOnly();
 
-  const { selectedListId, shoppingListItems, lists, userId } = state; // Added userId from state
+  const { selectedListId, shoppingListItems, lists, userId, isPremium } = state; // Added isPremium
 
    const selectedList: List | undefined = useMemo(() => {
        if (!Array.isArray(lists)) return undefined;
        return lists.find(list => list.id === selectedListId);
    }, [lists, selectedListId]);
 
-  // --- Event Handlers ---
   const handleAddItemClick = () => {
     if (!selectedListId) {
       console.error("No list selected, cannot add item.");
@@ -74,55 +76,32 @@ export default function ShoppingListPage() {
   };
 
   const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId' | 'userId'>) => {
-    if (!selectedListId) {
-      console.error("[handleSaveItem] Error: No list selected. Cannot save item.");
+    if (!selectedListId || !userId) {
+      console.error("[handleSaveItem] Error: No list selected or User ID not available.");
       setIsAddItemModalOpen(false);
       return;
     }
-    if (!userId) {
-      console.error("[handleSaveItem] Error: User ID not available. Cannot save item.");
-      setIsAddItemModalOpen(false);
-      return;
-    }
-
     const listDefaultCategory = selectedList?.defaultCategory || 'uncategorized';
-    // Use provided category, fallback to list default, then to 'uncategorized'
     const finalCategory = itemData.category && state.categories.some(c => c.id === itemData.category)
                             ? itemData.category
                             : listDefaultCategory && state.categories.some(c => c.id === listDefaultCategory)
                               ? listDefaultCategory
                               : 'uncategorized';
-
-
     const itemWithFinalDetails: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked'> = {
-      ...itemData,
-      listId: selectedListId,
-      userId: userId,
-      category: finalCategory,
-      price: itemData.price ?? 0, // Ensure price is a number
+      ...itemData, listId: selectedListId, userId: userId, category: finalCategory, price: itemData.price ?? 0,
     };
-
     if (!editingItem) {
-      console.log("[handleSaveItem] Dispatching ADD_SHOPPING_ITEM with payload:", itemWithFinalDetails);
       dispatch({ type: 'ADD_SHOPPING_ITEM', payload: itemWithFinalDetails });
     } else {
       const updatePayload: AppShoppingListItem = {
-        ...editingItem, // Start with existing item
-        ...itemData, // Apply changes
-        listId: selectedListId, // Ensure listId
-        userId: userId, // Ensure userId
-        category: finalCategory, // Apply final category
-        price: itemData.price ?? 0, // Ensure price
+        ...editingItem, ...itemData, listId: selectedListId, userId: userId, category: finalCategory, price: itemData.price ?? 0,
       };
-      console.log("[handleSaveItem] Dispatching UPDATE_SHOPPING_ITEM with payload:", updatePayload);
       dispatch({ type: 'UPDATE_SHOPPING_ITEM', payload: updatePayload });
     }
-
     setIsAddItemModalOpen(false);
     setEditingItem(null);
   };
 
-  // --- Data Memoization ---
   const itemsForSelectedList = useMemo(() => {
     if (!selectedListId || !Array.isArray(shoppingListItems)) return [];
     return shoppingListItems.filter(item => item.listId === selectedListId);
@@ -131,11 +110,8 @@ export default function ShoppingListPage() {
   const currentItems = useMemo(() => itemsForSelectedList.filter(item => !item.checked), [itemsForSelectedList]);
   const purchasedItems = useMemo(() => itemsForSelectedList.filter(item => item.checked), [itemsForSelectedList]);
 
-  // --- Render Logic ---
   const renderSkeletons = () => (
-    Array.from({ length: 3 }).map((_, index) => (
-      <CardSkeleton key={index} />
-    ))
+    Array.from({ length: 3 }).map((_, index) => <CardSkeleton key={index} />)
   );
 
   const CardSkeleton = () => (
@@ -171,18 +147,12 @@ export default function ShoppingListPage() {
     ) : (
         <div className="flex flex-col gap-2 pb-4">
             {items.map((item) => (
-                <ItemCard
-                key={item.id}
-                item={item}
-                onEdit={handleEditItem}
-                onDelete={handleDeleteItem}
-                />
+                <ItemCard key={item.id} item={item} onEdit={handleEditItem} onDelete={handleDeleteItem} />
             ))}
         </div>
     )
   );
 
-  // --- Loading and Initial State Handling ---
    if (!isClient || isLoading) {
        return (
            <div className="flex items-center justify-center h-full">
@@ -190,17 +160,13 @@ export default function ShoppingListPage() {
            </div>
        );
    }
+   
+   if (isClient && !isLoading && Array.isArray(lists) && lists.length === 0) {
+    return <CreateFirstListPage />;
+   }
 
-   // --- Redirect to Create First List if needed (handled by AppLayout now) ---
-   // if (isClient && !isLoading && lists.length === 0) {
-   //  return <CreateFirstListPage />;
-   // }
-
-  // --- Render the main shopping list UI ---
   return (
     <div className="flex flex-col h-full">
-
-        {/* Sticky Header Section */}
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
             <BudgetCard />
             <ListsCarousel />
@@ -218,7 +184,6 @@ export default function ShoppingListPage() {
             </ClientOnly>
         </div>
 
-       {/* Scrollable Item List Area */}
         <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
           {!selectedListId && Array.isArray(lists) && lists.length > 0 ? (
             <div className="flex items-center justify-center h-full text-center py-10">
@@ -226,7 +191,7 @@ export default function ShoppingListPage() {
             </div>
            ) : (
              <ClientOnly>
-                 <Tabs value={activeTab} className="w-full"> {/* Ensure Tabs context wraps Content */}
+                 <Tabs value={activeTab} className="w-full"> 
                      <TabsContent value="current" className="mt-0 pt-2">
                          {renderItemList(currentItems, "No current items in this list. Add some!")}
                      </TabsContent>
@@ -238,24 +203,36 @@ export default function ShoppingListPage() {
            )}
         </div>
 
-        {/* Add Item Floating Action Button */}
         <Button
-            onClick={handleAddItemClick}
+            onClick={() => {
+                if (!isPremium && lists.length >= FREEMIUM_LIST_LIMIT && !selectedListId) { // Check if adding a *new* list would exceed limit
+                     toast({
+                         title: "List Limit Reached",
+                         description: (
+                            <div className="flex flex-col gap-2">
+                               <span>You've reached the freemium limit of {FREEMIUM_LIST_LIMIT} lists.</span>
+                               <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
+                                   <Link href="/premium">Upgrade to Premium</Link>
+                               </Button>
+                            </div>
+                        ),
+                         variant: "destructive",
+                     });
+                } else {
+                    handleAddItemClick();
+                }
+            }}
             size="lg"
             className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-6 md:right-8 z-30 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
-            disabled={!selectedListId || isLoading}
+            disabled={!selectedListId || isLoading || (!isPremium && lists.length >= FREEMIUM_LIST_LIMIT && !selectedListId) }
         >
-            <PlusCircle className="h-6 w-6" />
+            {!isPremium && lists.length >= FREEMIUM_LIST_LIMIT && !selectedListId ? <Lock className="h-6 w-6" /> : <PlusCircle className="h-6 w-6" />}
         </Button>
 
-        {/* Modals */}
         <AddEditItemModal
             isOpen={isAddItemModalOpen}
-            onClose={() => {
-                setIsAddItemModalOpen(false);
-                setEditingItem(null);
-            }}
+            onClose={() => { setIsAddItemModalOpen(false); setEditingItem(null); }}
             onSave={handleSaveItem}
             itemData={editingItem}
             currentListId={selectedListId}

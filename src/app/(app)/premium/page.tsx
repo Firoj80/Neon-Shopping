@@ -5,8 +5,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown } from 'lucide-react';
+import { useAppContext } from '@/context/app-context'; // Import AppContext
+import { useToast } from '@/hooks/use-toast'; // Import useToast
+
 
 export default function PremiumPage() {
+  const { state, dispatch } = useAppContext(); // Get state and dispatch from AppContext
+  const { toast } = useToast(); // For showing notifications
+
   const premiumFeatures = [
     { text: "Ad-Free Experience", icon: <XCircle className="h-5 w-5 text-red-500" /> },
     { text: "Full Dashboard Access with Advanced Stats", icon: <BarChart2 className="h-5 w-5 text-primary" /> },
@@ -27,6 +33,23 @@ export default function PremiumPage() {
     { text: "Default Theme Only", icon: <Palette className="h-5 w-5 text-yellow-500" /> },
   ];
 
+  const handleUpgrade = () => {
+    dispatch({ type: 'SET_PREMIUM_STATUS', payload: true });
+    toast({
+      title: "Switched to Premium!",
+      description: "Premium features are now enabled (demo).",
+    });
+  };
+
+  const handleDowngrade = () => {
+    dispatch({ type: 'SET_PREMIUM_STATUS', payload: false });
+    toast({
+      title: "Switched to Freemium",
+      description: "Premium features are now disabled (demo).",
+      variant: "destructive"
+    });
+  };
+
   return (
     <div className="space-y-8 p-2 sm:p-4 md:p-6 max-w-4xl mx-auto">
       <header className="text-center space-y-2">
@@ -36,6 +59,14 @@ export default function PremiumPage() {
           Supercharge your shopping and budgeting experience with exclusive features.
         </p>
       </header>
+
+      <Card className="bg-card border-border/30 shadow-md glow-border text-center p-4">
+        <CardTitle className="text-lg text-neonText">Current Status</CardTitle>
+        <CardDescription className={`text-xl font-bold ${state.isPremium ? 'text-green-500' : 'text-yellow-500'}`}>
+          {state.isPremium ? 'Premium Active' : 'Freemium'}
+        </CardDescription>
+      </Card>
+
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="flex flex-col gap-6"> {/* Wrapper for Premium Card and Button */}
@@ -58,19 +89,27 @@ export default function PremiumPage() {
             </CardContent>
           </Card>
 
-          <div className="text-center"> {/* Moved button container here */}
+          <div className="text-center space-y-3"> {/* Moved button container here */}
             <Button
               size="lg"
-              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon-lg hover:shadow-xl hover:shadow-secondary/60 transition-all duration-300 ease-in-out glow-border text-base px-8 py-3"
-              onClick={() => {
-                // Placeholder for actual upgrade logic
-                alert("Upgrade to Premium clicked! (Implement payment flow here)");
-              }}
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon-lg hover:shadow-xl hover:shadow-secondary/60 transition-all duration-300 ease-in-out glow-border text-base px-8 py-3 w-full sm:w-auto"
+              onClick={handleUpgrade}
+              disabled={state.isPremium}
             >
               <Crown className="mr-2 h-5 w-5" /> Upgrade to Premium Now
             </Button>
+             {state.isPremium && (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive/80 glow-border-inner w-full sm:w-auto"
+                    onClick={handleDowngrade}
+                >
+                   Downgrade to Freemium (Test)
+                </Button>
+            )}
             <p className="text-xs text-muted-foreground mt-3">
-              Secure payment processing. Cancel anytime.
+              Secure payment processing. Cancel anytime. (Demo)
             </p>
           </div>
         </div>

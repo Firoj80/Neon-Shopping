@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select'; // Keep Select for category reassignment
-import { useAppContext } from '@/context/app-context';
-import type { Category } from '@/context/app-context'; // Only need Category type
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
+import { useAppContext, DEFAULT_CATEGORIES } from '@/context/app-context'; // Import DEFAULT_CATEGORIES
+import type { Category } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Layers, Trash2, Edit, PlusCircle, Save, X } from 'lucide-react'; // Removed Banknote
+import { Layers, Trash2, Edit, PlusCircle, Save, X, Lock } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,13 +23,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import Link from 'next/link'; // For linking to premium page
+
+const FREEMIUM_CUSTOM_CATEGORY_LIMIT = 2; // Allow 2 custom categories on top of defaults
 
 export default function SettingsPage() {
   const { state, dispatch, isLoading: contextLoading } = useAppContext();
   const { toast } = useToast();
+  const { categories: currentCategories, isPremium } = state; // Get premium status
 
-  // Removed currency state and effects
-  const [categories, setCategories] = useState<Category[]>(state.categories);
+  const [categories, setCategories] = useState<Category[]>(currentCategories);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
@@ -37,11 +40,32 @@ export default function SettingsPage() {
   const [reassignCategoryId, setReassignCategoryId] = useState<string>('uncategorized');
 
   useEffect(() => {
-    setCategories(state.categories);
-  }, [state.categories]);
+    setCategories(currentCategories);
+  }, [currentCategories]);
+
+  const canAddMoreCategories = useMemo(() => {
+    if (isPremium) return true;
+    const customCategoriesCount = categories.filter(cat => !DEFAULT_CATEGORIES.some(dc => dc.id === cat.id)).length;
+    return customCategoriesCount < FREEMIUM_CUSTOM_CATEGORY_LIMIT;
+  }, [categories, isPremium]);
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canAddMoreCategories) {
+        toast({
+            title: "Category Limit Reached",
+            description: (
+                <div className="flex flex-col gap-2">
+                   <span>You've reached the freemium limit for custom categories.</span>
+                   <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
+                       <Link href="/premium">Upgrade to Premium</Link>
+                   </Button>
+                </div>
+            ),
+            variant: "destructive",
+        });
+        return;
+    }
     if (newCategoryName.trim() === '') {
       toast({ title: "Error", description: "Category name cannot be empty.", variant: "destructive" });
       return;
@@ -88,19 +112,14 @@ export default function SettingsPage() {
 
   const confirmDeleteCategory = () => {
     if (!categoryToDelete) return;
-
     const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id);
     const finalReassignId = itemsWithCategory.length > 0 ? (reassignCategoryId || 'uncategorized') : undefined;
-
     dispatch({
       type: 'REMOVE_CATEGORY',
-      payload: {
-        categoryId: categoryToDelete.id,
-        reassignToId: finalReassignId
-      }
+      payload: { categoryId: categoryToDelete.id, reassignToId: finalReassignId }
     });
     setCategoryToDelete(null);
-    setReassignCategoryId('uncategorized'); // Reset selection
+    setReassignCategoryId('uncategorized');
     toast({ title: "Success", description: "Category deleted." });
   };
 
@@ -109,7 +128,7 @@ export default function SettingsPage() {
     return categories.filter(c => c.id !== categoryToDelete.id);
   }, [categories, categoryToDelete]);
 
-  const isLoading = contextLoading; // Only rely on context loading now
+  const isLoading = contextLoading;
 
   if (isLoading) {
     return <SettingsPageSkeleton />;
@@ -118,9 +137,6 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
-
-      {/* Currency Section Removed */}
-
       <Card className="bg-card border-secondary/30 shadow-neon glow-border">
         <CardHeader>
           <CardTitle className="text-primary flex items-center gap-2">
@@ -138,13 +154,22 @@ export default function SettingsPage() {
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="e.g., Clothing"
                 className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
+                disabled={!canAddMoreCategories}
               />
             </div>
-            <Button type="submit" size="icon" className="bg-primary text-primary-foreground h-10 w-10 shrink-0 glow-border-inner">
-              <PlusCircle className="h-5 w-5" />
+            <Button type="submit" size="icon" className="bg-primary text-primary-foreground h-10 w-10 shrink-0 glow-border-inner" disabled={!canAddMoreCategories}>
+              {canAddMoreCategories ? <PlusCircle className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
               <span className="sr-only">Add Category</span>
             </Button>
           </form>
+          {!canAddMoreCategories && (
+            <p className="text-xs text-yellow-500 text-center mt-2">
+                You've reached the custom category limit for freemium users.
+                <Button variant="link" asChild className="p-0 h-auto text-secondary hover:text-secondary/80 ml-1">
+                    <Link href="/premium">Upgrade to Premium</Link>
+                </Button> for unlimited categories.
+            </p>
+          )}
           <div className="space-y-2 pt-4">
             <h4 className="text-sm font-medium text-muted-foreground">Your Categories:</h4>
             {categories.length > 0 ? (
@@ -180,8 +205,8 @@ export default function SettingsPage() {
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-900/30 glow-border-inner" onClick={() => handleDeleteCategoryClick(category)}>
-                                  <Trash2 className="h-4 w-4" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-900/30 glow-border-inner" onClick={() => handleDeleteCategoryClick(category)} disabled={DEFAULT_CATEGORIES.some(dc => dc.id === category.id) && !isPremium && category.id !== 'uncategorized'}> {/* Disable delete for default non-uncategorized if not premium */}
+                                  {DEFAULT_CATEGORIES.some(dc => dc.id === category.id) && !isPremium && category.id !== 'uncategorized' ? <Lock className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
                                   <span className="sr-only">Delete</span>
                                 </Button>
                               </AlertDialogTrigger>
@@ -252,6 +277,7 @@ export default function SettingsPage() {
   );
 }
 
+// ... (SettingsPageSkeleton remains the same)
 const SettingsPageSkeleton: React.FC = () => (
   <div className="space-y-6 animate-pulse">
     <Skeleton className="h-8 w-1/4" />
