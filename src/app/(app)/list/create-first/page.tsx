@@ -3,10 +3,22 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ListPlus, PlusCircle } from 'lucide-react';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
+import { useAuth } from '@/context/auth-context'; // Import useAuth
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 // This component specifically handles the "Create First List" scenario
 export default function CreateFirstListPage() {
     const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
+    const { isAuthenticated } = useAuth(); // Get authentication state
+    const router = useRouter();
+
+    const handleCreateListClick = () => {
+        if (isAuthenticated) {
+            setIsAddListModalOpen(true); // Open modal if logged in
+        } else {
+            router.push('/auth'); // Redirect to login/signup if not logged in
+        }
+    };
 
     return (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center py-10">
@@ -16,16 +28,19 @@ export default function CreateFirstListPage() {
                 Welcome to Neon Shopping! Get started by creating your first shopping list to organize your items and track your budget.
             </p>
             <Button
-                onClick={() => setIsAddListModalOpen(true)}
+                onClick={handleCreateListClick} // Use the new handler
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-neon glow-border"
                 size="lg"
             >
                 <PlusCircle className="mr-2 h-5 w-5" /> Create New List
             </Button>
-            <AddEditListModal
-                isOpen={isAddListModalOpen}
-                onClose={() => setIsAddListModalOpen(false)}
-            />
+            {/* Conditionally render modal only if authenticated user might open it */}
+            {isAuthenticated && (
+                <AddEditListModal
+                    isOpen={isAddListModalOpen}
+                    onClose={() => setIsAddListModalOpen(false)}
+                />
+            )}
         </div>
     );
 }

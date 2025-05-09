@@ -1,56 +1,50 @@
-"use client"; // This must be a client component because of AppLayout's client-side logic
+"use client"; // This must be a client component for AuthProvider and other client hooks
 
 import { Inter } from 'next/font/google';
-import type { Metadata } from 'next';
-// Removed usePathname import, no longer needed here
-// Removed individual icon imports, handled in AppLayout
+// Removed usePathname as it's now handled within AppLayout or context
+// import type { Metadata } from 'next'; // Metadata export removed
 import { cn } from '@/lib/utils';
 import './globals.css';
-import { Providers } from './providers'; // Import Providers
+import { Providers } from './providers'; // Providers includes AppProvider
 import { AppLayout } from '@/components/layout/app-layout';
-// Removed SidebarProvider import
 import { Toaster } from "@/components/ui/toaster";
-// Removed AuthProvider import
+import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
 import ClientOnly from '@/components/client-only'; // Import ClientOnly
 
-
-const inter = Inter({ // Keep font setup
+const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
 });
 
-// Metadata must be defined in a server component or outside the client component
-// We'll keep the component as client due to AppLayout, metadata might need adjustment
-// if strict separation is required, but this works for now.
-/*
-export const metadata: Metadata = {
-  title: 'Neon Shopping',
-  description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
-  icons: [{ rel: 'icon', url: '/favicon.ico' }],
-};
-*/
+// Metadata cannot be exported from a Client Component.
+// It should be defined in a Server Component or moved to a dedicated metadata file.
+// export const metadata: Metadata = {
+//   title: 'Neon Shopping',
+//   description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
+//   icons: [{ rel: 'icon', url: '/favicon.ico' }],
+// };
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={cn(
-          inter.variable, // Use the correct font variable
-          'font-sans antialiased min-h-screen flex flex-col bg-background', // Use font-sans
+          inter.variable,
+          'font-sans antialiased min-h-screen flex flex-col bg-background',
         )}
       >
-        <Providers> {/* Providers includes AppProvider */}
-           {/* Removed SidebarProvider wrap */}
+        <Providers> {/* QueryClientProvider and AppProvider are here */}
+           <AuthProvider> {/* Wrap with AuthProvider */}
+               {/* AppLayout now handles conditional rendering based on auth */}
                 <AppLayout>
                   {children}
                 </AppLayout>
               <Toaster />
-           {/* Removed SidebarProvider wrap */}
+           </AuthProvider>
         </Providers>
       </body>
     </html>
