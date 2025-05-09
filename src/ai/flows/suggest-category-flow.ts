@@ -59,7 +59,7 @@ export async function suggestCategory(
 
 const suggestCategoryPrompt = ai.definePrompt({
   name: 'suggestCategoryPrompt',
-  model: 'gemini-1.5-flash-latest', // Updated model name
+  model: 'googleai/gemini-1.5-flash-latest', // Updated model name with 'googleai/' prefix
   input: { schema: SuggestCategoryInputSchema },
   output: { schema: SuggestCategoryOutputSchema },
   prompt: `You are an intelligent assistant that helps categorize shopping list items.
@@ -98,3 +98,4 @@ const suggestCategoryFlow = ai.defineFlow(
     return { suggestedCategoryId: uncategorizedCategory ? uncategorizedCategory.id : (input.availableCategories[0]?.id || '') };
   }
 );
+
