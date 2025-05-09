@@ -43,8 +43,10 @@ export default function StatsPage() {
     });
     const [selectedListId, setSelectedListId] = useState<ListFilter>(null);
 
+     // Update date range when preset changes
     useEffect(() => {
-        if (timePeriodPreset === 'custom' || !dateRange) return;
+        if (timePeriodPreset === 'custom' || !dateRange) return; // Don't overwrite custom range
+
         const now = new Date();
         let startDate: Date;
         const endDate = endOfDay(now);
@@ -72,8 +74,8 @@ export default function StatsPage() {
         const allShoppingItems = state.shoppingListItems;
 
         return allShoppingItems.filter(item => {
-            if (!item.checked) return false;
-            if (selectedListId !== null && item.listId !== selectedListId) return false;
+            if (!item.checked) return false; // Only purchased items
+            if (selectedListId !== null && item.listId !== selectedListId) return false; // List Filter
 
             const itemDate = new Date(item.dateAdded);
             const isWithinDate = isWithinInterval(itemDate, { start: startDate, end: endDate });
@@ -326,7 +328,7 @@ export default function StatsPage() {
         csvContent += "Expense Trend Data,\r\n";
         csvContent += '"Date","Total Spent"\r\n'; // Changed from backticks to double quotes
         processedTrendData.forEach(item => {
-            csvContent += `"${item.date}","${item.total}"\n`; // Changed \r\n to \n
+            csvContent += "\"" + item.date + "\",\"" + item.total + "\"\n"; // Use standard string concatenation
         });
         csvContent += "\r\n";
 
@@ -347,6 +349,7 @@ export default function StatsPage() {
 
     return (
          <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full">
+             {/* Header */}
              <div className="flex justify-between items-center">
                  <h1 className="text-xl sm:text-2xl font-bold text-primary">Expense Dashboard</h1>
                 <div className="flex gap-2">
@@ -359,6 +362,7 @@ export default function StatsPage() {
                 </div>
              </div>
 
+             {/* Filter Section */}
              <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border">
                  <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                       <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2 mb-2 sm:mb-0">
@@ -366,6 +370,7 @@ export default function StatsPage() {
                       </CardTitle>
                  </CardHeader>
                   <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
+                     {/* List Filter */}
                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
@@ -384,6 +389,7 @@ export default function StatsPage() {
                              </SelectContent>
                          </Select>
                      </div>
+                     {/* Time Period Preset */}
                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
                           <Select value={timePeriodPreset} onValueChange={(value: TimePeriodPreset) => setTimePeriodPreset(value)}>
                               <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary [&[data-state=open]]:border-primary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
@@ -398,6 +404,7 @@ export default function StatsPage() {
                              </SelectContent>
                          </Select>
                      </div>
+                     {/* Date Range Picker */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
                           <DateRangePicker
                              range={dateRange}
@@ -406,6 +413,7 @@ export default function StatsPage() {
                               align="start"
                           />
                       </div>
+                      {/* Category Filter */}
                        <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
@@ -434,8 +442,10 @@ export default function StatsPage() {
                  </CardContent>
              </Card>
 
+             {/* Main Content Area (Scrollable) */}
              <div className="flex-grow overflow-y-auto mt-4">
                  <div className="space-y-4 sm:space-y-6 pb-6">
+                     {/* Summary Cards */}
                      <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                          <Card className="bg-card border-primary/30 shadow-neon glow-border-inner">
                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
@@ -485,6 +495,7 @@ export default function StatsPage() {
                          </Card>
                      </div>
 
+                     {/* Charts */}
                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                          <Card className="bg-card border-primary/30 shadow-neon lg:col-span-1 glow-border-inner">
                              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
@@ -569,6 +580,7 @@ export default function StatsPage() {
 
 const StatsPageSkeleton: React.FC = () => (
     <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">
+         {/* Header Skeleton */}
          <div className="flex justify-between items-center">
              <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" />
              <div className="flex gap-2">
@@ -577,9 +589,10 @@ const StatsPageSkeleton: React.FC = () => (
              </div>
          </div>
 
+        {/* Filter Section Skeleton */}
         <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                 <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" />
+                 <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
@@ -589,8 +602,10 @@ const StatsPageSkeleton: React.FC = () => (
             </CardContent>
         </Card>
 
-        <div className="flex-grow overflow-y-auto mt-4">
+        {/* Main Content Area Skeleton */}
+         <div className="flex-grow overflow-y-auto mt-4">
             <div className="space-y-4 sm:space-y-6 pb-6">
+                {/* Summary Cards Skeleton */}
                 <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                     {[1, 2, 3, 4].map((i) => (
                         <Card key={i} className="bg-card border-border/20 shadow-md glow-border-inner">
@@ -606,6 +621,7 @@ const StatsPageSkeleton: React.FC = () => (
                     ))}
                 </div>
 
+                {/* Charts Skeleton */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <Card className="bg-card border-border/20 shadow-md lg:col-span-1 glow-border-inner">
                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
@@ -633,7 +649,7 @@ const StatsPageSkeleton: React.FC = () => (
                     </Card>
                 </div>
             </div>
-        </div>
+         </div>
     </div>
 );
 
