@@ -1,34 +1,17 @@
+
 "use client";
 
 import React, { useState, useEffect, Fragment, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  ShoppingCart,
-  LayoutDashboard,
-  History,
-  Settings,
-  Info,
-  Mail,
-  ShieldCheck as Policy,
-  FileText as ArticleIcon,
-  Star,
-  AppWindow as AppsIcon,
-  Menu as MenuIcon,
-  X,
-  Palette,
-  UserCircle2 as ProfileIcon, // Using UserCircle2 for profile
-  LogOut as LogoutIcon,
-} from 'lucide-react';
-import { Button, buttonVariants } from '../ui/button';
-import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
+
 import {
   Sidebar,
   SidebarHeader,
@@ -39,177 +22,125 @@ import {
   SidebarFooter,
   SidebarInset,
   SidebarSeparator,
-  SidebarSheetContent
+  SidebarSheetContent // Use the custom SidebarSheetContent
 } from '@/components/ui/sidebar';
+
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Menu as MenuIcon, // Renamed Menu to avoid conflict
+  ShoppingCart,
+  LayoutDashboard,
+  History,
+  Settings,
+  Palette, // For Themes
+  Info,
+  Mail,
+  ShieldCheck as PolicyIcon, // Renamed for clarity
+  FileText as ArticleIcon, // Renamed for clarity
+  Star,
+  AppWindow as AppsIcon, // Corrected AppsIcon to AppWindow
+  X,
+  Crown // For Premium
+} from 'lucide-react';
+
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from '@/context/auth-context'; // Import useAuth
-import { useClientOnly } from '@/hooks/use-client-only';
-
-
-// --- Profile Dropdown Content ---
-interface ProfileDropdownProps {
-  onLinkClick?: (href: string) => void;
-}
-
-const ProfileDropdownContent: React.FC<ProfileDropdownProps> = ({ onLinkClick }) => {
-  const { isAuthenticated, logout, user } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const profileMenuItems = [
-    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/history', label: 'History', icon: History },
-    { href: '/settings', label: 'Settings', icon: Settings },
-    { href: '/themes', label: 'Themes', icon: Palette },
-  ];
-
-  const handleLogout = () => {
-    logout();
-    // Optional: redirect to home or login page after logout
-    router.push('/auth');
-  };
-
-  const handleProfileLinkClick = (href: string) => {
-    if (onLinkClick) onLinkClick(href);
-    router.push(href);
-  };
-
-  return (
-    <DropdownMenuContent className="w-56 bg-card border-primary/30 shadow-neon glow-border-inner" align="end">
-      {isAuthenticated && user && (
-        <>
-          <DropdownMenuLabel className="text-neonText/80 px-2 py-1.5 text-sm font-semibold">
-            Hello, {user.name || 'User'}
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-border/50" />
-        </>
-      )}
-      {profileMenuItems.map((item) => (
-        <DropdownMenuItem
-          key={item.href}
-          onClick={() => handleProfileLinkClick(item.href)}
-          className={cn(
-            "flex items-center gap-2 cursor-pointer hover:bg-primary/10 focus:bg-primary/20 text-neonText hover:text-primary py-1.5 px-2 text-sm",
-            pathname === item.href && "bg-primary/20 text-primary"
-          )}
-        >
-          <item.icon className="h-4 w-4" />
-          <span>{item.label}</span>
-        </DropdownMenuItem>
-      ))}
-      <DropdownMenuSeparator className="bg-border/50" />
-      {isAuthenticated ? (
-        <DropdownMenuItem
-          onClick={handleLogout}
-          className="flex items-center gap-2 cursor-pointer hover:bg-destructive/20 focus:bg-destructive/30 text-red-400 hover:text-red-300 py-1.5 px-2 text-sm"
-        >
-          <LogoutIcon className="h-4 w-4" />
-          <span>Logout</span>
-        </DropdownMenuItem>
-      ) : (
-        <DropdownMenuItem
-          onClick={() => router.push('/auth')}
-          className="flex items-center gap-2 cursor-pointer hover:bg-primary/10 focus:bg-primary/20 text-neonText hover:text-primary py-1.5 px-2 text-sm"
-        >
-          <ProfileIcon className="h-4 w-4" />
-          <span>Login / Sign Up</span>
-        </DropdownMenuItem>
-      )}
-    </DropdownMenuContent>
-  );
-};
-
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false); // State for Sheet open/close
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Left Side: Hamburger Menu Trigger */}
-       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+       <Sheet open={isOpen} onOpenChange={setIsOpen}>
          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
-                <AnimatePresence initial={false} mode="wait">
-                <motion.div
-                    key={isSheetOpen ? "x" : "menu"}
-                    initial={{ rotate: isSheetOpen ? -90 : 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: isSheetOpen ? 90 : -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                >
-                    {isSheetOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-                </motion.div>
-                </AnimatePresence>
-                <span className="sr-only">Toggle Sidebar</span>
-            </Button>
-          </SheetTrigger>
+           <Button variant="ghost" size="icon" className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+             <AnimatePresence initial={false} mode="wait">
+               <motion.div
+                 key={isOpen ? "x" : "menu"}
+                 initial={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
+                 animate={{ rotate: 0, opacity: 1 }}
+                 exit={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
+                 transition={{ duration: 0.2 }}
+               >
+                 {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+               </motion.div>
+             </AnimatePresence>
+             <span className="sr-only">Toggle Sidebar</span>
+           </Button>
+         </SheetTrigger>
          <SidebarSheetContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground">
-           <OtherLinksMenuContent onLinkClick={() => setIsSheetOpen(false)} isMobile={true}/>
+           <MainMenuContent onLinkClick={() => setIsOpen(false)} isMobile={true}/>
          </SidebarSheetContent>
        </Sheet>
 
       {/* Center: App Name/Logo */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
            <ShoppingCart className="w-6 h-6" />
            <ClientOnly><span>Neon Shopping</span></ClientOnly>
         </Link>
+      </div>
 
-      {/* Right Side: Profile Icon Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-primary/10">
-            <ProfileIcon className="h-5 w-5" />
-            <span className="sr-only">Open user menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <ProfileDropdownContent />
-      </DropdownMenu>
+
+      {/* Right Side: Placeholder for potential actions or leave empty for centered title */}
+      <div className="w-10"></div> {/* This acts as a spacer to balance the menu icon */}
     </header>
   );
 };
 
 
-// --- Other Links Menu Content (for Mobile Sheet and Desktop Sidebar) ---
-interface OtherLinksMenuContentProps {
+// --- Main Menu Content (for Mobile Sheet and Desktop Sidebar) ---
+interface MainMenuContentProps {
   onLinkClick?: () => void;
   isMobile?: boolean;
 }
-const OtherLinksMenuContent: React.FC<OtherLinksMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
+const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
+  const { logout, isAuthenticated } = useAuth();
 
-  const handleLinkClick = useCallback((href: string, e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
+  const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e) e.preventDefault();
     if (onLinkClick) {
       onLinkClick();
     }
     setTimeout(() => {
       router.push(href);
-    }, isMobile ? 150 : 0);
+    }, isMobile ? 150 : 0); // Delay for sheet close animation on mobile
   }, [onLinkClick, router, isMobile]);
 
-  const otherMenuItems = [
+  const handleLogout = () => {
+    if (onLinkClick) onLinkClick(); // Close sheet if on mobile
+    logout();
+    router.push('/auth'); // Redirect to auth page after logout
+  };
+
+
+  const mainMenuItems = [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/themes', label: 'Themes', icon: Palette },
+    { href: '/premium', label: 'Go Premium', icon: Crown }, // Added Premium link
+  ];
+
+  const secondaryMenuItems = [
     { href: '/about', label: 'About Us', icon: Info },
     { href: '/contact', label: 'Contact Us', icon: Mail },
-    { href: '/privacy', label: 'Privacy Policy', icon: Policy },
+    { href: '/privacy', label: 'Privacy Policy', icon: PolicyIcon },
     { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
     { href: '/rate', label: 'Rate App', icon: Star },
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
   ];
 
-  const renderMenuItem = (item: typeof otherMenuItems[number]) => {
+  const renderMenuItem = (item: typeof mainMenuItems[0] | typeof secondaryMenuItems[0]) => {
     const clickHandler = (e: React.MouseEvent<HTMLAnchorElement>) => {
       handleLinkClick(item.href, e);
     };
@@ -220,7 +151,7 @@ const OtherLinksMenuContent: React.FC<OtherLinksMenuContentProps> = ({ onLinkCli
         isActive={pathname === item.href}
         className={cn(
           "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out",
-          "text-neonText hover:text-white",
+          "text-neonText hover:text-white", // Use neonText for default
           "hover:border-secondary/50 hover:shadow-neon focus:shadow-neon-lg glow-border-inner",
           pathname === item.href
             ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30"
@@ -252,11 +183,29 @@ const OtherLinksMenuContent: React.FC<OtherLinksMenuContentProps> = ({ onLinkCli
       </SidebarHeader>
       <SidebarContent className="p-2 flex-grow flex flex-col">
         <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-          {otherMenuItems.map(renderMenuItem)}
+          {mainMenuItems.map(renderMenuItem)}
+          <SidebarSeparator className="my-2" />
+          {secondaryMenuItems.map(renderMenuItem)}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-sidebar-border shrink-0">
-        <p className="text-xs text-muted-foreground text-center">© {new Date().getFullYear()} Neon Shopping</p>
+       <SidebarFooter className="p-4 border-t border-sidebar-border shrink-0">
+        {isAuthenticated ? (
+          <Button
+            variant="outline"
+            className="w-full justify-center text-red-400 hover:text-red-300 hover:bg-destructive/20 border-red-500/50 glow-border-inner"
+            onClick={handleLogout}
+          >
+            <X className="mr-2 h-4 w-4" /> Logout
+          </Button>
+        ) : (
+           <Button
+            variant="outline"
+            className="w-full justify-center text-primary hover:text-primary/80 hover:bg-primary/10 border-primary/50 glow-border-inner"
+            onClick={() => handleLinkClick('/auth')}
+           >
+            Login / Sign Up
+           </Button>
+        )}
       </SidebarFooter>
     </>
   );
@@ -264,41 +213,44 @@ const OtherLinksMenuContent: React.FC<OtherLinksMenuContentProps> = ({ onLinkCli
 
 
 // --- Main AppLayoutContent Component ---
-const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface AppLayoutContentProps {
+  children: React.ReactNode;
+}
+
+const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   const appContext = useAppContext();
-  const authState = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth(); // Get auth state
   const router = useRouter();
   const pathname = usePathname();
-  const isClientMounted = useClientOnly();
-
-  const [isLoading, setIsLoading] = useState(true); // Combined loading state
+  const [isClientMounted, setIsClientMounted] = useState(false);
 
   useEffect(() => {
-    // Combine loading states from auth and app context
-    setIsLoading(appContext.isLoading || authState.isLoading);
-  }, [appContext.isLoading, authState.isLoading]);
+    setIsClientMounted(true);
+  }, []);
+
+  const isLoading = appContext.isLoading || authLoading; // Combined loading state
 
    // --- Redirect Logic ---
+   // Moved inside useEffect to prevent rendering during rendering
    useEffect(() => {
-     if (isClientMounted && !isLoading) { // Ensure client mounted and all loading is done
-        if (!authState.isAuthenticated && pathname !== '/auth') {
-             console.log("User not authenticated, redirecting to /auth from:", pathname);
-             router.replace('/auth');
-        } else if (authState.isAuthenticated) {
-            const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
-            if (!hasLists && pathname !== '/list/create-first' && pathname !== '/auth') {
-                console.log("User authenticated, no lists, redirecting to /list/create-first from:", pathname);
-                router.replace('/list/create-first');
-            } else if (hasLists && pathname === '/list/create-first') {
-                console.log("User authenticated, has lists, redirecting to /list from /list/create-first");
-                router.replace('/list');
-            } else if (pathname === '/auth') { // If authenticated and somehow on /auth, redirect to /list
-                 console.log("User authenticated, on /auth, redirecting to /list");
-                 router.replace('/list');
-            }
-        }
+     if (isClientMounted && !isLoading) {
+       const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+       if (isAuthenticated) {
+         if (!hasLists && pathname !== '/list/create-first' && pathname !== '/auth') {
+           router.replace('/list/create-first');
+         } else if (hasLists && pathname === '/list/create-first') {
+           router.replace('/list');
+         } else if (pathname === '/auth') {
+           router.replace('/list');
+         }
+       } else { // Not authenticated
+         if (pathname !== '/auth') {
+           router.replace('/auth');
+         }
+       }
      }
-   }, [isClientMounted, isLoading, authState.isAuthenticated, appContext.state.lists, pathname, router]);
+   }, [isClientMounted, isLoading, isAuthenticated, appContext.state.lists, pathname, router]);
+
 
 
   if (!isClientMounted || isLoading) {
@@ -319,39 +271,13 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
 
   // --- Render full layout ---
   return (
-     <Fragment>
+     <>
        <MobileHeader />
 
-        {/* Desktop Header (Simplified - No full sidebar, only profile menu) */}
-        <header className="sticky top-0 z-30 hidden md:flex items-center justify-between h-14 px-6 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-                <ShoppingCart className="w-6 h-6" />
-                <ClientOnly><span>Neon Shopping</span></ClientOnly>
-            </Link>
-            <div className="flex items-center gap-4">
-                 {/* Desktop Sidebar for "Other" links - Can be a different component or removed if not needed */}
-                 <Sheet>
-                     <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-primary/10">
-                            <MenuIcon className="h-5 w-5" />
-                            <span className="sr-only">Open Menu</span>
-                        </Button>
-                     </SheetTrigger>
-                     <SidebarSheetContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground">
-                        <OtherLinksMenuContent isMobile={true}/> {/* Re-use for consistency */}
-                     </SidebarSheetContent>
-                 </Sheet>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-primary/10 rounded-full">
-                        <ProfileIcon className="h-6 w-6" />
-                        <span className="sr-only">Open user menu</span>
-                    </Button>
-                    </DropdownMenuTrigger>
-                    <ProfileDropdownContent />
-                </DropdownMenu>
-            </div>
-        </header>
+        {/* Desktop Sidebar */}
+        <Sidebar className="hidden md:flex md:flex-col">
+         <MainMenuContent />
+        </Sidebar>
 
         {/* Main Content Area */}
         <SidebarInset>
@@ -359,7 +285,7 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
             {children}
           </main>
         </SidebarInset>
-     </Fragment>
+     </>
   );
 }
 
