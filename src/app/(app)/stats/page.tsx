@@ -56,7 +56,7 @@ export default function StatsPage() {
             case '30d': default: startDate = startOfDay(subDays(now, 29)); break;
         }
         setDateRange({ from: startDate, to: endDate });
-    }, [timePeriodPreset]);
+    }, [timePeriodPreset, dateRange]); // Added dateRange to dependency array
 
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
@@ -322,11 +322,11 @@ export default function StatsPage() {
         csvContent += `"Avg Spend / Day (in range)","${summaryStats.averagePerDayInRange}",\r\n`;
         csvContent += `"Avg Spend / Spending Day","${summaryStats.averagePerSpendingDay}",\r\n`;
         csvContent += `"Highest Spend Day","${summaryStats.highestSpendDay ? `${summaryStats.highestSpendDay.total} on ${summaryStats.highestSpendDay.date}` : 'N/A'}",\r\n`;
-        csvContent += `"Total Items Purchased","${summaryStats.totalItems}",\r\n\r\n";
+        csvContent += `"Total Items Purchased","${summaryStats.totalItems}",\r\n\r\n`;
 
         // Trend Data
         csvContent += "Expense Trend Data,\r\n";
-        csvContent += '\"Date\",\"Total Spent\"\r\n'; // Changed from backticks to double quotes
+        csvContent += "\"Date\",\"Total Spent\"\r\n"; // Use double quotes for CSV header
         processedTrendData.forEach(item => {
             csvContent += "\"" + item.date + "\",\"" + item.total + "\"\n"; // Use standard string concatenation
         });
@@ -334,10 +334,10 @@ export default function StatsPage() {
 
         // Category Data
         csvContent += "Category Breakdown Data,\r\n";
-        csvContent += '\"Category\",\"Total Spent\"\r\n';
+        csvContent += "\"Category\",\"Total Spent\"\r\n"; // Use double quotes for CSV header
         processedCategoryData.forEach(item => {
-            const safeCategory = `"${item.category.replace(/"/g, '""')}"`; // Escape double quotes in category name
-            csvContent += `${safeCategory},"${item.total}"\r\n`;
+            const safeCategory = "\"" + item.category.replace(/"/g, '""') + "\""; // Escape double quotes in category name
+            csvContent += safeCategory + ",\"" + item.total + "\"\r\n";
         });
 
         downloadCSV(csvContent, 'expense_dashboard_report.csv');
