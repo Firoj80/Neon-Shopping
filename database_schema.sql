@@ -1,186 +1,91 @@
---
--- Database: `u455934146_neon`
---
+-- Users Table
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `name` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(255) NOT NULL UNIQUE,
+  `password_hash` VARCHAR(255) NOT NULL,
+  `subscription_status` ENUM('free', 'premium') NOT NULL DEFAULT 'free',
+  `subscription_expiry_date` DATETIME DEFAULT NULL -- Changed to DATETIME for more precision
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- --------------------------------------------------------
+-- User Preferences Table (e.g., for currency)
+CREATE TABLE IF NOT EXISTS `user_preferences` (
+  `user_id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `currency_code` VARCHAR(3) DEFAULT 'USD', -- Default to USD
+  -- Add other preferences like theme_id if you plan to store them server-side
+  -- `theme_id` VARCHAR(50) DEFAULT 'cyberpunk-cyan',
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Table structure for table `users`
---
+-- Categories Table
+CREATE TABLE IF NOT EXISTS `categories` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) DEFAULT NULL, -- NULL for default categories, user_id for custom ones
+  `name` VARCHAR(255) NOT NULL,
+  CONSTRAINT `uq_category_user_name` UNIQUE (`user_id`, `name`), -- Ensure unique category name per user (or globally if user_id is NULL for defaults)
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL -- If user is deleted, custom categories might become global or be deleted based on your logic
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `users` (
-  `id` varchar(36) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
-  `subscription_status` enum('free','premium') NOT NULL DEFAULT 'free',
-  `subscription_expiry_date` date DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Shopping Lists Table
+CREATE TABLE IF NOT EXISTS `shopping_lists` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `user_id` VARCHAR(36) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `budget_limit` DECIMAL(10, 2) DEFAULT 0.00,
+  `default_category` VARCHAR(36) DEFAULT 'uncategorized', -- References id in categories table
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`default_category`) REFERENCES `categories`(`id`) ON DELETE SET DEFAULT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Indexes for table `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`);
+-- Shopping List Items Table
+CREATE TABLE IF NOT EXISTS `shopping_list_items` (
+  `id` VARCHAR(36) NOT NULL PRIMARY KEY,
+  `list_id` VARCHAR(36) NOT NULL,
+  `user_id` VARCHAR(36) NOT NULL, -- To ensure items are tied to a user for easier querying/security
+  `name` VARCHAR(255) NOT NULL,
+  `quantity` INT NOT NULL DEFAULT 1,
+  `price` DECIMAL(10, 2) DEFAULT 0.00,
+  `category` VARCHAR(36) NOT NULL DEFAULT 'uncategorized', -- References id in categories table
+  `checked` BOOLEAN NOT NULL DEFAULT FALSE,
+  `date_added` BIGINT NOT NULL, -- Store as timestamp (milliseconds since epoch)
+  FOREIGN KEY (`list_id`) REFERENCES `shopping_lists`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`category`) REFERENCES `categories`(`id`) ON DELETE SET DEFAULT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- --------------------------------------------------------
+-- Premium Plans Table
+CREATE TABLE IF NOT EXISTS `premium_plans` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY, -- e.g., 'monthly_basic', 'yearly_premium'
+  `name` VARCHAR(255) NOT NULL,
+  `price_monthly` DECIMAL(10, 2) DEFAULT NULL,
+  `price_yearly` DECIMAL(10, 2) DEFAULT NULL,
+  `description` TEXT,
+  `features` TEXT, -- Comma-separated list of features
+  `is_active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `display_order` INT DEFAULT 0 -- For ordering plans on the UI
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- Table structure for table `categories`
---
-
-CREATE TABLE `categories` (
-  `id` varchar(36) NOT NULL,
-  `user_id` varchar(36) DEFAULT NULL,
-  `name` varchar(255) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Indexes for table `categories`
---
-ALTER TABLE `categories`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`);
-
---
--- Constraints for table `categories`
---
-ALTER TABLE `categories`
-  ADD CONSTRAINT `categories_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `shopping_lists`
---
-
-CREATE TABLE `shopping_lists` (
-  `id` varchar(36) NOT NULL,
-  `user_id` varchar(36) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `budget_limit` decimal(10,2) DEFAULT 0.00,
-  `default_category` varchar(36) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Indexes for table `shopping_lists`
---
-ALTER TABLE `shopping_lists`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `fk_default_category` (`default_category`);
-
---
--- Constraints for table `shopping_lists`
---
-ALTER TABLE `shopping_lists`
-  ADD CONSTRAINT `shopping_lists_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_default_category` FOREIGN KEY (`default_category`) REFERENCES `categories` (`id`) ON DELETE SET NULL;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `shopping_list_items`
---
-
-CREATE TABLE `shopping_list_items` (
-  `id` varchar(36) NOT NULL,
-  `list_id` varchar(36) NOT NULL,
-  `user_id` varchar(36) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `quantity` int(11) NOT NULL DEFAULT 1,
-  `price` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `category` varchar(36) DEFAULT NULL,
-  `checked` tinyint(1) DEFAULT 0,
-  `date_added` bigint(20) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Indexes for table `shopping_list_items`
---
-ALTER TABLE `shopping_list_items`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `list_id` (`list_id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `fk_item_category` (`category`);
-
---
--- Constraints for table `shopping_list_items`
---
-ALTER TABLE `shopping_list_items`
-  ADD CONSTRAINT `shopping_list_items_ibfk_1` FOREIGN KEY (`list_id`) REFERENCES `shopping_lists` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `shopping_list_items_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_item_category` FOREIGN KEY (`category`) REFERENCES `categories` (`id`) ON DELETE SET NULL;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `premium_plans`
---
-
-CREATE TABLE `premium_plans` (
-  `id` varchar(50) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `price_monthly` decimal(10,2) DEFAULT NULL,
-  `price_yearly` decimal(10,2) DEFAULT NULL,
-  `description` text DEFAULT NULL,
-  `features` text DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT 1,
-  `display_order` int(11) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Indexes for table `premium_plans`
---
-ALTER TABLE `premium_plans`
-  ADD PRIMARY KEY (`id`);
-
---
--- Dumping data for table `premium_plans`
---
-INSERT INTO `premium_plans` (`id`, `name`, `price_monthly`, `price_yearly`, `description`, `features`, `is_active`, `display_order`) VALUES
-('monthly', 'Monthly', 5.99, NULL, 'Access all premium features, billed monthly.', 'no_ads,dashboard_access,purchase_history,export_records,unlimited_lists,unlimited_categories,all_themes', 1, 10),
-('three_month', '3 Months', 15.00, NULL, 'Save with a quarterly plan.', 'no_ads,dashboard_access,purchase_history,export_records,unlimited_lists,unlimited_categories,all_themes', 1, 20),
-('yearly', 'Yearly', NULL, 48.00, 'Best value! Access all premium features, billed annually.', 'no_ads,dashboard_access,purchase_history,export_records,unlimited_lists,unlimited_categories,all_themes', 1, 30);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `user_preferences`
---
-CREATE TABLE `user_preferences` (
-  `user_id` varchar(36) NOT NULL,
-  `currency_code` varchar(3) DEFAULT 'USD',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Indexes for table `user_preferences`
---
-ALTER TABLE `user_preferences`
-  ADD PRIMARY KEY (`user_id`);
-
---
--- Constraints for table `user_preferences`
---
-ALTER TABLE `user_preferences`
-  ADD CONSTRAINT `user_preferences_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-
---
--- Initial default categories (if user_id IS NULL means it's a global default)
---
-INSERT INTO `categories` (`id`, `user_id`, `name`) VALUES
+-- Sample Data for Default Categories
+INSERT IGNORE INTO `categories` (`id`, `user_id`, `name`) VALUES
 ('uncategorized', NULL, 'Uncategorized'),
-(UUID(), NULL, 'Home Appliances'),
-(UUID(), NULL, 'Health'),
-(UUID(), NULL, 'Grocery'),
-(UUID(), NULL, 'Fashion'),
-(UUID(), NULL, 'Electronics');
+('default-electronics', NULL, 'Electronics'),
+('default-grocery', NULL, 'Grocery'),
+('default-home', NULL, 'Home Appliances'),
+('default-health', NULL, 'Health'),
+('default-fashion', NULL, 'Fashion');
+-- Add other default categories as needed
 
-COMMIT;
+-- Sample Data for Premium Plans (Adjust as needed)
+INSERT IGNORE INTO `premium_plans` (`id`, `name`, `price_monthly`, `price_yearly`, `description`, `features`, `is_active`, `display_order`) VALUES
+('monthly_basic', 'Monthly Basic', 5.99, NULL, 'Basic features, billed monthly.', 'Ad-Free Experience,Dashboard Access,Purchase History,Create Unlimited Lists', TRUE, 10),
+('three_month_standard', '3-Month Standard', NULL, 15.00, 'Standard features, billed every 3 months (effectively $5/month).', 'Ad-Free Experience,Dashboard Access,Purchase History,Create Unlimited Lists,Create Unlimited Custom Categories', TRUE, 20),
+('yearly_premium', 'Yearly Premium', NULL, 48.00, 'All features, best value, billed annually (effectively $4/month).', 'Ad-Free Experience,Dashboard Access,Purchase History,Analyse and Exports Financial Records,Create Unlimited Lists,Create Unlimited Custom Categories,Unlock All Cyberpunk Themes', TRUE, 30);
+
+-- Note on `ON DELETE` clauses:
+-- `ON DELETE CASCADE`: If a user is deleted, their lists, items, and preferences are also deleted.
+-- `ON DELETE SET NULL`: If a user is deleted, their custom categories' user_id becomes NULL (making them potentially global defaults, or you might have a cleanup script).
+-- `ON DELETE SET DEFAULT`: If a category is deleted, items/lists referencing it will use the default category ID.
+
+-- Ensure the default 'uncategorized' category actually exists if you use ON DELETE SET DEFAULT with 'uncategorized'
+-- The INSERT IGNORE above handles this by attempting to insert 'uncategorized' first.
+-- If 'uncategorized' might be deleted by a premium user, you'll need a more robust fallback or prevent its deletion.
