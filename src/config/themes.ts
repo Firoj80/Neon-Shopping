@@ -40,7 +40,7 @@ export const themes: Theme[] = [
   },
 ];
 
-export const themeColors = {
+export const themeColors: Record<string, Record<string, string>> = {
   'cyberpunk-cyan': {
     '--background': '0 0% 0%',
     '--foreground': '0 0% 95%',

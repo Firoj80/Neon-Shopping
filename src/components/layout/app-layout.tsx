@@ -22,24 +22,25 @@ import {
   SidebarFooter,
   SidebarInset,
   SidebarSeparator,
-  SidebarSheetContent // Use the custom SidebarSheetContent
+  SidebarSheetContent
 } from '@/components/ui/sidebar';
 
 import {
-  Menu as MenuIcon, // Renamed Menu to avoid conflict
+  Menu as MenuIcon,
   ShoppingCart,
   LayoutDashboard,
   History,
   Settings,
-  Palette, // For Themes
+  Palette, 
   Info,
   Mail,
-  ShieldCheck as PolicyIcon, // Renamed for clarity
-  FileText as ArticleIcon, // Renamed for clarity
+  ShieldCheck as Policy, 
+  FileText as Article, 
   Star,
-  AppWindow as AppsIcon, // Corrected AppsIcon to AppWindow
+  AppWindow, 
   X,
-  Crown // For Premium
+  UserCircle2 as ProfileIcon,
+  LogOut as LogoutIcon,
 } from 'lucide-react';
 
 import { Button } from '../ui/button';
@@ -48,11 +49,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from '@/context/auth-context'; // Import useAuth
+import { useAuth } from '@/context/auth-context';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false); // State for Sheet open/close
+  const [isOpen, setIsOpen] = useState(false);
+  const { user, isAuthenticated } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
@@ -87,10 +98,68 @@ const MobileHeader: React.FC = () => {
         </Link>
       </div>
 
-
-      {/* Right Side: Placeholder for potential actions or leave empty for centered title */}
-      <div className="w-10"></div> {/* This acts as a spacer to balance the menu icon */}
+      {/* Right Side: Profile Icon / Login Button */}
+      <div className="w-10">
+        {isAuthenticated && user ? (
+          <ProfileDropdown />
+        ) : null}
+      </div>
     </header>
+  );
+};
+
+// --- Profile Dropdown Component ---
+const ProfileDropdown: React.FC = () => {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/auth');
+  };
+
+  const profileMenuItems = [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/themes', label: 'Themes', icon: Palette },
+  ];
+
+
+  if (!user) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full text-primary hover:text-primary/80 hover:bg-primary/10">
+          <ProfileIcon className="h-6 w-6" />
+          <span className="sr-only">Open user menu</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 bg-card border-primary/30 shadow-neon glow-border-inner">
+        <DropdownMenuLabel className="font-normal text-neonText">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user.name || 'User'}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-border/50" />
+        {profileMenuItems.map((item) => (
+          <DropdownMenuItem key={item.href} asChild className="cursor-pointer hover:bg-primary/10 focus:bg-primary/20 glow-border-inner">
+            <Link href={item.href} className="flex items-center gap-2 text-neonText hover:text-primary">
+              <item.icon className="h-4 w-4" />
+              <span>{item.label}</span>
+            </Link>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator className="bg-border/50" />
+        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 hover:bg-destructive/20 hover:text-red-400 focus:bg-destructive/30 glow-border-inner flex items-center gap-2">
+          <LogoutIcon className="h-4 w-4" />
+          <span>Log out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -103,7 +172,7 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, isAuthenticated } = useAuth();
+  const { logout, isAuthenticated, user } = useAuth(); // Get auth state and user
 
   const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement>) => {
     if (e) e.preventDefault();
@@ -112,35 +181,37 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     }
     setTimeout(() => {
       router.push(href);
-    }, isMobile ? 150 : 0); // Delay for sheet close animation on mobile
+    }, isMobile ? 150 : 0); 
   }, [onLinkClick, router, isMobile]);
 
-  const handleLogout = () => {
-    if (onLinkClick) onLinkClick(); // Close sheet if on mobile
+  const handleLogoutClick = () => {
+    if (onLinkClick) onLinkClick(); 
     logout();
-    router.push('/auth'); // Redirect to auth page after logout
+    router.push('/auth'); 
   };
 
-
-  const mainMenuItems = [
-    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/history', label: 'History', icon: History },
-    { href: '/settings', label: 'Settings', icon: Settings },
-    { href: '/themes', label: 'Themes', icon: Palette },
-    { href: '/premium', label: 'Go Premium', icon: Crown }, // Added Premium link
+  // Main navigation items - now conditional based on auth state
+  const mainNavItems = [
+    // These items are now part of ProfileDropdown for authenticated users
+    // { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    // { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
+    // { href: '/history', label: 'History', icon: History },
+    // { href: '/settings', label: 'Settings', icon: Settings },
+    // { href: '/themes', label: 'Themes', icon: Palette }, // Added Themes
   ];
+
 
   const secondaryMenuItems = [
     { href: '/about', label: 'About Us', icon: Info },
     { href: '/contact', label: 'Contact Us', icon: Mail },
-    { href: '/privacy', label: 'Privacy Policy', icon: PolicyIcon },
-    { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
+    { href: '/privacy', label: 'Privacy Policy', icon: Policy },
+    { href: '/terms', label: 'Terms of Service', icon: Article },
     { href: '/rate', label: 'Rate App', icon: Star },
-    { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
+    { href: '/more-apps', label: 'More Apps', icon: AppWindow },
+    { href: '/premium', label: 'Go Premium', icon: Palette }, // Using Palette as placeholder, consider Crown
   ];
 
-  const renderMenuItem = (item: typeof mainMenuItems[0] | typeof secondaryMenuItems[0]) => {
+  const renderMenuItem = (item: typeof secondaryMenuItems[0]) => { // Adjusted for secondary items
     const clickHandler = (e: React.MouseEvent<HTMLAnchorElement>) => {
       handleLinkClick(item.href, e);
     };
@@ -151,7 +222,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
         isActive={pathname === item.href}
         className={cn(
           "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out",
-          "text-neonText hover:text-white", // Use neonText for default
+          "text-neonText hover:text-white", 
           "hover:border-secondary/50 hover:shadow-neon focus:shadow-neon-lg glow-border-inner",
           pathname === item.href
             ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30"
@@ -183,8 +254,10 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       </SidebarHeader>
       <SidebarContent className="p-2 flex-grow flex flex-col">
         <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-          {mainMenuItems.map(renderMenuItem)}
-          <SidebarSeparator className="my-2" />
+          {/* Render mainNavItems only if user is authenticated and items exist */}
+          {isAuthenticated && mainNavItems.length > 0 && mainNavItems.map(renderMenuItem)}
+          {/* Conditional separator if both main and secondary items are present */}
+          {isAuthenticated && mainNavItems.length > 0 && secondaryMenuItems.length > 0 && <SidebarSeparator className="my-2" />}
           {secondaryMenuItems.map(renderMenuItem)}
         </SidebarMenu>
       </SidebarContent>
@@ -193,9 +266,9 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           <Button
             variant="outline"
             className="w-full justify-center text-red-400 hover:text-red-300 hover:bg-destructive/20 border-red-500/50 glow-border-inner"
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
           >
-            <X className="mr-2 h-4 w-4" /> Logout
+            <LogoutIcon className="mr-2 h-4 w-4" /> Logout
           </Button>
         ) : (
            <Button
@@ -219,7 +292,7 @@ interface AppLayoutContentProps {
 
 const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   const appContext = useAppContext();
-  const { isAuthenticated, isLoading: authLoading, user } = useAuth(); // Get auth state
+  const authState = useAuth(); 
   const router = useRouter();
   const pathname = usePathname();
   const [isClientMounted, setIsClientMounted] = useState(false);
@@ -228,14 +301,12 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
     setIsClientMounted(true);
   }, []);
 
-  const isLoading = appContext.isLoading || authLoading; // Combined loading state
+  const isLoading = appContext.isLoading || authState.isLoading;
 
-   // --- Redirect Logic ---
-   // Moved inside useEffect to prevent rendering during rendering
    useEffect(() => {
      if (isClientMounted && !isLoading) {
        const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
-       if (isAuthenticated) {
+       if (authState.isAuthenticated) {
          if (!hasLists && pathname !== '/list/create-first' && pathname !== '/auth') {
            router.replace('/list/create-first');
          } else if (hasLists && pathname === '/list/create-first') {
@@ -243,13 +314,13 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
          } else if (pathname === '/auth') {
            router.replace('/list');
          }
-       } else { // Not authenticated
+       } else { 
          if (pathname !== '/auth') {
            router.replace('/auth');
          }
        }
      }
-   }, [isClientMounted, isLoading, isAuthenticated, appContext.state.lists, pathname, router]);
+   }, [isClientMounted, isLoading, authState.isAuthenticated, appContext.state.lists, pathname, router]);
 
 
 
@@ -264,22 +335,16 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
     );
   }
 
-  // If on /auth page, render only children (the auth page itself)
   if (pathname === '/auth') {
     return <>{children}</>;
   }
 
-  // --- Render full layout ---
   return (
      <>
        <MobileHeader />
-
-        {/* Desktop Sidebar */}
         <Sidebar className="hidden md:flex md:flex-col">
          <MainMenuContent />
         </Sidebar>
-
-        {/* Main Content Area */}
         <SidebarInset>
          <main className="flex-1 flex flex-col md:px-4 lg:px-6 xl:px-8 md:py-3 bg-background overflow-y-auto max-w-full">
             {children}
