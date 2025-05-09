@@ -65,11 +65,11 @@ export default function StatsPage() {
     };
 
      const filteredItems = useMemo(() => {
-        if (!dateRange?.from || !dateRange?.to) return [];
+        if (!dateRange?.from || !dateRange?.to || !Array.isArray(state.shoppingListItems)) return [];
 
         const startDate = startOfDay(dateRange.from);
         const endDate = endOfDay(dateRange.to);
-        const allShoppingItems = Array.isArray(state.shoppingListItems) ? state.shoppingListItems : [];
+        const allShoppingItems = state.shoppingListItems;
 
         return allShoppingItems.filter(item => {
             if (!item.checked) return false;
@@ -322,17 +322,19 @@ export default function StatsPage() {
         csvContent += `"Highest Spend Day","${summaryStats.highestSpendDay ? `${summaryStats.highestSpendDay.total} on ${summaryStats.highestSpendDay.date}` : 'N/A'}",\r\n`;
         csvContent += `"Total Items Purchased","${summaryStats.totalItems}",\r\n\r\n";
 
+        // Trend Data
         csvContent += "Expense Trend Data,\r\n";
         csvContent += '"Date","Total Spent"\r\n'; // Changed from backticks to double quotes
         processedTrendData.forEach(item => {
-            csvContent += `"${item.date}","${item.total}"\r\n`;
+            csvContent += `"${item.date}","${item.total}"\n`; // Changed \r\n to \n
         });
         csvContent += "\r\n";
 
+        // Category Data
         csvContent += "Category Breakdown Data,\r\n";
         csvContent += `"Category","Total Spent"\r\n`;
         processedCategoryData.forEach(item => {
-            const safeCategory = `"${item.category.replace(/"/g, '""')}"`;
+            const safeCategory = `"${item.category.replace(/"/g, '""')}"`; // Escape double quotes in category name
             csvContent += `${safeCategory},"${item.total}"\r\n`;
         });
 
@@ -406,7 +408,7 @@ export default function StatsPage() {
                       </div>
                        <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
-                              <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
+                              <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
                                   <Layers className="h-4 w-4 mr-2 opacity-70" />
                                  <SelectValue placeholder="Filter by category" />
                              </SelectTrigger>
