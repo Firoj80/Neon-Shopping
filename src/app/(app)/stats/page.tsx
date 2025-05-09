@@ -326,7 +326,7 @@ export default function StatsPage() {
 
         // Trend Data
         csvContent += "Expense Trend Data,\r\n";
-        csvContent += '"Date","Total Spent"\r\n'; // Changed from backticks to double quotes
+        csvContent += '\"Date\",\"Total Spent\"\r\n'; // Changed from backticks to double quotes
         processedTrendData.forEach(item => {
             csvContent += "\"" + item.date + "\",\"" + item.total + "\"\n"; // Use standard string concatenation
         });
@@ -334,7 +334,7 @@ export default function StatsPage() {
 
         // Category Data
         csvContent += "Category Breakdown Data,\r\n";
-        csvContent += `"Category","Total Spent"\r\n`;
+        csvContent += '\"Category\",\"Total Spent\"\r\n';
         processedCategoryData.forEach(item => {
             const safeCategory = `"${item.category.replace(/"/g, '""')}"`; // Escape double quotes in category name
             csvContent += `${safeCategory},"${item.total}"\r\n`;
@@ -653,3 +653,5 @@ const StatsPageSkeleton: React.FC = () => (
     </div>
 );
 
+
+    
