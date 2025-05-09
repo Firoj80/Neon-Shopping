@@ -1,3 +1,4 @@
+
 "use client"; // Keep this as layout uses hooks
 
 import { Inter } from 'next/font/google';
@@ -13,7 +14,7 @@ import { Toaster } from "@/components/ui/toaster";
 // ClientOnly component wrapper removed, useClientOnly hook is used inside AppLayoutContent
 // import ClientOnly from '@/components/client-only';
 import { ThemeWatcher } from '@/context/theme-watcher';
-
+import Script from 'next/script'; // Import Script component
 
 const inter = Inter({
   variable: '--font-inter',
@@ -39,6 +40,17 @@ export default function RootLayout({
           'font-sans antialiased min-h-screen flex flex-col bg-background',
         )}
       >
+        {/* Razorpay SDK Script - It's often recommended to place this in the <head> or early in <body> */}
+        {/* However, for Next.js App Router, placing it here or in PremiumPlansPage is common. */}
+        {/* If it causes issues, consider moving to <Head> in a page.tsx or using next/script in _document.js (Pages Router) */}
+        {/* For App Router, directly in layout or page is fine. */}
+        {/* <Script
+          id="razorpay-checkout-js"
+          src="https://checkout.razorpay.com/v1/checkout.js"
+          strategy="beforeInteractive" // Load before page is interactive
+        /> */}
+        {/* Note: Moved Razorpay SDK script to PremiumPlansPage for more localized loading */}
+
         <Providers> {/* Providers now includes AuthProvider */}
            <ThemeWatcher>
              {/* ClientOnly component wrapper removed here */}
