@@ -60,10 +60,17 @@
     --muted-foreground: 0 0% 60%;
     --accent: 300 100% 70%;
     --accent-foreground: 0 0% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     --border: 180 100% 30%;
     --input: 0 0% 15%;
     --ring: 180 100% 50%;
     --neon-text: 0 0% 90%;
+    --chart-1: 180 100% 50%;
+    --chart-2: 300 100% 50%;
+    --chart-3: 120 100% 50%;
+    --chart-4: 60 100% 50%;
+    --chart-5: 30 100% 50%;
   }
 
   html.theme-neon-magenta {
@@ -81,10 +88,17 @@
     --muted-foreground: 0 0% 60%;
     --accent: 60 100% 70%;
     --accent-foreground: 0 0% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     --border: 300 100% 30%;
     --input: 0 0% 15%;
     --ring: 300 100% 50%;
     --neon-text: 0 0% 90%;
+    --chart-1: 300 100% 50%;
+    --chart-2: 60 100% 50%;
+    --chart-3: 180 100% 50%;
+    --chart-4: 240 100% 50%;
+    --chart-5: 30 100% 50%;
   }
 
   html.theme-electric-blue {
@@ -102,10 +116,17 @@
     --muted-foreground: 220 10% 60%;
     --accent: 270 50% 70%;
     --accent-foreground: 220 10% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     --border: 210 100% 40%;
     --input: 220 20% 15%;
     --ring: 210 100% 70%;
     --neon-text: 220 10% 90%;
+    --chart-1: 210 100% 70%;
+    --chart-2: 270 50% 60%;
+    --chart-3: 150 100% 50%;
+    --chart-4: 30 100% 60%;
+    --chart-5: 330 100% 60%;
   }
 
   html.theme-acid-green {
@@ -123,10 +144,17 @@
     --muted-foreground: 0 0% 60%;
     --accent: 300 100% 70%;
     --accent-foreground: 0 0% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     --border: 120 100% 30%;
     --input: 0 0% 15%;
     --ring: 120 100% 50%;
     --neon-text: 0 0% 90%;
+    --chart-1: 120 100% 50%;
+    --chart-2: 300 100% 50%;
+    --chart-3: 60 100% 50%;
+    --chart-4: 210 100% 50%;
+    --chart-5: 0 100% 50%;
   }
 
   html.theme-radioactive-orange {
@@ -144,10 +172,17 @@
     --muted-foreground: 0 0% 60%;
     --accent: 180 100% 70%;
     --accent-foreground: 0 0% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     --border: 30 100% 30%;
     --input: 0 0% 15%;
     --ring: 30 100% 50%;
     --neon-text: 0 0% 90%;
+    --chart-1: 30 100% 50%;
+    --chart-2: 180 100% 50%;
+    --chart-3: 240 100% 50%;
+    --chart-4: 60 100% 50%;
+    --chart-5: 330 100% 50%;
   }
 
   html.theme-synthwave-purple {
@@ -165,10 +200,17 @@
     --muted-foreground: 0 0% 60%;
     --accent: 180 100% 70%;
     --accent-foreground: 0 0% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     --border: 270 100% 30%;
     --input: 0 0% 15%;
     --ring: 270 100% 50%;
     --neon-text: 0 0% 90%;
+    --chart-1: 270 100% 50%;
+    --chart-2: 180 100% 50%;
+    --chart-3: 300 100% 50%;
+    --chart-4: 30 100% 50%;
+    --chart-5: 120 100% 50%;
   }
 
   html.theme-glitch-red {
@@ -186,10 +228,17 @@
     --muted-foreground: 0 0% 60%;
     --accent: 180 100% 70%;
     --accent-foreground: 0 0% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     --border: 0 100% 30%;
     --input: 0 0% 15%;
     --ring: 0 100% 50%;
     --neon-text: 0 0% 90%;
+    --chart-1: 0 100% 50%;
+    --chart-2: 180 100% 50%;
+    --chart-3: 240 100% 50%;
+    --chart-4: 60 100% 50%;
+    --chart-5: 300 100% 50%;
   }
   
   html.theme-tron-blue {
@@ -207,23 +256,18 @@
     --muted-foreground: 240 10% 60%;
     --accent: 270 50% 70%;
     --accent-foreground: 240 10% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
     --border: 210 100% 30%;
     --input: 240 10% 15%;
     --ring: 210 100% 60%;
     --neon-text: 240 10% 85%;
+    --chart-1: 210 100% 60%;
+    --chart-2: 270 50% 50%;
+    --chart-3: 150 100% 50%;
+    --chart-4: 30 100% 60%;
+    --chart-5: 330 100% 60%;
   }
-
-
-  /* Theme Preview Variables (used in themes page) */
-  /* These are placeholders; theme-watcher will apply actual theme colors */
-  html.theme-cyberpunk-cyan { --primary-bg-cyberpunk-cyan: 180 100% 50%; --secondary-bg-cyberpunk-cyan: 300 100% 50%; --accent-bg-cyberpunk-cyan: 300 100% 70%; --card-bg-cyberpunk-cyan: 0 0% 7%; }
-  html.theme-neon-magenta { --primary-bg-neon-magenta: 300 100% 50%; --secondary-bg-neon-magenta: 60 100% 50%; --accent-bg-neon-magenta: 60 100% 70%; --card-bg-neon-magenta: 0 0% 7%; }
-  html.theme-electric-blue { --primary-bg-electric-blue: 210 100% 70%; --secondary-bg-electric-blue: 270 50% 60%; --accent-bg-electric-blue: 270 50% 70%; --card-bg-electric-blue: 220 20% 7%; }
-  html.theme-acid-green { --primary-bg-acid-green: 120 100% 50%; --secondary-bg-acid-green: 300 100% 50%; --accent-bg-acid-green: 300 100% 70%; --card-bg-acid-green: 0 0% 7%; }
-  html.theme-radioactive-orange { --primary-bg-radioactive-orange: 30 100% 50%; --secondary-bg-radioactive-orange: 180 100% 50%; --accent-bg-radioactive-orange: 180 100% 70%; --card-bg-radioactive-orange: 0 0% 7%; }
-  html.theme-synthwave-purple { --primary-bg-synthwave-purple: 270 100% 50%; --secondary-bg-synthwave-purple: 180 100% 50%; --accent-bg-synthwave-purple: 180 100% 70%; --card-bg-synthwave-purple: 0 0% 7%; }
-  html.theme-glitch-red { --primary-bg-glitch-red: 0 100% 50%; --secondary-bg-glitch-red: 180 100% 50%; --accent-bg-glitch-red: 180 100% 70%; --card-bg-glitch-red: 0 0% 7%; }
-  html.theme-tron-blue { --primary-bg-tron-blue: 210 100% 60%; --secondary-bg-tron-blue: 270 50% 50%; --accent-bg-tron-blue: 270 50% 70%; --card-bg-tron-blue: 240 10% 10%; }
 
   /* Ensure .dark is always present for base dark mode structure */
   html.dark {
@@ -302,3 +346,5 @@
     color: hsl(var(--neon-text)); /* Use the neon text variable */
   }
 }
+
+    
