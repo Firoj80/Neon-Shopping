@@ -1,10 +1,9 @@
-
 "use client";
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppProvider } from '@/context/app-context'; // Reverted to alias path
-// Removed AuthProvider import as it was deleted
+import { AppProvider } from '@/context/app-context'; // Ensure alias resolves correctly
+import { AuthProvider } from '@/context/auth-context'; // Keep AuthProvider separate
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,10 +16,11 @@ const queryClient = new QueryClient({
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-         {/* Removed AuthProvider wrapper */}
-         <AppProvider> {/* AppProvider handles core app state */}
-             {children}
-        </AppProvider>
+      <AppProvider> {/* AppProvider now wraps AuthProvider */}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </AppProvider>
     </QueryClientProvider>
   );
 }
