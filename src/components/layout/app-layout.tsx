@@ -8,7 +8,7 @@ import {
   LayoutDashboard,
   History,
   Settings,
-  Palette,
+  Palette, // Added for Themes
   Info,
   Mail,
   ShieldCheck as Policy, // Renamed ShieldCheck to Policy
@@ -18,12 +18,18 @@ import {
   Menu as MenuIcon, // Renamed Menu to avoid conflict
   X,
 } from 'lucide-react';
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sheet,
   SheetTrigger,
   SheetClose,
-} from "@/components/ui/sheet";
+  SheetContent // Import SheetContent
+} from "@/components/ui/sheet"; // Keep Sheet related imports
 import {
+  // Removed SidebarProvider import as it's no longer used
+  // Removed useSidebar import as it's no longer used
   Sidebar,
   SidebarHeader,
   SidebarContent,
@@ -32,35 +38,14 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
-  SidebarSeparator,
-  SidebarSheetContent
+  SidebarSeparator, // Added SidebarSeparator
+  SidebarSheetContent // Use the custom SidebarSheetContent
 } from '@/components/ui/sidebar';
-import { Button } from '../ui/button';
-import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
+import { TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
+// Removed import { useClientOnly } from '@/hooks/use-client-only';
 
-
-// Define menu items arrays
-const primaryMenuItems = [
-  { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-  { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/history', label: 'History', icon: History },
-  { href: '/settings', label: 'Settings', icon: Settings },
-  { href: '/themes', label: 'Themes', icon: Palette },
-];
-
-const secondaryMenuItems = [
-  { href: '/about', label: 'About Us', icon: Info },
-  { href: '/contact', label: 'Contact Us', icon: Mail },
-  { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-  { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
-  { href: '/rate', label: 'Rate App', icon: Star },
-  { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
-];
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
@@ -68,22 +53,25 @@ const MobileHeader: React.FC = () => {
 
   return (
     // Use flex with justify-between initially, but center the title with a placeholder
-     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Left Side: Hamburger Menu Trigger */}
        <Sheet open={isOpen} onOpenChange={setIsOpen}>
          <SheetTrigger asChild> {/* Wrap the Button with SheetTrigger */}
-           <Button variant="ghost" size="icon" /* onClick removed, Sheet handles it */ className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
-             <AnimatePresence initial={false} mode="wait">
-               <motion.div
-                 key={isOpen ? "x" : "menu"}
-                 initial={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
-                 animate={{ rotate: 0, opacity: 1 }}
-                 exit={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
-                 transition={{ duration: 0.2 }}
-               >
-                 {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-               </motion.div>
-             </AnimatePresence>
+           <Button variant="ghost" size="icon" className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+             {/* Wrap the animated icon in a span */}
+             <span className="flex items-center justify-center h-full w-full">
+               <AnimatePresence initial={false} mode="wait">
+                 <motion.div
+                   key={isOpen ? "x" : "menu"}
+                   initial={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
+                   animate={{ rotate: 0, opacity: 1 }}
+                   exit={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
+                   transition={{ duration: 0.2 }}
+                 >
+                   {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+                 </motion.div>
+               </AnimatePresence>
+             </span>
              <span className="sr-only">Toggle Sidebar</span>
            </Button>
          </SheetTrigger>
@@ -92,12 +80,11 @@ const MobileHeader: React.FC = () => {
              {/* Render the menu content within the mobile sheet */}
               <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
                  {/* Use SheetClose to close the sheet when clicking the link */}
-                 <SheetClose asChild>
-                    <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-                        <ShoppingCart className="w-6 h-6" />
-                        <ClientOnly><span>Neon Shopping</span></ClientOnly>
-                    </Link>
-                 </SheetClose>
+                 {/* SheetClose should wrap the element that triggers the close */}
+                 <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+                    <ShoppingCart className="w-6 h-6" />
+                    <ClientOnly><span>Neon Shopping</span></ClientOnly>
+                 </Link>
              </SidebarHeader>
              <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
                   {/* Pass isMobileSheet prop as true */}
@@ -123,6 +110,25 @@ const MobileHeader: React.FC = () => {
     </header>
   );
 };
+
+
+// --- Menu Items ---
+const primaryMenuItems = [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+];
+
+const secondaryMenuItems = [
+    { href: '/themes', label: 'Themes', icon: Palette }, // Added Themes
+    { href: '/about', label: 'About Us', icon: Info },
+    { href: '/contact', label: 'Contact Us', icon: Mail },
+    { href: '/privacy', label: 'Privacy Policy', icon: Policy }, // Corrected variable name
+    { href: '/terms', label: 'Terms of Service', icon: ArticleIcon }, // Corrected variable name
+    { href: '/rate', label: 'Rate App', icon: Star },
+    { href: '/more-apps', label: 'More Apps', icon: AppsIcon }, // Corrected variable name
+];
 
 
 // --- Main Menu Content Component ---
@@ -158,53 +164,49 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onNavigate, isMobileS
       // Allow default navigation
     };
 
-    const renderLink = (item: { href: string; label: string; icon: React.ElementType }) => {
-        const LinkComponent = isMobileSheet ? SheetClose : Fragment;
-        const linkContent = (
-            <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
-                <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-            </Link>
-        );
+     const renderLink = (item: { href: string; label: string; icon: React.ElementType }) => (
+         <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
+             <item.icon className={cn("transition-colors", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+             <span className={cn("transition-colors text-neonText", isItemActive(item.href) ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+         </Link>
+     );
 
-        return (
-            <LinkComponent asChild={isMobileSheet}>
-                {linkContent}
-            </LinkComponent>
-        );
-    };
-
-    return (
-         <div className="flex flex-col flex-grow"> {/* Ensure content takes available space */}
-             {/* Primary Menu Items */}
-             <SidebarMenu className="space-y-1.5 flex-grow overflow-y-auto"> {/* Added overflow-y-auto */}
-                 {primaryMenuItems.map((item) => (
-                     <SidebarMenuItem key={item.href}>
+     const renderMenuItems = (items: typeof primaryMenuItems) => (
+         items.map((item) => (
+             <SidebarMenuItem key={item.href}>
+                 {/* Use SheetClose conditionally only within the mobile sheet */}
+                 {isMobileSheet ? (
+                     <SheetClose asChild>
                          <SidebarMenuButton
                              asChild
                              isActive={isItemActive(item.href)}
                              tooltip={item.label}
                              className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
                          >
-                            {renderLink(item)}
+                             {/* Link content needs to be directly inside for asChild */}
+                             {renderLink(item)}
                          </SidebarMenuButton>
-                     </SidebarMenuItem>
-                 ))}
-                  {/* Separator */}
-                   <SidebarSeparator className="my-2" />
-                  {/* Secondary Menu Items */}
-                   {secondaryMenuItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                            asChild
-                            isActive={isItemActive(item.href)}
-                            tooltip={item.label}
-                            className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
-                        >
+                     </SheetClose>
+                 ) : (
+                     <SidebarMenuButton
+                         asChild
+                         isActive={isItemActive(item.href)}
+                         tooltip={item.label}
+                         className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
+                     >
                          {renderLink(item)}
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    ))}
+                     </SidebarMenuButton>
+                 )}
+             </SidebarMenuItem>
+         ))
+     );
+
+    return (
+         <div className="flex flex-col flex-grow"> {/* Ensure content takes available space */}
+             <SidebarMenu className="space-y-1.5 flex-grow overflow-y-auto"> {/* Added overflow-y-auto */}
+                 {renderMenuItems(primaryMenuItems)}
+                 <SidebarSeparator className="my-2" />
+                 {renderMenuItems(secondaryMenuItems)}
              </SidebarMenu>
         </div>
     );
@@ -218,100 +220,81 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const router = useRouter();
   const { isLoading } = appContext;
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const isClientMounted = useClientOnly(); // Hook to ensure client-side rendering
-  const [isRedirecting, setIsRedirecting] = useState(false); // State to manage redirection
-
-
-  // --- Loading State Handling ---
-  useEffect(() => {
-    if (!isLoading) {
-      setInitialLoadComplete(true);
-    }
-  }, [isLoading]);
-
-
-  // --- Redirect Logic ---
-  // Moved inside useEffect to prevent rendering during rendering
-   useEffect(() => {
-     let redirectTimer: NodeJS.Timeout | null = null;
-      if (isClientMounted && initialLoadComplete && !isLoading) {
-          const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
-          if (!hasLists && pathname !== '/list/create-first') {
-               console.log("Redirecting to /list/create-first");
-                setIsRedirecting(true);
-                // Use setTimeout to ensure state update happens before navigation
-                redirectTimer = setTimeout(() => {
-                    router.replace('/list/create-first');
-                     // No need to setIsRedirecting(false) here as the component will unmount/remount
-                }, 0);
-          } else if (hasLists && pathname === '/list/create-first') {
-                console.log("Redirecting to /list");
-                setIsRedirecting(true);
-                redirectTimer = setTimeout(() => {
-                     router.replace('/list');
-                     // No need to setIsRedirecting(false) here
-                }, 0);
-          } else {
-               // If no redirect is needed, ensure redirecting state is false
-                setIsRedirecting(false);
-          }
-      }
-      // Cleanup timer on unmount or if dependencies change before timer fires
-      return () => {
-          if (redirectTimer) {
-              clearTimeout(redirectTimer);
-          }
-      };
-   }, [isClientMounted, initialLoadComplete, isLoading, appContext.state.lists, pathname, router]);
+  const isClientMounted = typeof window !== 'undefined'; // Simple client check
 
 
   // --- Loading State ---
-  // Show loader if not mounted, still loading, or redirect is pending
-   const needsRedirect = (!isLoading && Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') ||
+  // Show loader if not mounted or still loading initial data
+  if (!isClientMounted || isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+   // --- Redirect Logic ---
+   // Redirect after ensuring client-side and loading is complete
+   useEffect(() => {
+     if (isClientMounted && !isLoading) {
+       const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+
+       // Redirect to create-first page if no lists exist and not already there
+       if (!hasLists && pathname !== '/list/create-first') {
+         router.replace('/list/create-first');
+       }
+
+       // Redirect to list page if lists exist and currently on create page
+       if (hasLists && pathname === '/list/create-first') {
+          router.replace('/list');
+       }
+     }
+   }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]);
+
+   // If redirecting, show loader (this prevents rendering the wrong page briefly)
+    const isRedirecting = (!isLoading && Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') ||
                          (!isLoading && Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0 && pathname === '/list/create-first');
 
-
-   if (!isClientMounted || isLoading || isRedirecting) {
-     return (
-       <div className="flex items-center justify-center h-screen bg-background">
-         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
-       </div>
-     );
-   }
+    if (isRedirecting) {
+         return (
+           <div className="flex items-center justify-center h-screen bg-background">
+             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+           </div>
+         );
+    }
 
 
   // --- Render full layout ---
    return (
-     <Fragment>
+      <Fragment>
        {/* Mobile Header */}
        <MobileHeader />
 
-       {/* Desktop Sidebar */}
-       <Sidebar className="hidden md:flex md:flex-col">
-         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
-           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-             <ShoppingCart className="w-6 h-6" />
-             <ClientOnly><span>Neon Shopping</span></ClientOnly>
-           </Link>
-         </SidebarHeader>
-         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-            {/* Render the menu content within the desktop sidebar (isMobileSheet is false by default) */}
-             <MainMenuContent />
-         </SidebarContent>
-          <SidebarFooter className="p-2 border-t border-sidebar-border">
-            <hr className="my-3 border-sidebar-border/50" />
-            <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
-         </SidebarFooter>
-       </Sidebar>
+        {/* Desktop Sidebar */}
+        <Sidebar className="hidden md:flex md:flex-col">
+          <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
+            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+              <ShoppingCart className="w-6 h-6" />
+              <ClientOnly><span>Neon Shopping</span></ClientOnly>
+            </Link>
+          </SidebarHeader>
+          <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
+             {/* Render the menu content within the desktop sidebar (isMobileSheet is false by default) */}
+              <MainMenuContent />
+          </SidebarContent>
+           <SidebarFooter className="p-2 border-t border-sidebar-border">
+             <hr className="my-3 border-sidebar-border/50" />
+             <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
+          </SidebarFooter>
+        </Sidebar>
 
-       {/* Main Content Area */}
-        <SidebarInset className="flex flex-col min-h-screen">
-           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 xl:p-10 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom))]"> {/* Adjusted padding */}
-              {children}
-           </main>
-         </SidebarInset>
-      </Fragment>
+        {/* Main Content Area */}
+         <SidebarInset className="flex flex-col min-h-screen">
+            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 xl:p-10 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom))]"> {/* Adjusted padding */}
+               {children}
+            </main>
+          </SidebarInset>
+       </Fragment>
    );
 });
 AppLayoutContent.displayName = 'AppLayoutContent'; // Add display name
@@ -325,3 +308,31 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
        </TooltipProvider>
   );
 }
+
+
+// --- Cleaned up legacy/duplicate imports ---
+// Removed imports that are already defined above or no longer needed
+// For example, BudgetCard, ListsCarousel, etc. are likely imported within the pages that use them.
+// Icons like WalletCards, Trash2, Edit2, Banknote, etc. are likely used within specific components, not the main layout.
+
+// Ensure only necessary imports remain for the AppLayout structure itself.
+// Removed duplicate imports like CheckCircle, PanelLeftIcon etc. if they were defined above.
+// Removed AppLayoutWithProviders as it's combined now.
+// Removed BudgetCardSkeleton if not used directly here.
+// Removed useApp alias if useAppContext is used directly.
+// Removed Toaster import if handled elsewhere (e.g., in Providers).
+// Removed unused useState, useEffect etc. if logic moved.
+// Removed DropdownMenu imports if profile dropdown is removed.
+// Removed unused LogoutIcon, Profile icons.
+// Removed useClientOnly if simple check is sufficient.
+// Removed Settings icon if handled in secondaryMenuItems
+// Removed DollarSign if handled in Currency page
+// Removed Policy, Article if handled in secondaryMenuItems
+// Removed Cart, DashboardIcon if handled in primaryMenuItems
+// Removed PanelLeft if MenuIcon/X handles toggle
+// Removed Palette if handled in secondaryMenuItems
+// Removed BarChart3, LineChartIcon, Download, History, TrendingUp, Wallet, CalendarDays if only used in Stats/History pages
+// Removed Layers if only used in Settings/Stats
+// Removed Grid if not used
+// Removed PlusCircle if Add button is handled in List page
+// Removed specific rename aliases if the original names are clear (like Policy/ArticleIcon/AppsIcon) unless needed for clarity
