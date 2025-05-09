@@ -4,7 +4,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown, Gem } from 'lucide-react';
+import { CheckCircle, XCircle, Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown, Gem, ShieldCheck } from 'lucide-react'; // Added ShieldCheck
 import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context'; 
 import { useToast } from '@/hooks/use-toast'; 
 import Link from 'next/link';
@@ -143,3 +143,4 @@ export default function PremiumPage() {
     </div>
   );
 }
+
