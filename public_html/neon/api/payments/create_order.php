@@ -25,8 +25,8 @@ $data = [
     'amount'          => $amount_in_paise,
     'currency'        => $currency,
     'receipt'         => $receipt_id,
-    'payment_capture' => 1, 
-    'notes'           => [ 
+    'payment_capture' => 1, // Auto capture payment (1 for auto, 0 for manual)
+    'notes'           => [ // Optional: Add notes like plan_id, user_id
         'plan_id' => $plan_id,
         'user_id' => $user_id 
     ]
@@ -35,7 +35,8 @@ $data = [
 $key_id = RAZORPAY_KEY_ID;
 $key_secret = RAZORPAY_KEY_SECRET;
 
-if (empty($key_id) || empty($key_secret) || $key_id === 'YOUR_RAZORPAY_KEY_ID') {
+// Check if Razorpay keys are configured
+if (empty($key_id) || empty($key_secret) || $key_id === 'YOUR_RAZORPAY_KEY_ID' || $key_secret === 'YOUR_RAZORPAY_KEY_SECRET') {
     error_log('Razorpay API keys are not configured or are using placeholder values.');
     send_json_response(['success' => false, 'message' => 'Payment gateway not configured. Please contact support.'], 503); // Service Unavailable
 }
@@ -70,10 +71,13 @@ if ($http_status_code >= 400 || isset($razorpay_order['error'])) {
     if (isset($razorpay_order['error']) && isset($razorpay_order['error']['description'])) {
         $error_description = $razorpay_order['error']['description'];
     } elseif ($result) {
+        // Sometimes error might not be in 'error.description' but in the main body for non-2xx
         $error_description = $result; 
     }
     error_log('Razorpay API Error (Create Order): ' . $error_description . ' | HTTP Status: ' . $http_status_code . ' | Response: ' . $result);
-    send_json_response(['success' => false, 'message' => 'Error creating Razorpay order: ' . $error_description], ($http_status_code < 100 || $http_status_code > 599) ? 500 : $http_status_code);
+    // Ensure HTTP status code is valid before passing to send_json_response
+    $final_status_code = ($http_status_code < 100 || $http_status_code > 599) ? 500 : $http_status_code;
+    send_json_response(['success' => false, 'message' => 'Error creating Razorpay order: ' . $error_description], $final_status_code);
 }
 
 
@@ -82,7 +86,14 @@ if (!isset($razorpay_order['id'])) {
     send_json_response(['success' => false, 'message' => 'Failed to create Razorpay order. Invalid response from gateway.'], 500);
 }
 
+// Optionally, you can store preliminary order details in your database here if needed (e.g., for reconciliation)
+// Example: Log order attempt
+// $stmt_log_order = $conn->prepare("INSERT INTO payment_orders (id, user_id, amount, currency, receipt, status, created_at) VALUES (?, ?, ?, ?, ?, 'created', NOW())");
+// $stmt_log_order->execute([$razorpay_order['id'], $user_id, $amount_in_paise, $currency, $receipt_id]);
+
 send_json_response(['success' => true, 'order_id' => $razorpay_order['id'], 'amount' => $amount_in_paise, 'currency' => $currency, 'key_id' => $key_id]);
 ?>
+
+    
 
     

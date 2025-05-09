@@ -15,7 +15,7 @@ if (!$input) {
 
 $name = sanitize_input($input['name'] ?? '');
 $email = sanitize_input($input['email'] ?? '');
-$password = $input['password'] ?? ''; 
+$password = $input['password'] ?? ''; // Don't sanitize password before hashing
 
 if (empty($name) || empty($email) || empty($password)) {
     send_json_response(['success' => false, 'message' => 'Name, email, and password are required.'], 400);
@@ -25,29 +25,30 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     send_json_response(['success' => false, 'message' => 'Invalid email format.'], 400);
 }
 
-if (strlen($password) < 6) { 
+if (strlen($password) < 6) { // Basic password length validation
     send_json_response(['success' => false, 'message' => 'Password must be at least 6 characters long.'], 400);
 }
 
+// Check if email already exists
 try {
     $stmt_check = $conn->prepare("SELECT id FROM users WHERE email = ?");
     $stmt_check->execute([$email]);
     if ($stmt_check->fetch()) {
-        send_json_response(['success' => false, 'message' => 'Email already registered.'], 409); 
+        send_json_response(['success' => false, 'message' => 'Email already registered.'], 409); // 409 Conflict
     }
 } catch (PDOException $e) {
     error_log("Register Check DB Error: " . $e->getMessage());
     send_json_response(['success' => false, 'message' => 'Error checking email.'], 500);
 }
 
-$user_id = bin2hex(random_bytes(16)); 
+$user_id = bin2hex(random_bytes(16)); // Generate a UUID-like ID
 $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
 try {
     // Initialize subscription_status to 'free' and expiry_date to NULL for new users
     $stmt_insert = $conn->prepare("INSERT INTO users (id, name, email, password_hash, subscription_status, subscription_expiry_date) VALUES (?, ?, ?, ?, 'free', NULL)");
     if ($stmt_insert->execute([$user_id, $name, $email, $password_hash])) {
-        start_secure_session(); 
+        start_secure_session(); // Start session before setting variables
         $_SESSION['user_id'] = $user_id;
         $_SESSION['user_name'] = $name;
         $_SESSION['user_email'] = $email;
@@ -67,5 +68,7 @@ try {
     send_json_response(['success' => false, 'message' => 'Database error during registration.'], 500);
 }
 ?>
+
+    
 
     

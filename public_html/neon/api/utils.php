@@ -28,18 +28,19 @@ function set_cors_headers() {
         // If the origin is not in the allowed list, and it's not an empty origin (e.g. server-side script)
         // it's important NOT to send Access-Control-Allow-Credentials: true with a wildcard or different origin.
         // The browser will block the request if Access-Control-Allow-Origin is not set or doesn't match.
-        error_log("CORS Check: Origin '{$origin}' is NOT in the allowed list.");
+        error_log("CORS Check: Origin '{$origin}' is NOT in the allowed list. No Access-Control-Allow-Origin header will be sent from this block for this request if it's not an OPTIONS request.");
         // To be safe, don't send any Access-Control-Allow-Origin if not matched,
         // or send a specific deny if your server setup allows (though usually not sending is sufficient for browser to block).
     }
 
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+    // Added more common headers that might be sent by the client or needed by the server.
     header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Cookie, X-User-ID, Cache-Control, Pragma, Expires");
     // header("Access-Control-Max-Age: 86400"); // Optional: Cache preflight requests for 1 day
 }
 
 function handle_options_request() {
-    // Set CORS headers for all requests, including OPTIONS
+    // Set CORS headers for all requests, including OPTIONS, BEFORE any other output.
     set_cors_headers(); 
     
     if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -48,35 +49,43 @@ function handle_options_request() {
     }
 }
 
-// Call handle_options_request() at the beginning of any script that might receive OPTIONS requests.
-// This will now be called in each API endpoint file directly.
-
+// send_json_response should be called AFTER potential session starts or any other logic,
+// but it is good that it also ensures CORS headers are set one last time if not already.
+// However, for preflight OPTIONS requests, handle_options_request should be the one exiting.
 function send_json_response($data, $status_code = 200) {
-    // CORS headers should have been set by handle_options_request or at the start of the script.
-    // If not, ensure they are set here too, though it's better at the top.
-    // set_cors_headers(); // Redundant if handle_options_request is called first.
+    // If headers haven't been sent yet (e.g. not an OPTIONS request that exited), set them.
+    if (!headers_sent()) {
+        set_cors_headers(); 
+    }
     
     http_response_code($status_code);
+    // Ensure Content-Type is set correctly for JSON responses
     header('Content-Type: application/json'); 
     echo json_encode($data);
-    exit; 
+    exit; // Crucial to stop script execution after sending JSON response
 }
 
 function start_secure_session() {
     if (session_status() == PHP_SESSION_NONE) {
         $is_https = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
         
+        // For production, you'd set this to your actual domain, e.g., ".digitalfiroj.com"
+        // For local development, empty string or specific localhost domain.
         $cookie_domain = ""; 
         
+        // Determine if running on localhost for SameSite=None compatibility issues with Secure flag
         $host = $_SERVER['HTTP_HOST'] ?? '';
         $is_localhost = (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false);
 
         session_set_cookie_params([
-            'lifetime' => 28800, // 8 hours
+            'lifetime' => 28800, // 8 hours (example)
             'path' => '/',
             'domain' => $cookie_domain, 
-            'secure' => $is_https,
-            'httponly' => true,
+            'secure' => $is_https, // Send cookie only over HTTPS
+            'httponly' => true, // Prevent JavaScript access to the session cookie
+            // SameSite=None requires Secure; Lax is a good default for security.
+            // For local development over HTTP, 'Lax' is often better if Secure is false.
+            // If developing locally over HTTPS and testing cross-site, 'None' with Secure might be needed.
             'samesite' => ($is_https && !$is_localhost) ? 'None' : 'Lax' 
         ]);
         session_start();
@@ -85,7 +94,7 @@ function start_secure_session() {
 
 
 function get_current_user_id() {
-    start_secure_session();
+    start_secure_session(); // Ensures session is started
     return $_SESSION['user_id'] ?? null;
 }
 
@@ -97,6 +106,7 @@ function ensure_authenticated() {
     return $user_id;
 }
 
+// Basic input sanitation. For more complex scenarios, consider libraries or more robust validation.
 function sanitize_input($data) {
     if (is_array($data)) {
         return array_map('sanitize_input', $data);
@@ -104,14 +114,16 @@ function sanitize_input($data) {
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }
 
-define('JWT_SECRET', 'your-very-strong-and-secret-jwt-key-here-make-sure-its-long-and-random'); 
+// --- JWT Functions (Example, not fully integrated or used by default with PHP sessions) ---
+// For production, consider using a robust JWT library like firebase/php-jwt
+// define('JWT_SECRET', 'your-very-strong-and-secret-jwt-key-here-make-sure-its-long-and-random'); 
 
 function create_jwt(array $payload, string $secret, int $expiration_time = 3600): string {
     $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
     $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
 
-    $payload['iat'] = time(); 
-    $payload['exp'] = time() + $expiration_time; 
+    $payload['iat'] = time(); // Issued at
+    $payload['exp'] = time() + $expiration_time; // Expiration time
     $base64UrlPayload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode($payload)));
 
     $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, $secret, true);
@@ -122,11 +134,15 @@ function create_jwt(array $payload, string $secret, int $expiration_time = 3600)
 
 function verify_jwt(string $jwt, string $secret): ?array {
     $tokenParts = explode('.', $jwt);
-    if (count($tokenParts) !== 3) return null;
+    if (count($tokenParts) !== 3) return null; // Invalid token format
 
+    // Decode URL-safe base64 strings
     $headerData = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[0]));
     $payloadData = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[1]));
     $signatureProvided = base64_decode(str_replace(['-', '_'], ['+', '/'], $tokenParts[2]));
+
+
+    if (!$headerData || !$payloadData) return null; // Failed to decode
 
     $decodedHeader = json_decode($headerData, true);
     $decodedPayload = json_decode($payloadData, true);
@@ -134,22 +150,25 @@ function verify_jwt(string $jwt, string $secret): ?array {
     if (!$decodedHeader || !$decodedPayload || strtoupper($decodedHeader['alg'] ?? '') !== 'HS256') return null;
     
     // Re-encode the original header and payload strings for signature verification
+    // This is crucial because PHP's json_encode might reorder keys or change spacing
     $base64UrlHeaderForVerification = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($headerData));
     $base64UrlPayloadForVerification = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payloadData));
 
     $expectedSignature = hash_hmac('sha256', $base64UrlHeaderForVerification . "." . $base64UrlPayloadForVerification, $secret, true);
     
     if (!hash_equals($expectedSignature, $signatureProvided)) {
-         error_log("JWT Signature Verification Failed.");
-        return null; 
+         error_log("JWT Signature Verification Failed."); // Log this for debugging
+        return null; // Signature verification failed
     }
 
     if (($decodedPayload['exp'] ?? 0) < time()) {
-         error_log("JWT Token Expired.");
-        return null; 
+         error_log("JWT Token Expired."); // Log this for debugging
+        return null; // Token expired
     }
 
     return $decodedPayload;
 }
 
 ?>
+
+    
