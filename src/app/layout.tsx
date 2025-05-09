@@ -1,15 +1,18 @@
+
 "use client";
 
 import { Inter } from 'next/font/google';
+import type { Metadata } from 'next';
 import { cn } from '@/lib/utils';
 import './globals.css';
 import { Providers } from './providers'; // Providers includes AppProvider
-import { AppLayout } from '@/components/layout/app-layout'; // Ensure this path is correct
+import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
 import ClientOnly from '@/components/client-only'; // Import ClientOnly
-import { SidebarProvider } from '@/components/ui/sidebar';
+// Removed SidebarProvider import as it's no longer exported or needed here
 import { ThemeWatcher } from '@/context/theme-watcher';
-// Removed AuthProvider as per recent simplification requests
+import { AuthProvider } from '@/context/auth-context';
+
 
 const inter = Inter({
   variable: '--font-inter',
@@ -37,12 +40,11 @@ export default function RootLayout({
       >
         <ClientOnly>
           <Providers>
-            {/* AuthProvider removed */}
-            <SidebarProvider>
+            <AuthProvider>
               <ThemeWatcher>
                 <AppLayout>{children}</AppLayout>
               </ThemeWatcher>
-            </SidebarProvider>
+            </AuthProvider>
             <Toaster />
           </Providers>
         </ClientOnly>
@@ -50,3 +52,4 @@ export default function RootLayout({
     </html>
   );
 }
+
