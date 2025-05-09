@@ -1,18 +1,16 @@
+// src/app/layout.tsx
 "use client";
 
 import { Inter } from 'next/font/google';
-// Removed Metadata export as it conflicts with "use client" for now
-// import type { Metadata } from 'next';
-import { cn } from '@/lib/utils';
+// Removed Metadata export as it conflicts with "use client"
 import './globals.css';
 import { Providers } from './providers'; // Providers includes AppProvider
 import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
-import ClientOnly from '@/components/client-only'; // Import ClientOnly
-import { ThemeWatcher } from '@/context/theme-watcher';
-import Script from 'next/script';
-
+import { AuthProvider } from '@/context/auth-context'; // Corrected import path
+import ClientOnly from '@/components/client-only';
+import { ThemeWatcher } from '@/context/theme-watcher'; // Re-added ThemeWatcher
+import { cn } from '@/lib/utils'; // Added missing import for cn
 
 const inter = Inter({
   variable: '--font-inter',
@@ -39,9 +37,9 @@ export default function RootLayout({
         )}
       >
         <Providers> {/* AppProvider is inside Providers */}
-          <AuthProvider> {/* AuthProvider wraps ThemeWatcher and AppLayout */}
+          <AuthProvider> {/* AuthProvider now correctly wraps ThemeWatcher and ClientOnly(AppLayout) */}
             <ThemeWatcher>
-              <ClientOnly> {/* ClientOnly ensures AppLayout renders client-side */}
+              <ClientOnly>
                 <AppLayout>
                   {children}
                 </AppLayout>

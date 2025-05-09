@@ -1,75 +1,73 @@
+// src/context/app-context.tsx
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { format, startOfDay, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import type { Currency } from '@/services/currency';
 import { getUserCurrency, getSupportedCurrencies } from '@/services/currency';
 import { defaultThemeId } from '@/config/themes';
-
-// --- Configuration ---
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php'; // PHP API Base URL
+import { fetchFromApi } from '@/lib/api'; // Import the new API helper
 
 // --- Types ---
 export interface ShoppingListItem {
   id: string;
-  userId: string; // Ensure this is always set
+  userId: string;
   listId: string;
   name: string;
   quantity: number;
   price: number;
   category: string;
   checked: boolean;
-  dateAdded: number;
+  dateAdded: number; // Timestamp
 }
 
 export interface List {
   id: string;
-  userId: string; // Ensure this is always set
+  userId: string;
   name: string;
   budgetLimit: number;
-  defaultCategory: string;
+  defaultCategory: string; // ID of the default category
 }
 
 export interface Category {
-  id: string;
+  id:string; // UUID for custom, predefined string for defaults
   name: string;
-  userId?: string; // If categories can be user-specific on backend
+  userId?: string | null; // Null or user ID for custom categories
 }
 
 export interface AppState {
-  userId: string | null; // Will be set by AuthContext
+  userId: string | null; // UUID for anonymous, actual ID for logged-in
   currency: Currency;
   lists: List[];
   selectedListId: string | null;
   shoppingListItems: ShoppingListItem[];
   categories: Category[];
-  isLoading: boolean; // General app data loading state
+  isLoading: boolean;
   isPremium: boolean;
   theme: string;
 }
 
 // --- Initial State & Constants ---
-const LOCAL_STORAGE_SETTINGS_KEY = 'neonShoppingSettings'; // For theme and potentially currency fallback
 const defaultCurrency: Currency = { code: 'USD', symbol: '$', name: 'US Dollar' };
 export const FREEMIUM_LIST_LIMIT = 3;
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'uncategorized', name: 'Uncategorized' },
-  { id: 'home-appliances', name: 'Home Appliances' },
-  { id: 'health', name: 'Health' },
-  { id: 'grocery', name: 'Grocery' },
-  { id: 'fashion', name: 'Fashion' },
-  { id: 'electronics', name: 'Electronics' },
+  { id: 'uncategorized', name: 'Uncategorized', userId: null },
+  { id: 'home-appliances', name: 'Home Appliances', userId: null },
+  { id: 'health', name: 'Health', userId: null },
+  { id: 'grocery', name: 'Grocery', userId: null },
+  { id: 'fashion', name: 'Fashion', userId: null },
+  { id: 'electronics', name: 'Electronics', userId: null },
 ];
 
 const initialState: AppState = {
-  userId: null,
+  userId: null, // Will be set by AuthContext or generated if anonymous
   currency: defaultCurrency,
   lists: [],
   selectedListId: null,
   shoppingListItems: [],
-  categories: DEFAULT_CATEGORIES, // Will be overridden by API if user has custom categories
-  isLoading: true, // Start with true, set to false after initial load/auth check
+  categories: DEFAULT_CATEGORIES,
+  isLoading: true,
   isPremium: false,
   theme: defaultThemeId,
 };
@@ -79,74 +77,52 @@ interface AppContextProps {
   state: AppState;
   dispatch: React.Dispatch<Action>;
   formatCurrency: (amount: number) => string;
-  isLoading: boolean;
+  isLoading: boolean; // Combined loading state
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 // --- Actions ---
 type Action =
-  | { type: 'LOAD_STATE'; payload: Partial<AppState> } // For initial local settings like theme
-  | { type: 'LOAD_STATE_FROM_API'; payload: { userId: string; currencyCode?: string; /* other data from API */ } }
-  | { type: 'SET_API_DATA'; payload: { lists: List[]; shoppingListItems: ShoppingListItem[]; categories: Category[]; currency?: Currency, isPremium?: boolean } }
-  | { type: 'SET_USER_ID'; payload: string | null } // To sync from AuthContext
+  | { type: 'LOAD_STATE'; payload: Partial<AppState> }
+  | { type: 'SET_API_DATA'; payload: { userId: string; lists: List[]; shoppingListItems: ShoppingListItem[]; categories: Category[]; currency?: Currency, isPremium?: boolean } }
+  | { type: 'SET_USER_ID'; payload: string | null }
   | { type: 'SET_CURRENCY'; payload: Currency }
-  | { type: 'ADD_LIST'; payload: List } // Payload is now the full list object from API
-  | { type: 'UPDATE_LIST'; payload: List } // Payload is now the full list object from API
+  | { type: 'ADD_LIST'; payload: List }
+  | { type: 'UPDATE_LIST'; payload: List }
   | { type: 'DELETE_LIST'; payload: string }
   | { type: 'SELECT_LIST'; payload: string | null }
-  | { type: 'ADD_SHOPPING_ITEM'; payload: ShoppingListItem } // Payload is now the full item from API
-  | { type: 'UPDATE_SHOPPING_ITEM'; payload: ShoppingListItem } // Payload is now the full item from API
+  | { type: 'ADD_SHOPPING_ITEM'; payload: ShoppingListItem }
+  | { type: 'UPDATE_SHOPPING_ITEM'; payload: ShoppingListItem }
   | { type: 'REMOVE_SHOPPING_ITEM'; payload: string }
-  | { type: 'TOGGLE_SHOPPING_ITEM'; payload: ShoppingListItem } // Payload is now the full item from API
-  | { type: 'ADD_CATEGORY'; payload: Category } // Payload is now the full category from API
-  | { type: 'UPDATE_CATEGORY'; payload: Category } // Payload is now the full category from API
+  | { type: 'TOGGLE_SHOPPING_ITEM'; payload: ShoppingListItem }
+  | { type: 'ADD_CATEGORY'; payload: Category }
+  | { type: 'UPDATE_CATEGORY'; payload: Category }
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_PREMIUM_STATUS'; payload: boolean }
   | { type: 'SET_THEME'; payload: string }
   | { type: 'RESET_APP_STATE_FOR_LOGOUT' };
 
-
-// --- API Helper ---
-async function fetchFromApi(endpoint: string, userId: string | null, options: RequestInit = {}) {
-  if (!userId) {
-    console.warn(`Cannot fetch from ${endpoint}: userId is null.`);
-    // Optionally, instead of throwing, return a specific error object or an empty successful-like response
-    // to prevent breaking the calling code, if that's preferred.
-    throw new Error("User not authenticated for API request.");
-  }
-  const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      // You might need to send a session cookie or token here if your PHP backend requires it
-      // For PHP sessions, the browser usually handles cookies automatically.
-      // If using a token: 'Authorization': `Bearer ${your_auth_token}`
-      'X-User-ID': userId, // Example of sending user ID in a custom header
-      ...(options.headers || {}),
-    },
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Failed to fetch data and parse error' }));
-    throw new Error(errorData.message || `API request failed: ${response.statusText}`);
-  }
-  return response.json();
-}
-
-
 // --- Reducer ---
 function appReducer(state: AppState, action: Action): AppState {
   let newState = { ...state };
 
   switch (action.type) {
-    case 'LOAD_STATE': // Used for local settings like theme, and initial currency detection
+    case 'LOAD_STATE':
       newState = { ...state, ...action.payload, isLoading: false };
+      // If lists are loaded and selectedListId is not among them (or null), select the first one.
+      if (newState.lists.length > 0 && (!newState.selectedListId || !newState.lists.find(l => l.id === newState.selectedListId))) {
+        newState.selectedListId = newState.lists[0].id;
+      } else if (newState.lists.length === 0) {
+        newState.selectedListId = null; // Ensure selectedListId is null if no lists
+      }
       break;
 
     case 'SET_API_DATA':
       newState = {
         ...state,
+        userId: action.payload.userId, // Ensure userId from API data is set
         lists: action.payload.lists,
         shoppingListItems: action.payload.shoppingListItems,
         categories: action.payload.categories.length > 0 ? action.payload.categories : DEFAULT_CATEGORIES,
@@ -154,44 +130,31 @@ function appReducer(state: AppState, action: Action): AppState {
         isPremium: action.payload.isPremium !== undefined ? action.payload.isPremium : state.isPremium,
         isLoading: false,
       };
-      if (action.payload.lists.length > 0 && !newState.lists.find(l => l.id === newState.selectedListId)) {
-        newState.selectedListId = action.payload.lists[0].id;
-      } else if (action.payload.lists.length === 0) {
+      if (newState.lists.length > 0 && (!newState.selectedListId || !newState.lists.find(l => l.id === newState.selectedListId))) {
+        newState.selectedListId = newState.lists[0].id;
+      } else if (newState.lists.length === 0) {
         newState.selectedListId = null;
       }
       break;
 
-    case 'SET_USER_ID': // Sync userId from AuthContext
+    case 'SET_USER_ID':
       newState.userId = action.payload;
-      if (!action.payload) { // If logging out, reset data
-        newState.lists = [];
-        newState.shoppingListItems = [];
-        newState.categories = DEFAULT_CATEGORIES;
-        newState.selectedListId = null;
-        newState.isPremium = false;
-      }
+      // Data loading for the new userId will be handled by the useEffect in AppProvider
       break;
 
     case 'SET_CURRENCY':
       newState.currency = action.payload;
-      // Persist currency preference locally and potentially to backend
-      if (typeof window !== 'undefined') {
-        const localSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY) || '{}');
-        localSettings.currency = action.payload;
-        localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(localSettings));
-      }
-      // TODO: API call to save currency preference to backend if user is logged in
       if (newState.userId) {
-        fetchFromApi(`user/preferences.php?action=set_currency&user_id=${newState.userId}`, newState.userId, { // Include user_id in query params for GET or body for POST
+        fetchFromApi('user/preferences.php', {
             method: 'POST',
-            body: JSON.stringify({ currencyCode: action.payload.code }),
+            body: JSON.stringify({ userId: newState.userId, currencyCode: action.payload.code }),
         }).catch(err => console.error("Failed to save currency preference to backend:", err));
       }
       break;
 
     case 'ADD_LIST':
       newState.lists = [...state.lists, action.payload];
-      if (!newState.selectedListId || newState.lists.length === 0) { // Select if first list
+      if (!newState.selectedListId || state.lists.length === 0) {
         newState.selectedListId = action.payload.id;
       }
       break;
@@ -209,15 +172,13 @@ function appReducer(state: AppState, action: Action): AppState {
       break;
     case 'SELECT_LIST':
       newState.selectedListId = action.payload;
-      // Save selectedListId to local settings for persistence across sessions if desired
-      if (typeof window !== 'undefined') {
-        const localSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY) || '{}');
-        localSettings.selectedListId = action.payload;
-        localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(localSettings));
-      }
       break;
 
     case 'ADD_SHOPPING_ITEM':
+       if (!action.payload.listId || !action.payload.userId) {
+        console.error("Attempted to add item without listId or userId", action.payload);
+        return state; // Return current state if critical IDs are missing
+      }
       newState.shoppingListItems = [...state.shoppingListItems, action.payload];
       break;
     case 'UPDATE_SHOPPING_ITEM':
@@ -231,8 +192,8 @@ function appReducer(state: AppState, action: Action): AppState {
       );
       break;
     case 'TOGGLE_SHOPPING_ITEM':
-      newState.shoppingListItems = state.shoppingListItems.map(item =>
-        item.id === action.payload.id ? action.payload : item // API returns the updated item
+       newState.shoppingListItems = state.shoppingListItems.map(item =>
+        item.id === action.payload.id ? { ...item, ...action.payload, checked: !item.checked, dateAdded: Date.now() } : item
       );
       break;
 
@@ -261,137 +222,113 @@ function appReducer(state: AppState, action: Action): AppState {
       break;
     case 'SET_THEME':
       newState.theme = action.payload;
+      // Persist theme locally
       if (typeof window !== 'undefined') {
-        const localSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY) || '{}');
-        localSettings.theme = action.payload;
-        localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(localSettings));
+        localStorage.setItem('appTheme', action.payload);
       }
       break;
     case 'RESET_APP_STATE_FOR_LOGOUT':
+      const persistedTheme = typeof window !== 'undefined' ? localStorage.getItem('appTheme') || defaultThemeId : defaultThemeId;
       newState = {
         ...initialState,
-        userId: null, // Ensure userId is null after logout
-        // Keep local settings like theme and currency if desired, or reset them too
-        theme: state.theme, // Persist theme across logout
-        currency: state.currency, // Persist currency or reset to default/auto-detected
+        userId: null,
+        theme: persistedTheme, // Keep theme
+        currency: state.currency, // Keep currency or reset
         isLoading: false,
       };
       break;
     default:
       return state;
   }
-
-  // No longer saving entire app state to localStorage here.
-  // Only specific settings like theme, selectedListId, and currency are saved directly.
   return newState;
 }
 
 // --- Provider Component ---
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
 
-  // Effect for loading initial local settings (theme, currency)
+  // Effect for loading initial local settings (theme, currency) and anonymous user ID
   useEffect(() => {
-    const loadLocalSettings = async () => {
+    const initializeAnonymousUserAndSettings = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       let theme = defaultThemeId;
-      let currency = defaultCurrency;
-      let selectedListId = null;
+      let currentCurrency = defaultCurrency;
+      let anonymousUserId = localStorage.getItem('anonymous_user_id');
 
       if (typeof window !== 'undefined') {
-        try {
-          const localSettingsRaw = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
-          if (localSettingsRaw) {
-            const localSettings = JSON.parse(localSettingsRaw);
-            theme = localSettings.theme || defaultThemeId;
-            currency = localSettings.currency || defaultCurrency; // Load saved currency
-            selectedListId = localSettings.selectedListId || null;
-          }
-
-          // Attempt auto-detection if no currency is saved or if it's the default (first time UX)
-          if (!localSettingsRaw || !JSON.parse(localSettingsRaw).currency) {
-              const autoDetectedCurrency = await getUserCurrency();
-              if (autoDetectedCurrency) {
-                  currency = autoDetectedCurrency;
-                  // Save auto-detected currency to local settings
-                  const currentSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY) || '{}');
-                  currentSettings.currency = autoDetectedCurrency;
-                  localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(currentSettings));
-              }
-          }
-        } catch (e) {
-          console.error("Failed to parse local settings:", e);
+        theme = localStorage.getItem('appTheme') || defaultThemeId;
+        const storedCurrencyCode = localStorage.getItem('userCurrencyCode');
+        if (storedCurrencyCode) {
+            const supportedCurrencies = await getSupportedCurrencies();
+            const found = supportedCurrencies.find(c => c.code === storedCurrencyCode);
+            if (found) currentCurrency = found;
+        } else {
+            const autoDetected = await getUserCurrency();
+            if (autoDetected) {
+                currentCurrency = autoDetected;
+                localStorage.setItem('userCurrencyCode', autoDetected.code);
+            }
+        }
+        if (!anonymousUserId) {
+            anonymousUserId = uuidv4();
+            localStorage.setItem('anonymous_user_id', anonymousUserId);
         }
       }
-      dispatch({ type: 'LOAD_STATE', payload: { theme, currency, selectedListId, isLoading: false } });
-    };
-    loadLocalSettings();
-  }, []);
-
-
-  // Effect for loading data from API when userId changes (after login)
-  useEffect(() => {
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    const loadDataFromApi = async (userId: string, currencyCode?: string) => {
-        if (!userId) return; // Don't fetch if no user ID
-        dispatch({ type: 'SET_LOADING', payload: true });
-        try {
-            // Construct the query parameters string
-            let queryParams = `?action=get_all&user_id=${encodeURIComponent(userId)}`;
-            if (currencyCode) {
-                queryParams += `&currency_code=${encodeURIComponent(currencyCode)}`;
-            }
-
-            const data = await fetchFromApi(`data/index.php${queryParams}`, userId, { signal });
-            // Ensure data has the expected structure
-            if (data && Array.isArray(data.lists) && Array.isArray(data.items) && Array.isArray(data.categories)) {
-                dispatch({
-                    type: 'SET_API_DATA',
-                    payload: {
-                        lists: data.lists,
-                        shoppingListItems: data.items,
-                        categories: data.categories,
-                        currency: data.currency || state.currency, // Use API currency if available
-                        isPremium: data.isPremium !== undefined ? data.isPremium : state.isPremium,
-                    },
-                });
-            } else {
-                 console.error("API response does_not match expected structure:", data);
-                 // Handle unexpected structure, e.g., dispatch an error or reset to empty
-                 dispatch({ type: 'SET_API_DATA', payload: { lists: [], shoppingListItems: [], categories: DEFAULT_CATEGORIES, currency: state.currency, isPremium: state.isPremium } });
-            }
-
-        } catch (error: any) {
-            if (error.name === 'AbortError') {
-                console.log('API fetch aborted');
-            } else {
-                console.error("Failed to load data from API:", error);
-                 // Keep existing local state or reset to empty, depending on desired UX
-                dispatch({ type: 'SET_LOADING', payload: false }); // Stop loading on error
-            }
-        }
+      // Dispatch initial state for anonymous user or pre-auth state
+      dispatch({ type: 'LOAD_STATE', payload: { userId: anonymousUserId, theme, currency: currentCurrency, isLoading: false } });
+      setIsInitialDataLoaded(true); // Mark that basic init is done
     };
 
-    if (state.userId) {
-        loadDataFromApi(state.userId, state.currency.code);
+    if (!state.userId) { // Only run if no user ID is set (truly initial load or after logout)
+        initializeAnonymousUserAndSettings();
     } else {
-        // If no userId (user logged out or not yet logged in), ensure isLoading is false
-        // and potentially clear out data if not handled by RESET_APP_STATE_FOR_LOGOUT
-        if(state.isLoading) {
-             dispatch({ type: 'SET_LOADING', payload: false });
-        }
+        setIsInitialDataLoaded(true); // If userId is already set (e.g. from auth context), assume init is done
+        dispatch({ type: 'SET_LOADING', payload: false });
     }
-    return () => {
-        controller.abort();
+
+  }, []); // Runs once on mount if no userId from auth yet
+
+
+  // Effect for loading data from API when a *logged-in* userId changes
+  useEffect(() => {
+    const loadDataForAuthenticatedUser = async (userId: string) => {
+      if (!userId || userId.startsWith('anon-')) return; // Don't fetch for anonymous or if no user ID
+      dispatch({ type: 'SET_LOADING', payload: true });
+      try {
+        const data = await fetchFromApi(`data/index.php?user_id=${encodeURIComponent(userId)}`, { method: 'GET' });
+        if (data && data.lists && data.items && data.categories) {
+          dispatch({
+            type: 'SET_API_DATA',
+            payload: {
+              userId: userId, // Ensure the correct userId is part of the payload
+              lists: data.lists,
+              shoppingListItems: data.items,
+              categories: data.categories,
+              currency: data.user_preferences?.currency ? data.user_preferences.currency : state.currency,
+              isPremium: data.user_preferences?.is_premium !== undefined ? data.user_preferences.is_premium : false,
+            },
+          });
+        } else {
+          console.error("API response missing expected data structure:", data);
+          dispatch({ type: 'SET_LOADING', payload: false });
+        }
+      } catch (error) {
+        console.error("Failed to load data from API for authenticated user:", error);
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
     };
-  }, [state.userId, state.currency.code]); // Rerun when userId or currency changes
+
+    if (state.userId && !state.userId.startsWith('anon-') && isInitialDataLoaded) {
+      loadDataForAuthenticatedUser(state.userId);
+    }
+  }, [state.userId, isInitialDataLoaded]);
+
 
   const formatCurrency = useCallback(
     (amount: number) => {
       try {
-        return new Intl.NumberFormat(undefined, {
+        return new Intl.NumberFormat(undefined, { // Let browser decide locale for formatting
           style: 'currency',
           currency: state.currency.code,
         }).format(amount);

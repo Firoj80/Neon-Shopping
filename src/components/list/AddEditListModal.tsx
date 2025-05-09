@@ -1,3 +1,4 @@
+// src/components/list/AddEditListModal.tsx
 "use client";
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
@@ -21,18 +22,22 @@ import {
   SelectContent,
   SelectItem,
   SelectGroup,
-  SelectLabel
-} from '@/components/ui/select';
+  SelectLabel,
+  SelectValue
+} from '@/components/ui/select'; // Ensure all Select components are imported
 import type { List, Category } from '@/context/app-context';
-import { useAppContext } from '@/context/app-context';
+import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { fetchFromApi } from '@/lib/api'; // Import API helper
+import { useAuth } from '@/context/auth-context'; // Import useAuth for user ID
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php';
 
 const listFormSchema = z.object({
   name: z.string().min(1, "List name is required").max(50, "List name too long"),
   budgetLimit: z.number().min(0, "Budget limit cannot be negative").nullable().default(0),
-  defaultCategory: z.string().optional().default(''),
+  defaultCategory: z.string().optional().default('uncategorized'), // Default to 'uncategorized' string ID
 });
 
 type ListFormData = z.infer<typeof listFormSchema>;
@@ -44,15 +49,17 @@ interface AddEditListModalProps {
 }
 
 export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onClose, listData }) => {
-  const { dispatch, state } = useAppContext();
-  const { categories, currency, userId, isPremium, lists } = state; // Added lists and isPremium
+  const { dispatch, state: appState } = useAppContext();
+  const { categories, currency, isPremium, lists } = appState;
+  const { user } = useAuth(); // Get authenticated user
+  const { toast } = useToast();
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ListFormData>({
     resolver: zodResolver(listFormSchema),
     defaultValues: {
       name: '',
       budgetLimit: null,
-      defaultCategory: '',
+      defaultCategory: 'uncategorized',
     }
   });
 
@@ -68,58 +75,67 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
         reset({
           name: '',
           budgetLimit: null,
-          defaultCategory: 'uncategorized',
+          defaultCategory: 'uncategorized', // Default for new lists
         });
       }
     }
   }, [isOpen, listData, reset]);
 
   const onSubmit = async (data: ListFormData) => {
-    if (!userId) {
-      console.error("User ID is not available. Cannot save list.");
-      // Optionally show a toast to the user
+    if (!user || !user.id) {
+      toast({ title: "Error", description: "You must be logged in to save a list.", variant: "destructive" });
+      onClose(); // Close modal if user is not authenticated
       return;
     }
 
     if (!isPremium && !listData && lists.length >= FREEMIUM_LIST_LIMIT) {
-        // UI should ideally prevent opening the modal if this is the case,
-        // but this is a fallback check.
-        alert(`Freemium users can only create up to ${FREEMIUM_LIST_LIMIT} lists. Please upgrade.`);
-        onClose();
-        return;
+      toast({
+        title: "List Limit Reached",
+        description: (
+          <div className="flex flex-col gap-2">
+            <span>You've reached the freemium limit of {FREEMIUM_LIST_LIMIT} lists.</span>
+            <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
+              <Link href="/premium">Upgrade to Premium</Link>
+            </Button>
+          </div>
+        ),
+        variant: "default",
+      });
+      onClose();
+      return;
     }
 
-
     const payloadForApi = {
-      userId, // Include userId
-      id: listData ? listData.id : undefined, // Include id if editing
+      userId: user.id, // Use authenticated user's ID
+      id: listData ? listData.id : undefined,
       name: data.name,
       budgetLimit: data.budgetLimit ?? 0,
       defaultCategory: data.defaultCategory && categories.some(c => c.id === data.defaultCategory) ? data.defaultCategory : 'uncategorized',
     };
 
+    const endpoint = listData ? 'lists/update_list.php' : 'lists/create_list.php';
+
     try {
-      const response = await fetch(`${API_BASE_URL}/lists/${listData ? 'update_list.php' : 'create_list.php'}`, {
+      const result = await fetchFromApi(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadForApi),
       });
-      const result = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || 'Failed to save list');
       }
 
       if (listData) {
         dispatch({ type: 'UPDATE_LIST', payload: result.list as List });
+        toast({ title: "Success", description: "List updated." });
       } else {
         dispatch({ type: 'ADD_LIST', payload: result.list as List });
+        toast({ title: "Success", description: "List created." });
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving list:", error);
-      // Optionally show a toast to the user with the error message
-      alert(`Error: ${error instanceof Error ? error.message : 'Could not save list.'}`);
+      toast({ title: "Error", description: error.message || 'Could not save list.', variant: "destructive" });
     }
   };
 
@@ -167,7 +183,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
                       const value = e.target.value;
                       field.onChange(value === '' ? null : Math.max(0, parseFloat(value) || 0));
                   }}
-                  value={field.value === null || field.value === undefined ? '' : String(field.value)}
+                  value={field.value === null || field.value === undefined || field.value === 0 ? '' : String(field.value)}
                   placeholder="0.00"
                   className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary text-sm glow-border-inner"
                   min="0"
@@ -218,7 +234,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
                             {category.name}
                           </SelectItem>
                         ))}
-                        {categories.filter(cat => cat.id !== 'uncategorized').length === 0 && <p className='text-center text-muted-foreground text-xs p-2'>No categories defined yet.</p>}
+                        {categories.filter(cat => cat.id !== 'uncategorized').length === 0 && <SelectItem value="no-cat" disabled className="text-center text-muted-foreground text-xs p-2">No custom categories defined.</SelectItem>}
                       </SelectGroup>
                     </ScrollArea>
                   </SelectContent>

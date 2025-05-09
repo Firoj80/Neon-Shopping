@@ -1,3 +1,4 @@
+// src/app/(app)/list/create-first/page.tsx
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -10,16 +11,15 @@ import { useAppContext } from '@/context/app-context';
 
 export default function CreateFirstListPage() {
     const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
-    const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, user } = useAuth(); // Get user
     const { state: appState, isLoading: appLoading } = useAppContext();
     const router = useRouter();
 
     const isLoading = authLoading || appLoading;
 
     useEffect(() => {
-        // If user is not authenticated and not loading, redirect to auth page
         if (!isLoading && !isAuthenticated) {
-            router.replace('/auth');
+            router.replace('/auth?redirect=/list/create-first'); // Redirect to auth if not logged in
         }
         // If user is authenticated, has lists, and is on this page, redirect to main list page
         if (!isLoading && isAuthenticated && appState.lists && appState.lists.length > 0) {
@@ -33,12 +33,10 @@ export default function CreateFirstListPage() {
              console.log("Auth/App still loading, please wait...");
              return;
          }
-        if (isAuthenticated) {
+        if (isAuthenticated && user) { // Ensure user object exists
             setIsAddListModalOpen(true);
         } else {
-            // This case should ideally be caught by the useEffect redirect,
-            // but as a fallback:
-            router.push('/auth');
+            router.push('/auth?redirect=/list/create-first');
         }
     };
 
@@ -50,9 +48,7 @@ export default function CreateFirstListPage() {
         );
     }
 
-    // If not authenticated (and not loading), this page shouldn't really be reachable due to useEffect redirect.
-    // However, as a safeguard, we can return null or a message.
-    if (!isAuthenticated) {
+    if (!isAuthenticated) { // If still not authenticated after loading, show message or keep loading
         return (
              <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
                 <p className="text-muted-foreground">Redirecting to login...</p>
@@ -74,7 +70,8 @@ export default function CreateFirstListPage() {
             >
                 <PlusCircle className="mr-2 h-5 w-5" /> Create New List
             </Button>
-            {isAuthenticated && (
+            {/* Ensure modal only renders if authenticated and user data is available */}
+            {isAuthenticated && user && (
                  <AddEditListModal
                      isOpen={isAddListModalOpen}
                      onClose={() => setIsAddListModalOpen(false)}

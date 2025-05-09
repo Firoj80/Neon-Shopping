@@ -1,4 +1,4 @@
-
+// src/components/layout/app-layout.tsx
 "use client";
 
 import React, { useState, useEffect, Fragment, useCallback } from 'react';
@@ -36,13 +36,13 @@ import {
   X,
   UserCircle2 as ProfileIcon,
   LogOut as LogoutIcon,
-  History as HistoryIcon, // Renamed to avoid conflict with page
-  Palette as PaletteIcon, // Renamed to avoid conflict with page
+  History as HistoryIcon,
+  Palette as PaletteIcon,
   ShieldCheck as PolicyIcon,
   FileText as ArticleIcon,
   AppWindow as AppsIcon,
-  Gem, // Added Gem icon import
-  DollarSign // Added for Currency
+  Gem,
+  DollarSign
 } from 'lucide-react';
 
 import { Button } from '../ui/button';
@@ -52,6 +52,7 @@ import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from '@/context/auth-context';
+import { useClientOnly } from '@/hooks/use-client-only'; // Import useClientOnly
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,20 +61,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useClientOnly } from '@/hooks/use-client-only';
 
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
+    // Use flex with justify-between initially, but center the title with a placeholder
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Left Side: Hamburger Menu Trigger */}
        <Sheet open={isOpen} onOpenChange={setIsOpen}>
          <SheetTrigger asChild>
-           <Button variant="ghost" size="icon" className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+           <Button variant="ghost" size="icon" /* onClick removed, Sheet handles it */ className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
              <AnimatePresence initial={false} mode="wait">
                <motion.div
                  key={isOpen ? "x" : "menu"}
@@ -102,8 +103,10 @@ const MobileHeader: React.FC = () => {
       </div>
 
       {/* Right Side: Profile Icon / Login Button */}
-      <div className="w-10">
-        {isAuthenticated && user ? (
+      <div className="w-10"> {/* Placeholder for alignment, content handled by ProfileDropdown */}
+        {isLoading ? (
+          <div className="h-6 w-6 animate-pulse rounded-full bg-muted"></div>
+        ) : isAuthenticated && user ? (
           <ProfileDropdown />
         ) : null}
       </div>
@@ -113,12 +116,12 @@ const MobileHeader: React.FC = () => {
 
 // --- Profile Dropdown Component ---
 const ProfileDropdown: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
 
   const handleLogout = () => {
     logout();
-    router.push('/auth');
+    // router.push('/auth'); // AuthContext's logout should handle redirection
   };
 
   const profileMenuItems = [
@@ -127,11 +130,10 @@ const ProfileDropdown: React.FC = () => {
     { href: '/history', label: 'History', icon: HistoryIcon },
     { href: '/settings', label: 'Settings', icon: Settings },
     { href: '/themes', label: 'Themes', icon: PaletteIcon },
-    { href: '/premium-plans', label: 'Premium Plans', icon: Gem },
+    { href: '/premium', label: 'Premium', icon: Gem },
   ];
 
-
-  if (!user) return null;
+  if (!isAuthenticated || !user) return null;
 
   return (
     <DropdownMenu>
@@ -176,7 +178,7 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, isAuthenticated, user } = useAuth();
+  const { logout, isAuthenticated } = useAuth(); // Removed user as it's handled in ProfileDropdown or sidebar footer
 
   const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement>) => {
     if (e) e.preventDefault();
@@ -191,13 +193,8 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
   const handleLogoutClick = () => {
     if (onLinkClick) onLinkClick();
     logout();
-    router.push('/auth');
+    // router.push('/auth'); // AuthContext's logout handles redirection
   };
-
-  const mainNavItems = isAuthenticated ? [
-    // Main nav items are now in profile dropdown, this can be empty or for other top-level links if needed
-  ] : [];
-
 
   const secondaryMenuItems = [
     { href: '/about', label: 'About Us', icon: Info },
@@ -206,10 +203,9 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
     { href: '/rate', label: 'Rate App', icon: Star },
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
-    { href: '/premium', label: 'Unlock Premium Features', icon: Gem } // Original premium page link
   ];
 
-  const renderMenuItem = (item: typeof mainNavItems[0] | typeof secondaryMenuItems[0]) => {
+  const renderMenuItem = (item: typeof secondaryMenuItems[0]) => {
     const clickHandler = (e: React.MouseEvent<HTMLAnchorElement>) => {
       handleLinkClick(item.href, e);
     };
@@ -252,30 +248,19 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       </SidebarHeader>
       <SidebarContent className="p-2 flex-grow flex flex-col">
         <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-          {/* Main nav items are removed from here as they are in profile dropdown */}
-          {/* {mainNavItems.map(renderMenuItem)} */}
-          {/* {mainNavItems.length > 0 && secondaryMenuItems.length > 0 && <SidebarSeparator className="my-2" />} */}
           {secondaryMenuItems.map(renderMenuItem)}
         </SidebarMenu>
       </SidebarContent>
        <SidebarFooter className="p-4 border-t border-sidebar-border shrink-0">
-        {isAuthenticated ? (
+        {!isAuthenticated ? (
           <Button
-            variant="outline"
-            className="w-full justify-center text-red-400 hover:text-red-300 hover:bg-destructive/20 border-red-500/50 glow-border-inner"
-            onClick={handleLogoutClick}
-          >
-            <LogoutIcon className="mr-2 h-4 w-4" /> Logout
-          </Button>
-        ) : (
-           <Button
             variant="outline"
             className="w-full justify-center text-primary hover:text-primary/80 hover:bg-primary/10 border-primary/50 glow-border-inner"
             onClick={() => handleLinkClick('/auth')}
            >
             Login / Sign Up
            </Button>
-        )}
+        ) : null } {/* Logout button is in ProfileDropdown */}
       </SidebarFooter>
     </Fragment>
   );
@@ -292,7 +277,7 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   const authState = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const isClientMounted = useClientOnly();
+  const isClientMounted = useClientOnly(); // Use the hook
 
   const { isLoading: authLoading, isAuthenticated } = authState;
   const { isLoading: appLoading } = appContext;
@@ -300,20 +285,31 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   const isLoading = authLoading || appLoading;
 
 
-  // --- Redirect Logic ---
-  // Moved inside useEffect to prevent rendering during rendering
+   // --- Redirect Logic ---
+   // Redirect after ensuring client-side and loading is complete
    useEffect(() => {
      if (isClientMounted && !isLoading) {
        const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+
        if (isAuthenticated) {
-         if (!hasLists && pathname !== '/list/create-first' && pathname !== '/auth') {
+         // If authenticated and on auth page, redirect to list or create-first
+         if (pathname === '/auth') {
+           if (hasLists) {
+             router.replace('/list');
+           } else {
+             router.replace('/list/create-first');
+           }
+         }
+         // If authenticated, has no lists, and not on create-first page, redirect to create-first
+         else if (!hasLists && pathname !== '/list/create-first') {
            router.replace('/list/create-first');
-         } else if (hasLists && pathname === '/list/create-first') {
-           router.replace('/list');
-         } else if (pathname === '/auth') {
+         }
+         // If authenticated, has lists, and on create-first page, redirect to list
+         else if (hasLists && pathname === '/list/create-first') {
            router.replace('/list');
          }
        } else {
+         // If not authenticated and not on auth page, redirect to auth page
          if (pathname !== '/auth') {
            router.replace('/auth');
          }
@@ -334,9 +330,18 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   }
 
   // If on auth page, just render children (the auth page itself)
-  if (pathname === '/auth') {
+  if (pathname === '/auth' && !isAuthenticated) { // Show auth page only if not authenticated
     return <>{children}</>;
   }
+  // If not authenticated and not on auth page, show loader (useEffect will redirect)
+  if (!isAuthenticated && pathname !== '/auth') {
+      return (
+          <div className="flex items-center justify-center fixed inset-0 bg-background/90 z-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+      );
+  }
+
 
   // --- Render full layout ---
   return (
@@ -365,5 +370,3 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     </TooltipProvider>
   );
 };
-
-    

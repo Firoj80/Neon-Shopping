@@ -1,5 +1,6 @@
+// src/components/shopping/add-edit-item-modal.tsx
 "use client";
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,13 +21,16 @@ import {
   SelectContent,
   SelectItem,
   SelectGroup,
-  SelectLabel
+  SelectLabel,
+  SelectValue
 } from '@/components/ui/select';
 import type { ShoppingListItem } from '@/context/app-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppContext } from '@/context/app-context';
+import { fetchFromApi } from '@/lib/api';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php';
 
 const formSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -45,10 +49,12 @@ interface AddEditItemModalProps {
 }
 
 export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onClose, itemData, currentListId }) => {
-  const { state: appContextState, dispatch } = useAppContext();
-  const { categories, currency, lists, userId } = appContextState;
+  const { state: appState, dispatch } = useAppContext();
+  const { categories, currency, lists } = appState;
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const { register, handleSubmit, control, reset, formState: { errors }, setValue } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -70,7 +76,6 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
       } else {
         const selectedListObject = lists.find(list => list.id === currentListId);
         const listDefaultCategory = selectedListObject?.defaultCategory || 'uncategorized';
-        
         reset({
           name: '',
           quantity: 1,
@@ -83,47 +88,46 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
     }
   }, [isOpen, itemData, reset, categories, currentListId, lists]);
 
-
   const onSubmit = async (data: FormData) => {
-    if (!currentListId || !userId) {
-      console.error("Current list ID or User ID is not available. Cannot save item.");
-      alert("Error: Could not determine the current list or user. Please try again.");
+    if (!currentListId || !user || !user.id) {
+      toast({ title: "Error", description: "List or user not identified. Cannot save item.", variant: "destructive" });
       return;
     }
 
     const payloadForApi = {
       ...data,
-      id: itemData ? itemData.id : undefined, // Include id if editing
+      id: itemData ? itemData.id : undefined,
       listId: currentListId,
-      userId: userId,
+      userId: user.id, // Include authenticated user's ID
       price: data.price ?? 0,
-      // 'checked' and 'dateAdded' will be handled by backend or set on successful response
+      // `checked` and `dateAdded` are typically handled by the backend or set upon successful creation.
     };
 
+    const endpoint = itemData ? 'items/update_item.php' : 'items/add_item.php';
+
     try {
-      const response = await fetch(`${API_BASE_URL}/items/${itemData ? 'update_item.php' : 'add_item.php'}`, {
+      const result = await fetchFromApi(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadForApi),
       });
-      const result = await response.json();
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || 'Failed to save item');
       }
-      
+
       if (itemData) {
         dispatch({ type: 'UPDATE_SHOPPING_ITEM', payload: result.item as ShoppingListItem });
+        toast({ title: "Success", description: "Item updated." });
       } else {
         dispatch({ type: 'ADD_SHOPPING_ITEM', payload: result.item as ShoppingListItem });
+        toast({ title: "Success", description: "Item added." });
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving item:", error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Could not save item.'}`);
+      toast({ title: "Error", description: error.message || 'Could not save item.', variant: "destructive" });
     }
   };
-
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -162,9 +166,9 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                     {...field}
                     onChange={(e) => {
                       const value = e.target.value;
-                      field.onChange(value === '' ? '' : Math.max(1, parseInt(value, 10) || 1));
+                      field.onChange(value === '' ? 1 : Math.max(1, parseInt(value, 10) || 1));
                     }}
-                    value={field.value === 0 ? '' : String(field.value)} // Ensure string value for input
+                     value={field.value === 0 ? '' : String(field.value)}
                     placeholder="1"
                     className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
                     min="1"
@@ -189,7 +193,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                       const value = e.target.value;
                       field.onChange(value === '' ? null : Math.max(0, parseFloat(value) || 0));
                     }}
-                    value={field.value === null || field.value === undefined ? '' : String(field.value)}
+                    value={field.value === null || field.value === undefined || field.value === 0 ? '' : String(field.value)}
                     placeholder="0.00"
                     className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
                     min="0"
@@ -210,7 +214,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
               render={({ field }) => (
                 <Select
                   onValueChange={field.onChange}
-                  value={field.value}
+                  value={field.value || 'uncategorized'}
                   disabled={categories.filter(cat => cat.id !== 'uncategorized').length === 0 && field.value === 'uncategorized'}
                 >
                   <SelectTrigger

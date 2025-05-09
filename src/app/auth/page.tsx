@@ -1,3 +1,4 @@
+// src/app/auth/page.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -10,10 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock, User, LogIn, UserPlus, ShoppingCart } from 'lucide-react';
-import { useAppContext } from '@/context/app-context'; // Import AppContext to access currency
+import { useAppContext } from '@/context/app-context';
 
 // --- Validation Schemas ---
 const signUpSchema = z.object({
@@ -31,14 +32,14 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function AuthPage() {
-  const { login, signup, isLoading: authIsLoading, isAuthenticated } = useAuth(); // Get isLoading from auth context
-  const { dispatch: appDispatch, state: appState } = useAppContext(); // Get app context for currency
+  const { login, signup, isLoading: authIsLoading, isAuthenticated } = useAuth();
+  const { dispatch: appDispatch, state: appState } = useAppContext();
   const router = useRouter();
+  const searchParams = useSearchParams(); // Get search params
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false); // Local submitting state for forms
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
 
-  // --- Forms ---
   const {
     register: registerLogin,
     handleSubmit: handleSubmitLogin,
@@ -57,38 +58,33 @@ export default function AuthPage() {
     resolver: zodResolver(signUpSchema),
   });
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (!authIsLoading && isAuthenticated) {
-      // Redirect based on whether lists exist or not
-      if (appState.lists && appState.lists.length > 0) {
+      const redirectedFrom = searchParams.get('redirectedFrom');
+      if (redirectedFrom) {
+        router.replace(redirectedFrom);
+      } else if (appState.lists && appState.lists.length > 0) {
         router.replace('/list');
       } else {
         router.replace('/list/create-first');
       }
     }
-  }, [authIsLoading, isAuthenticated, router, appState.lists]);
+  }, [authIsLoading, isAuthenticated, router, appState.lists, searchParams]);
 
-
-  // --- Handlers ---
   const onLoginSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
     const success = await login(data.email, data.password);
-    if (success) {
-      // Redirection is handled by useEffect or AppLayout now
-    }
+    // Redirection handled by useEffect
     setIsSubmitting(false);
-    resetLogin();
+    if (success) resetLogin(); // Only reset if successful
   };
 
   const onSignUpSubmit = async (data: SignUpFormData) => {
     setIsSubmitting(true);
     const success = await signup(data.name, data.email, data.password);
-    if (success) {
-     // Redirection is handled by useEffect or AppLayout now
-    }
+    // Redirection handled by useEffect
     setIsSubmitting(false);
-    resetSignUp();
+    if (success) resetSignUp(); // Only reset if successful
   };
 
   const handleTabChange = (value: string) => {
@@ -98,12 +94,21 @@ export default function AuthPage() {
     setIsSubmitting(false);
   };
 
-  // Show a global loading indicator if auth is still loading
   if (authIsLoading) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-card to-background p-4">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
+    );
+  }
+
+  // If already authenticated and not loading, useEffect will redirect.
+  // Show minimal content or loader to prevent brief flash of auth form.
+  if (isAuthenticated && !authIsLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-card to-background p-4">
+         <p className="text-muted-foreground">Redirecting...</p>
+      </div>
     );
   }
 
@@ -130,7 +135,6 @@ export default function AuthPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Login Form */}
             <TabsContent value="login" className="mt-6">
               <form onSubmit={handleSubmitLogin(onLoginSubmit)} className="space-y-4">
                 <div className="space-y-1">
@@ -163,7 +167,6 @@ export default function AuthPage() {
               </form>
             </TabsContent>
 
-            {/* Sign Up Form */}
             <TabsContent value="signup" className="mt-6">
               <form onSubmit={handleSubmitSignUp(onSignUpSubmit)} className="space-y-4">
                  <div className="space-y-1">
