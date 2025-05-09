@@ -4,9 +4,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, X } from "lucide-react" // Import X icon
-// Removed Framer Motion imports as they are used in AppLayout now
 
-// Removed useIsMobile import, handle responsiveness externally if needed
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,6 +43,11 @@ const SidebarSheetContent = React.forwardRef<
              )}
             {...props}
         >
+          {/* Visually Hidden Title for Accessibility */}
+           <SheetTitle className="sr-only">Sidebar Menu</SheetTitle> {/* Added accessible title */}
+           {/* <SheetPrimitive.Description className="sr-only">
+               Provide a description here if necessary.
+           </SheetPrimitive.Description> */}
           {/* Render the actual sidebar content (passed as children) */}
            {children}
         </SheetContent>

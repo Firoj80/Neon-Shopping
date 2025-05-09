@@ -3,9 +3,8 @@
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import {
   Sheet,
-  SheetContent,
   SheetTrigger,
-  SheetClose,
+  SheetClose, // Added SheetClose
 } from "@/components/ui/sheet";
 import {
   Sidebar,
@@ -16,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
-  SidebarSeparator,
+  SidebarSeparator, // Added SidebarSeparator
   SidebarSheetContent // Use the custom SidebarSheetContent
 } from '@/components/ui/sidebar';
 import {
@@ -41,9 +40,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
-import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
+// Removed useClientOnly import as it's handled in the context/hooks now
+
 import { usePathname, useRouter } from 'next/navigation'; // Import useRouter
 import Link from 'next/link'; // Import Link
+
 
 
 // Define menu items arrays (could be moved to a config file)
@@ -64,101 +65,19 @@ const secondaryMenuItems = [
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
 ];
 
-
-// --- Main Menu Content Component ---
-// This component renders the actual menu items and can be reused
-const MainMenuContent: React.FC = () => {
-    const pathname = usePathname();
-    const isClientMounted = useClientOnly();
-
-    const isItemActive = useCallback((itemHref: string) => {
-        if (!isClientMounted) return false;
-        return pathname === itemHref;
-    }, [pathname, isClientMounted]);
-
-     const menuItemClasses = cn(
-        "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm",
-        "border border-primary/30 hover:border-secondary hover:bg-primary/10 shadow-[0_0_5px_theme(colors.primary.DEFAULT)/0.5] hover:shadow-[0_0_10px_theme(colors.secondary.DEFAULT)/0.7,0_0_4px_theme(colors.secondary.DEFAULT)/0.9]",
-        "transition-all duration-300 ease-in-out glow-border-inner",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.secondary.DEFAULT)/0.6,0_0_4px_theme(colors.secondary.DEFAULT)/0.8)]",
-        "[&_svg]:size-5 [&_svg]:shrink-0",
-        "[&_span:last-child]:truncate"
-        );
-
-    const activeItemClasses = cn(
-        "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary.DEFAULT)/0.8]",
-        "hover:text-secondary hover:border-secondary hover:shadow-[0_0_15px_3px_theme(colors.secondary.DEFAULT)/0.7,0_0_5px_theme(colors.secondary.DEFAULT)/0.9)]"
-    );
-
-
-    return (
-         <div className="flex flex-col flex-grow"> {/* Ensure content takes available space */}
-             {/* Primary Menu Items */}
-             <SidebarMenu className="space-y-1.5 flex-grow">
-                 {primaryMenuItems.map((item) => (
-                     <SidebarMenuItem key={item.href}>
-                         <SidebarMenuButton
-                             asChild
-                             isActive={isItemActive(item.href)}
-                             tooltip={item.label}
-                             className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
-                         >
-                             <Link href={item.href}>
-                                 <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                                 <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-                             </Link>
-                         </SidebarMenuButton>
-                     </SidebarMenuItem>
-                 ))}
-             </SidebarMenu>
-
-              {/* Separator */}
-              <SidebarSeparator className="my-2" />
-
-               {/* Secondary Menu Items */}
-                <SidebarMenu className="space-y-1.5">
-                    {secondaryMenuItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                            asChild
-                            isActive={isItemActive(item.href)}
-                            tooltip={item.label}
-                            className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
-                        >
-                        <Link href={item.href}>
-                            <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                            <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-                        </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    ))}
-                </SidebarMenu>
-        </div>
-    );
-};
-
-
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
-  const isClient = useClientOnly(); // Use the hook
+  // const isClient = useClientOnly(); // Use the hook
   const [isOpen, setIsOpen] = useState(false); // Local state for sheet
 
-  // If not client-side yet, render a placeholder or nothing
-  if (!isClient) {
-    return (
-      <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 md:hidden">
-        <div className="w-10 h-10 flex-shrink-0"></div> {/* Placeholder for button */}
-        <div className="flex-grow text-center"> {/* Placeholder for title */}
-          <span className="inline-flex items-center gap-2 text-lg font-semibold text-primary">
-            <ShoppingCart className="w-6 h-6" />
-            <span>Neon Shopping</span>
-          </span>
-        </div>
-        <div className="w-10 h-10 flex-shrink-0"></div> {/* Placeholder for balance */}
-      </header>
-    );
-  }
-
+  // Placeholder for client-side only rendering if needed
+  // if (!isClient) {
+  //   return (
+  //     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 md:hidden">
+  //       {/* Placeholders */}
+  //     </header>
+  //   );
+  // }
 
   return (
     // Use flex with justify-between initially, but center the title with a placeholder
@@ -182,17 +101,20 @@ const MobileHeader: React.FC = () => {
            </Button>
          </SheetTrigger>
          {/* Mobile Sidebar Content using SheetContent */}
-         {/* Pass setIsOpen to allow closing from within */}
-         <SidebarSheetContent side="left" className="w-[280px]" isOpen={isOpen} setIsOpen={setIsOpen}>
+         {/* Removed isOpen and setIsOpen props */}
+         <SidebarSheetContent side="left" className="w-[280px]">
              {/* Render the menu content within the mobile sheet */}
               <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
-                 <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={() => setIsOpen(false)}>
-                     <ShoppingCart className="w-6 h-6" />
-                     <ClientOnly><span>Neon Shopping</span></ClientOnly>
-                 </Link>
+                 {/* Use SheetClose to close the sheet when clicking the link */}
+                 <SheetClose asChild>
+                    <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+                        <ShoppingCart className="w-6 h-6" />
+                        <ClientOnly><span>Neon Shopping</span></ClientOnly>
+                    </Link>
+                 </SheetClose>
              </SidebarHeader>
              <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-                  <MainMenuContent />
+                  <MainMenuContent onNavigate={() => setIsOpen(false)} />
              </SidebarContent>
              <SidebarFooter className="p-2 border-t border-sidebar-border">
                  <hr className="my-3 border-sidebar-border/50" />
@@ -216,16 +138,103 @@ const MobileHeader: React.FC = () => {
 };
 
 
+// --- Main Menu Content Component ---
+// Added onNavigate prop to close the sheet when navigating
+interface MainMenuContentProps {
+    onNavigate?: () => void;
+}
+const MainMenuContent: React.FC<MainMenuContentProps> = ({ onNavigate }) => {
+    const pathname = usePathname();
+    // Removed useClientOnly as it's not strictly necessary for isActive logic here
+
+    const isItemActive = useCallback((itemHref: string) => {
+        // Can safely compare pathname on client or server if `use client` is above
+        return pathname === itemHref;
+    }, [pathname]);
+
+     const menuItemClasses = cn(
+        "group/menu-item relative flex items-center gap-3 overflow-hidden rounded-lg p-2.5 text-left text-sm",
+        "border border-primary/30 hover:border-secondary hover:bg-primary/10 shadow-[0_0_5px_theme(colors.primary.DEFAULT)/0.5] hover:shadow-[0_0_10px_theme(colors.secondary.DEFAULT)/0.7,0_0_4px_theme(colors.secondary.DEFAULT)/0.9]",
+        "transition-all duration-300 ease-in-out glow-border-inner",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 focus-visible:shadow-[0_0_12px_2px_theme(colors.secondary.DEFAULT)/0.6,0_0_4px_theme(colors.secondary.DEFAULT)/0.8)]",
+        "[&_svg]:size-5 [&_svg]:shrink-0",
+        "[&_span:last-child]:truncate"
+        );
+
+    const activeItemClasses = cn(
+        "bg-primary/20 text-primary font-medium border-primary shadow-[0_0_10px_theme(colors.primary.DEFAULT)/0.8]",
+        "hover:text-secondary hover:border-secondary hover:shadow-[0_0_15px_3px_theme(colors.secondary.DEFAULT)/0.7,0_0_5px_theme(colors.secondary.DEFAULT)/0.9)]"
+    );
+
+    const handleLinkClick = (href: string, event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+      if (onNavigate) {
+        onNavigate(); // Call the callback to close the sheet
+      }
+      // Allow default navigation
+    };
+
+    return (
+         <div className="flex flex-col flex-grow"> {/* Ensure content takes available space */}
+             {/* Primary Menu Items */}
+             <SidebarMenu className="space-y-1.5 flex-grow">
+                 {primaryMenuItems.map((item) => (
+                     <SidebarMenuItem key={item.href}>
+                         <SidebarMenuButton
+                             asChild
+                             isActive={isItemActive(item.href)}
+                             tooltip={item.label}
+                             className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
+                         >
+                            {/* Wrap Link with SheetClose for mobile */}
+                            <SheetClose asChild>
+                                <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
+                                    <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                                    <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                                </Link>
+                             </SheetClose>
+                         </SidebarMenuButton>
+                     </SidebarMenuItem>
+                 ))}
+             </SidebarMenu>
+
+              {/* Separator */}
+              <SidebarSeparator className="my-2" />
+
+               {/* Secondary Menu Items */}
+                <SidebarMenu className="space-y-1.5">
+                    {secondaryMenuItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                            asChild
+                            isActive={isItemActive(item.href)}
+                            tooltip={item.label}
+                            className={cn(menuItemClasses, isItemActive(item.href) && activeItemClasses)}
+                        >
+                         {/* Wrap Link with SheetClose for mobile */}
+                         <SheetClose asChild>
+                            <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
+                                <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                                <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                            </Link>
+                          </SheetClose>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    ))}
+                </SidebarMenu>
+        </div>
+    );
+};
+
+
 // --- Main App Layout Content Component ---
 const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }) => {
   // --- Ensure all hooks are called unconditionally at the top level ---
   const appContext = useAppContext();
   const pathname = usePathname();
   const router = useRouter();
-  const isClientMounted = useClientOnly(); // Hook to ensure client-side execution
+  // Removed useClientOnly as redirect logic is now in useEffect
   const { isLoading } = appContext;
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-
 
   // --- Loading State Handling ---
   useEffect(() => {
@@ -234,9 +243,10 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
     }
   }, [isLoading]);
 
-  // --- Redirect Logic (Now inside useEffect) ---
+  // --- Redirect Logic ---
+  // Moved inside useEffect to prevent rendering during rendering
   useEffect(() => {
-    if (isClientMounted && initialLoadComplete && !isLoading) {
+    if (!isLoading) {
       // Redirect to create-first page if no lists exist and not already there
       if (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') {
         console.log("Redirecting to /list/create-first");
@@ -248,24 +258,16 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
         router.replace('/list');
       }
     }
-  }, [isClientMounted, initialLoadComplete, isLoading, appContext.state.lists, pathname, router]); // Added isClientMounted
+  }, [initialLoadComplete, isLoading, appContext.state.lists, pathname, router]);
 
 
   // --- Loading State ---
-  // Show loader if still loading or not mounted
-  if (!isClientMounted || isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // Show loader if still loading or redirect is pending
+   const needsRedirect = (!isLoading && Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') ||
+                         (!isLoading && Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0 && pathname === '/list/create-first');
 
-   // Show loader during redirect transitions
-   const needsRedirect = (initialLoadComplete && Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') ||
-                         (initialLoadComplete && Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0 && pathname === '/list/create-first');
 
-   if (needsRedirect) {
+   if (isLoading || needsRedirect) {
      return (
        <div className="flex items-center justify-center h-screen bg-background">
          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
@@ -276,35 +278,35 @@ const AppLayoutContent = React.memo(({ children }: { children: React.ReactNode }
 
   // --- Render full layout ---
    return (
-      <>
-        {/* Mobile Header */}
+     <Fragment>
+       {/* Mobile Header */}
        <MobileHeader />
 
-        {/* Desktop Sidebar */}
-        <Sidebar className="hidden md:flex md:flex-col">
-          <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
-            <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
-              <ShoppingCart className="w-6 h-6" />
-              <ClientOnly><span>Neon Shopping</span></ClientOnly>
-            </Link>
-          </SidebarHeader>
-          <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
-             {/* Render the menu content within the desktop sidebar */}
-              <MainMenuContent />
-          </SidebarContent>
-           <SidebarFooter className="p-2 border-t border-sidebar-border">
-             <hr className="my-3 border-sidebar-border/50" />
-             <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
-          </SidebarFooter>
-        </Sidebar>
+       {/* Desktop Sidebar */}
+       <Sidebar className="hidden md:flex md:flex-col">
+         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
+           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
+             <ShoppingCart className="w-6 h-6" />
+             <ClientOnly><span>Neon Shopping</span></ClientOnly>
+           </Link>
+         </SidebarHeader>
+         <SidebarContent className="p-2 flex flex-col flex-grow overflow-y-auto">
+            {/* Render the menu content within the desktop sidebar */}
+             <MainMenuContent />
+         </SidebarContent>
+          <SidebarFooter className="p-2 border-t border-sidebar-border">
+            <hr className="my-3 border-sidebar-border/50" />
+            <p className="text-xs text-muted-foreground text-center">v1.0.0</p>
+         </SidebarFooter>
+       </Sidebar>
 
-        {/* Main Content Area */}
-         <SidebarInset className="flex flex-col min-h-screen">
-            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 xl:p-10 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom))]"> {/* Adjusted padding */}
-               {children}
-            </main>
-          </SidebarInset>
-      </>
+       {/* Main Content Area */}
+        <SidebarInset className="flex flex-col min-h-screen">
+           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 xl:p-10 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.5rem+env(safe-area-inset-bottom))]"> {/* Adjusted padding */}
+              {children}
+           </main>
+         </SidebarInset>
+     </Fragment>
    );
 });
 AppLayoutContent.displayName = 'AppLayoutContent'; // Add display name
@@ -318,3 +320,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
        </TooltipProvider>
   );
 }
+
+// --- Combined imports ---
+// (Keep necessary imports from both original and generated sections)
+// Make sure all required components and hooks are imported here.
