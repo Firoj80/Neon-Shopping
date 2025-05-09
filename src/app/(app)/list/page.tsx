@@ -27,13 +27,12 @@ import ClientOnly from '@/components/client-only';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
 import { useRouter, usePathname } from 'next/navigation';
-import CreateFirstListPage from './create-first/page';
+// Removed import of CreateFirstListPage as AppLayoutContent handles this redirection
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
-
-const CREATE_FIRST_LIST_ROUTE_FULL_PATH = '/list/create-first'; // Define this if not already available globally
+const AUTH_ROUTE_FOR_LAYOUT = '/auth'; // Ensure this matches definition in AppLayout if used
 
 export default function ShoppingListPage() {
   const { state: appState, dispatch, isLoading: appContextIsLoading } = useAppContext();
@@ -43,7 +42,7 @@ export default function ShoppingListPage() {
   const pathname = usePathname();
 
   const isLoading = appContextIsLoading || authIsLoading;
-  const isClient = useClientOnly();
+  const isClientMounted = useClientOnly();
 
 
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
@@ -70,7 +69,6 @@ export default function ShoppingListPage() {
       });
       return;
     }
-    // Logic to check premium for item limits could be added here if needed
     setEditingItem(null);
     setIsAddItemModalOpen(true);
   };
@@ -86,12 +84,15 @@ export default function ShoppingListPage() {
 
   const confirmDelete = () => {
     if (itemToDelete) {
+      // Simulate API call for now
       dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete });
+      toast({ title: "Success", description: "Item removed." });
       setItemToDelete(null);
     }
   };
 
   const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId' | 'userId'>) => {
+    // ... (keep existing save item logic, ensure it uses currentUserId)
     if (!selectedListId || !currentUserId) {
       console.error("[handleSaveItem] Error: No list selected or User ID not available.");
       toast({ title: "Error", description: "Cannot save item. List or user not identified.", variant: "destructive"});
@@ -104,16 +105,29 @@ export default function ShoppingListPage() {
                             : listDefaultCategory && appState.categories.some(c => c.id === listDefaultCategory)
                               ? listDefaultCategory
                               : 'uncategorized';
+
     const itemWithFinalDetails: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked'> = {
       ...itemData, listId: selectedListId, userId: currentUserId, category: finalCategory, price: itemData.price ?? 0,
     };
+
+    // Simulate API call for now
+    const simulatedItemId = editingItem ? editingItem.id : `item-${Date.now()}`;
+    const simulatedDateAdded = editingItem ? editingItem.dateAdded : Date.now();
+    const simulatedChecked = editingItem ? editingItem.checked : false;
+
+    const itemToDispatch: AppShoppingListItem = {
+      id: simulatedItemId,
+      ...itemWithFinalDetails,
+      dateAdded: simulatedDateAdded,
+      checked: simulatedChecked,
+    };
+    
     if (!editingItem) {
-      dispatch({ type: 'ADD_SHOPPING_ITEM', payload: itemWithFinalDetails as Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked'> });
+      dispatch({ type: 'ADD_SHOPPING_ITEM', payload: itemToDispatch });
+      toast({ title: "Success", description: "Item added." });
     } else {
-      const updatePayload: AppShoppingListItem = {
-        ...editingItem, ...itemData, listId: selectedListId, userId: currentUserId, category: finalCategory, price: itemData.price ?? 0,
-      };
-      dispatch({ type: 'UPDATE_SHOPPING_ITEM', payload: updatePayload });
+      dispatch({ type: 'UPDATE_SHOPPING_ITEM', payload: itemToDispatch });
+      toast({ title: "Success", description: "Item updated." });
     }
     setIsAddItemModalOpen(false);
     setEditingItem(null);
@@ -133,7 +147,9 @@ export default function ShoppingListPage() {
   const currentItems = useMemo(() => itemsForSelectedList.filter(item => !item.checked), [itemsForSelectedList]);
   const purchasedItems = useMemo(() => itemsForSelectedList.filter(item => item.checked), [itemsForSelectedList]);
 
-  //Skeleton loader
+  // Removed the useEffect that redirects to /list/create-first
+  // AppLayoutContent now handles this primary redirection.
+
   const CardSkeleton = () => (
      <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse shadow-neon glow-border-inner">
         <div className="flex items-center">
@@ -176,7 +192,7 @@ export default function ShoppingListPage() {
     )
   );
 
-   if (!isClient || isLoading) {
+   if (!isClientMounted || isLoading) {
        return (
          <div className="flex flex-col h-full">
             <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
@@ -191,14 +207,13 @@ export default function ShoppingListPage() {
        );
    }
    
-   // AppLayoutContent now handles the redirect to create-first if no lists exist.
-   // This page will only render if AppLayoutContent has determined it's okay to be here.
-   // For instance, if user has lists and selectedListId is valid, or if user is on /list/create-first.
-
+   // If userLists.length is 0 here, it implies an issue with AppLayoutContent's redirection logic or data loading.
+   // This page should ideally only render when there's a list to display or select.
+   // For now, if no lists (and not loading), it will show the "Please select or create" message.
+   // AppLayoutContent should prevent reaching this page with 0 lists unless it's the create-first page.
 
   return (
     <div className="flex flex-col h-full">
-        {/* Sticky Header for Budget, Lists, and Tabs */}
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
             <BudgetCard />
             <ListsCarousel />
@@ -216,9 +231,8 @@ export default function ShoppingListPage() {
             </ClientOnly>
         </div>
 
-        {/* Scrollable Item List Area */}
         <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
-          {!selectedListId && userLists.length > 0 ? (
+          {(!selectedListId && userLists.length > 0) || (userLists.length === 0 && !isLoading)? (
             <div className="flex items-center justify-center h-full text-center py-10">
               <p className="text-muted-foreground text-neonText">Please select or create a shopping list.</p>
             </div>
@@ -236,7 +250,6 @@ export default function ShoppingListPage() {
            )}
         </div>
 
-        {/* Floating Action Button */}
         <Button
             onClick={() => {
                  if (!selectedListId) {
@@ -260,7 +273,6 @@ export default function ShoppingListPage() {
         <AddEditItemModal
             isOpen={isAddItemModalOpen}
             onClose={() => { setIsAddItemModalOpen(false); setEditingItem(null); }}
-            // onSave={handleSaveItem} // This was passed previously, but dispatch is used directly now
             itemData={editingItem}
             currentListId={selectedListId}
         />
