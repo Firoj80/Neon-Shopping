@@ -1,17 +1,19 @@
 
 <?php
 // api/auth/logout.php
+
+// IMPORTANT: Suppress errors from being output directly to the browser, which can break headers.
+error_reporting(0);
+@ini_set('display_errors', 0);
+
 require_once '../utils.php'; 
 
 handle_options_request(); // Must be called before any output
 
-start_secure_session(); // Ensure session is started before trying to destroy
+start_secure_session(); 
 
-// Unset all of the session variables.
 $_SESSION = array();
 
-// If it's desired to kill the session, also delete the session cookie.
-// Note: This will destroy the session, and not just the session data!
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
     setcookie(session_name(), '', time() - 42000,
@@ -20,12 +22,9 @@ if (ini_get("session.use_cookies")) {
     );
 }
 
-// Finally, destroy the session.
 session_destroy();
 
 send_json_response(['success' => true, 'message' => 'Logged out successfully.']);
 ?>
-
-    
 
     

@@ -1,6 +1,11 @@
 
 <?php
 // api/auth/login.php
+
+// IMPORTANT: Suppress errors from being output directly to the browser, which can break headers.
+error_reporting(0);
+@ini_set('display_errors', 0);
+
 require_once '../utils.php'; 
 require_once '../db_config.php';
 
@@ -36,18 +41,15 @@ try {
             $is_premium = $user['subscription_expiry_date'] === null || strtotime($user['subscription_expiry_date']) > time();
         }
         
-        // If user's subscription is 'premium' but expired, update it to 'free'
         if ($user['subscription_status'] === 'premium' && !$is_premium) {
             $_SESSION['subscription_status'] = 'free'; 
             $_SESSION['subscription_expiry_date'] = null;
             $stmt_update = $conn->prepare("UPDATE users SET subscription_status = 'free', subscription_expiry_date = NULL WHERE id = ?");
             $stmt_update->execute([$user['id']]);
         } else {
-            // Set session based on current DB state
             $_SESSION['subscription_status'] = $user['subscription_status'];
             $_SESSION['subscription_expiry_date'] = $user['subscription_expiry_date'];
         }
-
 
         send_json_response([
             'success' => true,
@@ -56,7 +58,7 @@ try {
                 'id' => $user['id'],
                 'name' => $user['name'],
                 'email' => $user['email'],
-                'isPremium' => $is_premium, // Send the calculated premium status
+                'isPremium' => $is_premium, 
             ]
         ]);
     } else {
@@ -67,7 +69,5 @@ try {
     send_json_response(['success' => false, 'message' => 'Database error during login.'], 500);
 }
 ?>
-
-    
 
     
