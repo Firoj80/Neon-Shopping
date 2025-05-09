@@ -1,9 +1,10 @@
+// src/app/(app)/list/page.tsx
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, ShoppingCart, CheckCircle, ListPlus, Lock } from 'lucide-react';
+import { PlusCircle, Trash2, ShoppingCart, CheckCircle, ListPlus, Lock } from 'lucide-react'; // Added Lock
 import { ItemCard } from '@/components/shopping/item-card';
-import { useAppContext } from '@/context/app-context';
+import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context'; // Added FREEMIUM_LIST_LIMIT
 import type { ShoppingListItem as AppShoppingListItem, List } from '@/context/app-context';
 import { AddEditItemModal } from '@/components/shopping/add-edit-item-modal';
 import { BudgetCard } from '@/components/budget/budget-panel';
@@ -27,32 +28,38 @@ import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
 import { useRouter } from 'next/navigation';
 import CreateFirstListPage from './create-first/page'; 
-import { useToast } from '@/hooks/use-toast'; // For showing premium messages
-import Link from 'next/link'; // For linking to premium page
+import { useAuth } from '@/context/auth-context'; // Import useAuth
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
-
-const FREEMIUM_LIST_LIMIT = 3;
 
 export default function ShoppingListPage() {
-  const { state, dispatch, isLoading } = useAppContext();
+  const { state, dispatch, isLoading: contextIsLoading } = useAppContext();
+  const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+
+  const isLoading = contextIsLoading || authIsLoading;
+
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AppShoppingListItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'purchased'>('current');
   const isClient = useClientOnly();
 
-  const { selectedListId, shoppingListItems, lists, userId, isPremium } = state; // Added isPremium
+  const { selectedListId, shoppingListItems, lists, userId: contextUserId, isPremium } = state;
+  const currentUserId = user?.id || contextUserId;
+
 
    const selectedList: List | undefined = useMemo(() => {
        if (!Array.isArray(lists)) return undefined;
-       return lists.find(list => list.id === selectedListId);
-   }, [lists, selectedListId]);
+       return lists.find(list => list.id === selectedListId && list.userId === currentUserId);
+   }, [lists, selectedListId, currentUserId]);
 
   const handleAddItemClick = () => {
     if (!selectedListId) {
       console.error("No list selected, cannot add item.");
+      // Potentially show a toast or disable button if no list is selected
       return;
     }
     setEditingItem(null);
@@ -76,7 +83,7 @@ export default function ShoppingListPage() {
   };
 
   const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId' | 'userId'>) => {
-    if (!selectedListId || !userId) {
+    if (!selectedListId || !currentUserId) {
       console.error("[handleSaveItem] Error: No list selected or User ID not available.");
       setIsAddItemModalOpen(false);
       return;
@@ -88,13 +95,13 @@ export default function ShoppingListPage() {
                               ? listDefaultCategory
                               : 'uncategorized';
     const itemWithFinalDetails: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked'> = {
-      ...itemData, listId: selectedListId, userId: userId, category: finalCategory, price: itemData.price ?? 0,
+      ...itemData, listId: selectedListId, userId: currentUserId, category: finalCategory, price: itemData.price ?? 0,
     };
     if (!editingItem) {
       dispatch({ type: 'ADD_SHOPPING_ITEM', payload: itemWithFinalDetails });
     } else {
       const updatePayload: AppShoppingListItem = {
-        ...editingItem, ...itemData, listId: selectedListId, userId: userId, category: finalCategory, price: itemData.price ?? 0,
+        ...editingItem, ...itemData, listId: selectedListId, userId: currentUserId, category: finalCategory, price: itemData.price ?? 0,
       };
       dispatch({ type: 'UPDATE_SHOPPING_ITEM', payload: updatePayload });
     }
@@ -102,18 +109,21 @@ export default function ShoppingListPage() {
     setEditingItem(null);
   };
 
+  const userLists = useMemo(() => {
+    if (!Array.isArray(lists) || !currentUserId) return [];
+    return lists.filter(list => list.userId === currentUserId);
+  }, [lists, currentUserId]);
+
+
   const itemsForSelectedList = useMemo(() => {
-    if (!selectedListId || !Array.isArray(shoppingListItems)) return [];
-    return shoppingListItems.filter(item => item.listId === selectedListId);
-  }, [selectedListId, shoppingListItems]);
+    if (!selectedListId || !Array.isArray(shoppingListItems) || !currentUserId) return [];
+    return shoppingListItems.filter(item => item.listId === selectedListId && item.userId === currentUserId);
+  }, [selectedListId, shoppingListItems, currentUserId]);
 
   const currentItems = useMemo(() => itemsForSelectedList.filter(item => !item.checked), [itemsForSelectedList]);
   const purchasedItems = useMemo(() => itemsForSelectedList.filter(item => item.checked), [itemsForSelectedList]);
 
-  const renderSkeletons = () => (
-    Array.from({ length: 3 }).map((_, index) => <CardSkeleton key={index} />)
-  );
-
+  //Skeleton loader
   const CardSkeleton = () => (
      <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse shadow-neon glow-border-inner">
         <div className="flex items-center">
@@ -134,6 +144,9 @@ export default function ShoppingListPage() {
         </div>
     </Card>
   );
+  const renderSkeletons = () => (
+    Array.from({ length: 3 }).map((_, index) => <CardSkeleton key={index} />)
+  );
 
  const renderItemList = (items: AppShoppingListItem[], emptyMessage: string) => (
      isLoading && itemsForSelectedList.length === 0 ? (
@@ -153,17 +166,21 @@ export default function ShoppingListPage() {
     )
   );
 
-   if (!isClient || isLoading) {
+   if (!isClient || isLoading) { // Added isLoading check here
        return (
-           <div className="flex items-center justify-center h-full">
-               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-           </div>
+            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
+                <Skeleton className="h-[88px] w-full rounded-lg mb-2" /> {/* BudgetCard Skeleton */}
+                <Skeleton className="h-10 w-full rounded-lg mb-2" /> {/* ListsCarousel Skeleton */}
+                <Skeleton className="h-10 w-full rounded-lg" /> {/* TabsList Skeleton */}
+            </div>
        );
    }
    
-   if (isClient && !isLoading && Array.isArray(lists) && lists.length === 0) {
-    return <CreateFirstListPage />;
+   // Redirect to create-first if authenticated but no lists for the user
+   if (isAuthenticated && userLists.length === 0 && pathname !== '/list/create-first') {
+        return <CreateFirstListPage />;
    }
+
 
   return (
     <div className="flex flex-col h-full">
@@ -185,7 +202,7 @@ export default function ShoppingListPage() {
         </div>
 
         <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
-          {!selectedListId && Array.isArray(lists) && lists.length > 0 ? (
+          {!selectedListId && userLists.length > 0 ? (
             <div className="flex items-center justify-center h-full text-center py-10">
               <p className="text-muted-foreground text-neonText">Please select or create a shopping list.</p>
             </div>
@@ -205,29 +222,21 @@ export default function ShoppingListPage() {
 
         <Button
             onClick={() => {
-                if (!isPremium && lists.length >= FREEMIUM_LIST_LIMIT && !selectedListId) { // Check if adding a *new* list would exceed limit
-                     toast({
-                         title: "List Limit Reached",
-                         description: (
-                            <div className="flex flex-col gap-2">
-                               <span>You've reached the freemium limit of {FREEMIUM_LIST_LIMIT} lists.</span>
-                               <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                                   <Link href="/premium">Upgrade to Premium</Link>
-                               </Button>
-                            </div>
-                        ),
-                         variant: "destructive",
-                     });
-                } else {
-                    handleAddItemClick();
+                // Check if trying to add item to a list owned by current user, or if no list selected (which implies creating new one potentially)
+                const canProceed = selectedListId ? userLists.some(l => l.id === selectedListId) : true;
+
+                if (!canProceed) {
+                     toast({ title: "Error", description: "Cannot add item to this list.", variant: "destructive" });
+                     return;
                 }
+                 handleAddItemClick(); // No premium check for adding items, only for list creation
             }}
             size="lg"
             className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-6 md:right-8 z-30 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
-            disabled={!selectedListId || isLoading || (!isPremium && lists.length >= FREEMIUM_LIST_LIMIT && !selectedListId) }
+            disabled={!selectedListId || isLoading }
         >
-            {!isPremium && lists.length >= FREEMIUM_LIST_LIMIT && !selectedListId ? <Lock className="h-6 w-6" /> : <PlusCircle className="h-6 w-6" />}
+            <PlusCircle className="h-6 w-6" />
         </Button>
 
         <AddEditItemModal
