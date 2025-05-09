@@ -17,7 +17,7 @@ const CategorySchema = z.object({
 });
 
 // Input schema for the flow and the prompt
-export const SuggestCategoryInputSchema = z.object({
+const SuggestCategoryInputSchema = z.object({
   itemName: z.string().min(1).describe('The name of the shopping list item.'),
   availableCategories: z
     .array(CategorySchema)
@@ -27,7 +27,7 @@ export const SuggestCategoryInputSchema = z.object({
 export type SuggestCategoryInput = z.infer<typeof SuggestCategoryInputSchema>;
 
 // Output schema for the flow and the prompt
-export const SuggestCategoryOutputSchema = z.object({
+const SuggestCategoryOutputSchema = z.object({
   suggestedCategoryId: z
     .string()
     .describe(
@@ -93,7 +93,7 @@ const suggestCategoryFlow = ai.defineFlow(
         }
     }
     // Fallback logic if LLM output is not valid or empty
-    const uncategorized = input.availableCategories.find(cat => cat.id.toLowerCase() === 'uncategorized' || cat.name.toLowerCase() === 'uncategorized');
-    return { suggestedCategoryId: uncategorized ? uncategorized.id : (input.availableCategories[0]?.id || '') };
+    const uncategorizedCategory = input.availableCategories.find(cat => cat.id.toLowerCase() === 'uncategorized' || cat.name.toLowerCase() === 'uncategorized');
+    return { suggestedCategoryId: uncategorizedCategory ? uncategorizedCategory.id : (input.availableCategories[0]?.id || '') };
   }
 );
