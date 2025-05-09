@@ -9,7 +9,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '../context/auth-context'; // Changed to relative path
 import ClientOnly from '@/components/client-only'; 
-import { SidebarProvider } from '@/components/ui/sidebar'; 
+// import { SidebarProvider } from '@/components/ui/sidebar'; // Removed: SidebarProvider is not exported
 import { ThemeWatcher } from '@/context/theme-watcher';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +41,7 @@ export default function RootLayout({
       >
         <Providers>
           <AuthProvider> {/* AuthProvider now wraps SidebarProvider and AppLayout */}
-            <SidebarProvider>
+            {/* <SidebarProvider> Removed SidebarProvider wrapper */}
               <ThemeWatcher>
                 <ClientOnly>
                   <AppLayout>
@@ -50,10 +50,11 @@ export default function RootLayout({
                 </ClientOnly>
                 <Toaster />
               </ThemeWatcher>
-            </SidebarProvider>
+            {/* </SidebarProvider> Removed SidebarProvider wrapper */}
           </AuthProvider>
         </Providers>
       </body>
     </html>
   );
 }
+

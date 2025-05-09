@@ -11,10 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
-import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock, User, LogIn, UserPlus, ShoppingCart } from 'lucide-react';
-import { useAppContext } from '@/context/app-context';
+// Removed useAppContext import as AuthContext now handles user ID and premium status dispatch
 
 // --- Validation Schemas ---
 const signUpSchema = z.object({
@@ -33,11 +33,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function AuthPage() {
   const { login, signup, isLoading: authIsLoading, isAuthenticated } = useAuth();
-  const { dispatch: appDispatch, state: appState } = useAppContext();
   const router = useRouter();
-  const searchParams = useSearchParams(); // Get search params
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Local submitting state for forms
   const [activeTab, setActiveTab] = useState('login');
 
   const {
@@ -58,42 +57,49 @@ export default function AuthPage() {
     resolver: zodResolver(signUpSchema),
   });
 
+  // Effect to redirect if user is already authenticated
   useEffect(() => {
     if (!authIsLoading && isAuthenticated) {
       const redirectedFrom = searchParams.get('redirectedFrom');
-      if (redirectedFrom) {
-        router.replace(redirectedFrom);
-      } else if (appState.lists && appState.lists.length > 0) {
-        router.replace('/list');
-      } else {
-        router.replace('/list/create-first');
-      }
+      const redirectTo = redirectedFrom || '/list/create-first'; // Default redirect
+      console.log(`AuthPage: Authenticated, redirecting to ${redirectTo}`);
+      router.replace(redirectTo);
     }
-  }, [authIsLoading, isAuthenticated, router, appState.lists, searchParams]);
+  }, [authIsLoading, isAuthenticated, router, searchParams]);
 
   const onLoginSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
     const success = await login(data.email, data.password);
-    // Redirection handled by useEffect
     setIsSubmitting(false);
-    if (success) resetLogin(); // Only reset if successful
+    if (success) {
+      resetLogin();
+      // Redirection is handled by the useEffect above or by the login function itself
+    } else {
+      // Toast for login failure can be handled here or within the login function in AuthContext
+      // toast({ title: "Login Failed", description: "Please check your credentials.", variant: "destructive" });
+    }
   };
 
   const onSignUpSubmit = async (data: SignUpFormData) => {
     setIsSubmitting(true);
     const success = await signup(data.name, data.email, data.password);
-    // Redirection handled by useEffect
     setIsSubmitting(false);
-    if (success) resetSignUp(); // Only reset if successful
+    if (success) {
+      resetSignUp();
+      // Redirection handled by useEffect or signup function
+    } else {
+      // toast({ title: "Signup Failed", description: "Could not create account.", variant: "destructive" });
+    }
   };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     resetLogin();
     resetSignUp();
-    setIsSubmitting(false);
+    setIsSubmitting(false); // Reset submitting state on tab change
   };
 
+  // If auth is still loading, show a loader
   if (authIsLoading) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-card to-background p-4">
@@ -102,8 +108,8 @@ export default function AuthPage() {
     );
   }
 
-  // If already authenticated and not loading, useEffect will redirect.
-  // Show minimal content or loader to prevent brief flash of auth form.
+  // If authenticated and not loading, useEffect will redirect.
+  // This return is a fallback to prevent rendering the form briefly.
   if (isAuthenticated && !authIsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-card to-background p-4">
@@ -112,7 +118,7 @@ export default function AuthPage() {
     );
   }
 
-
+  // If not authenticated and not loading, render the auth form
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-card to-background p-4">
       <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm border-primary/30 shadow-neon-lg glow-border">
@@ -146,6 +152,7 @@ export default function AuthPage() {
                     placeholder="you@example.com"
                     className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
                     aria-invalid={loginErrors.email ? "true" : "false"}
+                    disabled={isSubmitting}
                   />
                   {loginErrors.email && <p className="text-red-500 text-xs pt-1">{loginErrors.email.message}</p>}
                 </div>
@@ -158,10 +165,11 @@ export default function AuthPage() {
                     placeholder="••••••••"
                     className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
                     aria-invalid={loginErrors.password ? "true" : "false"}
+                    disabled={isSubmitting}
                   />
                   {loginErrors.password && <p className="text-red-500 text-xs pt-1">{loginErrors.password.message}</p>}
                 </div>
-                 <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow glow-border-inner" disabled={isSubmitting}>
+                 <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow glow-border-inner" disabled={isSubmitting || authIsLoading}>
                     {isSubmitting ? 'Logging in...' : 'Login'}
                 </Button>
               </form>
@@ -178,6 +186,7 @@ export default function AuthPage() {
                     placeholder="Your Name"
                      className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
                     aria-invalid={signUpErrors.name ? "true" : "false"}
+                    disabled={isSubmitting}
                   />
                   {signUpErrors.name && <p className="text-red-500 text-xs pt-1">{signUpErrors.name.message}</p>}
                 </div>
@@ -190,6 +199,7 @@ export default function AuthPage() {
                     placeholder="you@example.com"
                      className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
                     aria-invalid={signUpErrors.email ? "true" : "false"}
+                    disabled={isSubmitting}
                   />
                   {signUpErrors.email && <p className="text-red-500 text-xs pt-1">{signUpErrors.email.message}</p>}
                 </div>
@@ -202,16 +212,20 @@ export default function AuthPage() {
                     placeholder="Choose a strong password"
                      className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
                     aria-invalid={signUpErrors.password ? "true" : "false"}
+                    disabled={isSubmitting}
                   />
                   {signUpErrors.password && <p className="text-red-500 text-xs pt-1">{signUpErrors.password.message}</p>}
                 </div>
-                 <Button type="submit" className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-neon hover:shadow-lg hover:shadow-secondary/50 transition-shadow glow-border-inner" disabled={isSubmitting}>
+                 <Button type="submit" className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-neon hover:shadow-lg hover:shadow-secondary/50 transition-shadow glow-border-inner" disabled={isSubmitting || authIsLoading}>
                     {isSubmitting ? 'Creating Account...' : 'Sign Up'}
                  </Button>
               </form>
             </TabsContent>
           </Tabs>
         </CardContent>
+         <CardFooter className="text-xs text-muted-foreground text-center justify-center">
+            By signing up, you agree to our Terms of Service and Privacy Policy.
+        </CardFooter>
       </Card>
     </div>
   );

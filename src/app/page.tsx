@@ -4,59 +4,46 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { useAppContext } from '@/context/app-context'; // Ensure this alias resolves correctly
+import { useAppContext } from '@/context/app-context';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { isAuthenticated, isLoading: authIsLoading, user } = useAuth();
   const { state: appState, isLoading: appLoading, dispatch } = useAppContext();
 
-  const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  // Middleware and AuthContext are now primarily responsible for redirection.
+  // This page can act as a loading/entry point.
 
   useEffect(() => {
-    if (!authLoading && !appLoading) {
-      if (isAuthenticated && user) {
-        // User is authenticated
-        if (user.id && (!appState.userId || appState.userId !== user.id)) {
-          // If user ID in auth context is different from app context, or app context has no user ID yet
-          // This indicates a new login or a change in authenticated user
-          console.log("HomePage: Authenticated user detected, loading data from API for user:", user.id);
-          dispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: user.id, apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || '/api/php' }});
+    // This effect is a fallback or for scenarios where middleware might not catch all cases
+    // or if we need client-side logic after auth state is determined.
+    if (!authIsLoading && !appLoading) {
+      if (isAuthenticated) {
+        // If authenticated, ensure user data is loaded and then redirect if necessary
+        if (user && user.id && (!appState.userId || appState.userId !== user.id)) {
+             console.log("HomePage: Authenticated user detected, dispatching LOAD_STATE_FROM_API for user:", user.id);
+             dispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: user.id, apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || '/api' }});
         }
-
-        // Redirect based on lists after ensuring data for the current user is potentially loaded or being loaded
-        // This check might need to be deferred until API data loading state is also considered
-        if (Array.isArray(appState.lists) && appState.lists.length > 0) {
-          if (currentPathname !== '/list' && currentPathname !== '/auth') { // Avoid redirecting if already on list or auth page processing
-            router.replace('/list');
-          }
-        } else {
-          // If authenticated but no lists, and not on create-first or auth page
-          if (currentPathname !== '/list/create-first' && currentPathname !== '/auth') {
-            router.replace('/list/create-first');
-          }
-        }
+        // Further redirection (e.g., to /list or /list/create-first) is handled by AppLayout or middleware
+        // based on list existence after data is loaded.
       } else {
-        // User is not authenticated
-        if (currentPathname !== '/auth') { // Avoid redirect loop if already on auth page
-            router.replace('/auth');
+        // If not authenticated, middleware should have redirected to /auth.
+        // If somehow still here, force redirect.
+        if (router && typeof window !== 'undefined' && window.location.pathname !== '/auth') {
+            // console.log("HomePage: Not authenticated, forcing redirect to /auth");
+            // router.replace('/auth');
         }
       }
     }
-  }, [isAuthenticated, user, authLoading, appState.lists, appState.userId, appLoading, router, dispatch, currentPathname]);
+  }, [isAuthenticated, user, authIsLoading, appState.userId, appState.lists, appLoading, router, dispatch]);
 
 
-  if (authLoading || appLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        <p className="ml-4 text-primary text-sm">Loading Neon Shopping...</p>
-      </div>
-    );
-  }
-
-  // If execution reaches here, it means redirection logic is being handled by useEffect,
-  // or the user is on the /auth page (which renders its own content).
-  // For a generic landing page, returning null is fine if redirection is imminent.
-  return null;
+  // Show a loading indicator while auth and app state are resolving.
+  // The actual page content (or redirection) will be handled once state is clear.
+  return (
+    <div className="flex items-center justify-center h-screen bg-background">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <p className="ml-4 text-primary text-sm">Loading Neon Shopping...</p>
+    </div>
+  );
 }

@@ -2,39 +2,65 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PROTECTED_ROUTES = ['/list', '/stats', '/history', '/settings', '/themes', '/premium', '/premium-plans', '/list/create-first'];
+// Define routes that require authentication
+const PROTECTED_ROUTES = ['/list', '/stats', '/history', '/settings', '/themes', '/premium', '/premium-plans'];
 const AUTH_ROUTE = '/auth';
+const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
+const APP_ROOT_ROUTE = '/'; // Usually the entry point to the app after login
+
+// This secret should match the one used in your PHP backend for signing JWTs
+// It's crucial this is kept secret and is the same on both frontend (for verification) and backend (for signing/verification)
+// For Edge runtime, it's better to have it as an environment variable.
+// const JWT_SECRET = process.env.JWT_SECRET || 'your-secure-jwt-secret-key-here-32-bytes';
+// let jwtSecretKey: Uint8Array | null = null;
+// try {
+//   jwtSecretKey = new TextEncoder().encode(JWT_SECRET);
+// } catch (e) {
+//   console.error("Failed to encode JWT_SECRET:", e);
+// }
+
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get('PHPSESSID'); // Standard PHP session cookie name
+  const authTokenCookie = request.cookies.get('auth_token'); // Your JWT cookie name
+  const isAuthenticatedByCookie = !!authTokenCookie; // Basic check for cookie existence
 
-  console.log(`Middleware: Pathname: ${pathname}, PHPSESSID exists: ${!!sessionCookie}`);
+  console.log(`Middleware: Path: ${pathname}, AuthToken Exists: ${isAuthenticatedByCookie}`);
 
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+  // Determine if the current route is protected
+  const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route)) || pathname === CREATE_FIRST_LIST_ROUTE;
 
   if (isProtectedRoute) {
-    if (!sessionCookie) {
-      console.log('Middleware: No session cookie, redirecting to auth page.');
-      const url = request.nextUrl.clone();
-      url.pathname = AUTH_ROUTE;
-      url.searchParams.set('redirectedFrom', pathname); // Optional: pass original path
-      return NextResponse.redirect(url);
+    if (!isAuthenticatedByCookie) {
+      // User is not authenticated and trying to access a protected route
+      console.log(`Middleware: Unauthenticated access to protected route ${pathname}. Redirecting to ${AUTH_ROUTE}.`);
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = AUTH_ROUTE;
+      redirectUrl.searchParams.set('redirectedFrom', pathname); // Pass original path for redirection after login
+      return NextResponse.redirect(redirectUrl);
     }
-    // If there's a session cookie, we assume the user might be authenticated.
-    // The actual validation of the session happens on the API routes or client-side AuthContext.
-    // For middleware, simply having the cookie is often enough to allow access,
-    // and let client-side logic handle re-auth if session is invalid.
+    // If authenticated by cookie, allow access. Client-side AuthContext will do further verification.
   } else if (pathname === AUTH_ROUTE) {
-    if (sessionCookie) {
-      // If user is on auth page but has a session cookie, redirect them to the app's main page.
-      // This prevents logged-in users from seeing the login/signup page unnecessarily.
-      // We can't know for sure if the session is valid here without an API call,
-      // but it's a common UX pattern. AuthContext will verify.
-      console.log('Middleware: Session cookie exists, user on auth page, redirecting to /list.');
-      const url = request.nextUrl.clone();
-      url.pathname = '/list'; // Or your main app page
-      return NextResponse.redirect(url);
+    if (isAuthenticatedByCookie) {
+      // User is authenticated and trying to access the auth page
+      // Redirect them to a default page within the app, e.g., /list/create-first or /list
+      console.log(`Middleware: Authenticated user on ${AUTH_ROUTE}. Redirecting to ${CREATE_FIRST_LIST_ROUTE}.`);
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = CREATE_FIRST_LIST_ROUTE; // Or your main app page after login like '/list'
+      return NextResponse.redirect(redirectUrl);
+    }
+  } else if (pathname === APP_ROOT_ROUTE) {
+    // If user hits the root, decide where to send them
+    if (isAuthenticatedByCookie) {
+      console.log(`Middleware: Authenticated user on root. Redirecting to ${CREATE_FIRST_LIST_ROUTE}.`);
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = CREATE_FIRST_LIST_ROUTE; // Or '/list'
+      return NextResponse.redirect(redirectUrl);
+    } else {
+      console.log(`Middleware: Unauthenticated user on root. Redirecting to ${AUTH_ROUTE}.`);
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = AUTH_ROUTE;
+      return NextResponse.redirect(redirectUrl);
     }
   }
 
@@ -45,11 +71,12 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api routes (this is handled by PHP, not Next.js middleware for API calls)
+     * - api/ (PHP API routes - let them be handled by the PHP server)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - Any other static assets in /public like images, manifests, etc.
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

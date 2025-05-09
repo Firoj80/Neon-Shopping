@@ -2,9 +2,9 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ListPlus, PlusCircle } from 'lucide-react';
+import { ListPlus, PlusCircle, Lock } from 'lucide-react';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
-import { useAuth } from '@/context/auth-context';
+import { useAuth } from '@/context/auth-context'; // Use AuthContext
 import { useRouter } from 'next/navigation';
 import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
@@ -13,24 +13,27 @@ import Link from 'next/link';
 
 export default function CreateFirstListPage() {
     const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
-    const { isAuthenticated, isLoading: authLoading, user } = useAuth();
-    const { state: appState, isLoading: appLoading } = useAppContext();
+    const { isAuthenticated, isLoading: authLoading, user } = useAuth(); // Get auth state
+    const { state: appState, isLoading: appLoading, dispatch } = useAppContext();
     const { toast } = useToast();
     const router = useRouter();
 
     const isLoading = authLoading || appLoading;
-    const currentUserId = user?.id || appState.userId;
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
+            console.log("CreateFirstListPage: Not authenticated, redirecting to /auth");
             router.replace('/auth?redirect=/list/create-first');
         }
         // If authenticated and has lists FOR THE CURRENT USER, redirect to main list page
-        const userLists = appState.lists.filter(list => list.userId === currentUserId);
-        if (!isLoading && isAuthenticated && userLists.length > 0) {
-            router.replace('/list');
+        if (!isLoading && isAuthenticated && user && Array.isArray(appState.lists)) {
+             const userLists = appState.lists.filter(list => list.userId === user.id);
+             if (userLists.length > 0) {
+                console.log("CreateFirstListPage: Authenticated and has lists, redirecting to /list");
+                router.replace('/list');
+            }
         }
-    }, [isLoading, isAuthenticated, appState.lists, currentUserId, router]);
+    }, [isLoading, isAuthenticated, user, appState.lists, router]);
 
 
     const handleCreateListClick = () => {
@@ -38,9 +41,8 @@ export default function CreateFirstListPage() {
              console.log("Auth/App still loading, please wait...");
              return;
          }
-        if (isAuthenticated && user) {
-            // Check premium status for list limit
-            const userListsCount = appState.lists.filter(l => l.userId === user.id).length;
+        if (isAuthenticated && user) { // Ensure user object exists
+            const userListsCount = Array.isArray(appState.lists) ? appState.lists.filter(l => l.userId === user.id).length : 0;
             if (!appState.isPremium && userListsCount >= FREEMIUM_LIST_LIMIT) {
                 toast({
                     title: "List Limit Reached",
@@ -58,6 +60,7 @@ export default function CreateFirstListPage() {
             }
             setIsAddListModalOpen(true);
         } else {
+             console.log("CreateFirstListPage: User not authenticated, redirecting to /auth for list creation.");
             router.push('/auth?redirect=/list/create-first');
         }
     };
@@ -70,13 +73,17 @@ export default function CreateFirstListPage() {
         );
     }
 
+    // If not authenticated and loading is finished, useEffect will handle redirection.
+    // Show a brief message or loader to avoid flashing the page content.
     if (!isAuthenticated && !isLoading) {
         return (
              <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
-                <p className="text-muted-foreground">Redirecting to login...</p>
+                <p className="text-muted-foreground">Redirecting...</p>
             </div>
         );
     }
+    // If authenticated but userLists.length > 0, useEffect will redirect to /list
+    // So, this part of the return will only be reached if authenticated and no lists exist.
 
     return (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center py-10">
@@ -92,6 +99,7 @@ export default function CreateFirstListPage() {
             >
                 <PlusCircle className="mr-2 h-5 w-5" /> Create New List
             </Button>
+            {/* Modal is only rendered if user is authenticated, to prevent issues if auth state changes while modal is open */}
             {isAuthenticated && user && (
                  <AddEditListModal
                      isOpen={isAddListModalOpen}
