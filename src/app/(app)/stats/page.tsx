@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -45,18 +44,24 @@ export default function StatsPage() {
 
      // Update date range when preset changes
     useEffect(() => {
-        if (timePeriodPreset === 'custom' || !dateRange) return; // Don't overwrite custom range
+        if (timePeriodPreset === 'custom') {
+             // If preset is 'custom', we don't automatically change dateRange here.
+             // It's assumed DateRangePicker will handle it or it's already set.
+            return;
+        }
 
         const now = new Date();
-        let startDate: Date;
-        const endDate = endOfDay(now);
+        let newStartDate: Date;
+        const newEndDate = endOfDay(now);
         switch (timePeriodPreset) {
-            case '7d': startDate = startOfDay(subDays(now, 6)); break;
-            case '90d': startDate = startOfDay(subDays(now, 89)); break;
-            case '30d': default: startDate = startOfDay(subDays(now, 29)); break;
+            case '7d': newStartDate = startOfDay(subDays(now, 6)); break;
+            case '90d': newStartDate = startOfDay(subDays(now, 89)); break;
+            case '30d':
+            default: newStartDate = startOfDay(subDays(now, 29)); break;
         }
-        setDateRange({ from: startDate, to: endDate });
-    }, [timePeriodPreset, dateRange]); // Added dateRange to dependency array
+        
+        setDateRange({ from: newStartDate, to: newEndDate });
+    }, [timePeriodPreset]); // Only depend on timePeriodPreset
 
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
@@ -326,18 +331,18 @@ export default function StatsPage() {
 
         // Trend Data
         csvContent += "Expense Trend Data,\r\n";
-        csvContent += "\"Date\",\"Total Spent\"\r\n"; // Use double quotes for CSV header
+        csvContent += "\"Date\",\"Total Spent\"\r\n";
         processedTrendData.forEach(item => {
-            csvContent += "\"" + item.date + "\",\"" + item.total + "\"\n"; // Use standard string concatenation
+            csvContent += `"${item.date}","${item.total}"\n`;
         });
         csvContent += "\r\n";
 
         // Category Data
         csvContent += "Category Breakdown Data,\r\n";
-        csvContent += "\"Category\",\"Total Spent\"\r\n"; // Use double quotes for CSV header
+        csvContent += "\"Category\",\"Total Spent\"\r\n";
         processedCategoryData.forEach(item => {
-            const safeCategory = "\"" + item.category.replace(/"/g, '""') + "\""; // Escape double quotes in category name
-            csvContent += safeCategory + ",\"" + item.total + "\"\r\n";
+            const safeCategory = `"${item.category.replace(/"/g, '""')}"`;
+            csvContent += `${safeCategory},"${item.total}"\r\n`;
         });
 
         downloadCSV(csvContent, 'expense_dashboard_report.csv');
