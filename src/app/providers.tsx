@@ -1,9 +1,10 @@
+
 "use client";
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppProvider } from '@/context/app-context';
-// Removed AuthProvider import, it will be in layout.tsx
+import { AppProvider } from '../context/app-context'; // Changed to relative path
+import { AuthProvider } from '@/context/auth-context'; // Keep AuthProvider separate
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,10 +17,12 @@ const queryClient = new QueryClient({
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-        <AppProvider> {/* AppProvider now handles core app state */}
-            {/* AuthProvider removed from here */}
-            {children}
-        </AppProvider>
+        <AuthProvider> {/* AuthProvider wraps AppProvider */}
+             <AppProvider> {/* AppProvider handles core app state */}
+                 {children}
+            </AppProvider>
+        </AuthProvider>
     </QueryClientProvider>
   );
 }
+
