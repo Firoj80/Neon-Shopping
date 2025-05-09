@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -27,11 +28,12 @@ import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
 import { useAuth } from '@/context/auth-context'; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
-// Removed CreateFirstListPage import as redirection is handled by layout/context
+import CreateFirstListPage from './create-first/page'; // Corrected import path
+
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading: isAppLoading } = useAppContext();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth(); // Get auth state
+  const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state including user
   const router = useRouter(); // Get router
 
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
@@ -50,10 +52,6 @@ export default function ShoppingListPage() {
   }, [lists, selectedListId]);
 
   const handleAddItemClick = () => {
-    if (!isAuthenticated) {
-      router.push('/auth'); // Redirect if not authenticated
-      return;
-    }
     if (!selectedListId) {
         console.error("No list selected, cannot add item.");
         // Optionally show a toast message here
@@ -64,19 +62,11 @@ export default function ShoppingListPage() {
   };
 
   const handleEditItem = (item: AppShoppingListItem) => {
-     if (!isAuthenticated) {
-       router.push('/auth'); // Redirect if not authenticated
-       return;
-     }
     setEditingItem(item);
     setIsAddItemModalOpen(true);
   };
 
   const handleDeleteItem = (id: string) => {
-     if (!isAuthenticated) {
-       router.push('/auth'); // Redirect if not authenticated
-       return;
-     }
     setItemToDelete(id);
   };
 
@@ -87,32 +77,69 @@ export default function ShoppingListPage() {
     }
   };
 
-  const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId'>) => {
+  const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId' | 'userId'>) => {
+
+    // **Stricter Checks and Logging**
     if (!selectedListId) {
-        console.error("No list selected, cannot save item.");
+        console.error("[handleSaveItem] Error: No list selected (selectedListId is null). Cannot save item.");
         setIsAddItemModalOpen(false);
         return;
     }
 
-    const listDefaultCategory = selectedList?.defaultCategory || 'uncategorized';
-    const finalCategory = itemData.category || listDefaultCategory; // Use list default if item has none
+    if (!user || !user.id) {
+      console.error("[handleSaveItem] Error: User not authenticated (user or user.id is null/undefined). Cannot save item.");
+      setIsAddItemModalOpen(false);
+      return;
+    }
+    // **End Stricter Checks**
 
-    const itemWithFinalCategoryDetails = {
+    const listDefaultCategory = selectedList?.defaultCategory || 'uncategorized';
+    const finalCategory = itemData.category || listDefaultCategory;
+
+    // Construct the payload with listId and userId
+     const itemWithFinalDetails: Omit<ShoppingListItem, 'id' | 'dateAdded' | 'checked'> = {
       ...itemData,
+      listId: selectedListId, // We've confirmed selectedListId is not null
+      userId: user.id,        // We've confirmed user.id is not null
       category: finalCategory,
     };
 
-    if (editingItem) {
-      dispatch({
-        type: 'UPDATE_SHOPPING_ITEM',
-        payload: { ...editingItem, ...itemWithFinalCategoryDetails },
-      });
+    // Log right before dispatching ADD
+    if (!editingItem) {
+        console.log("[handleSaveItem] Dispatching ADD_SHOPPING_ITEM with payload:", itemWithFinalDetails);
+        if (!itemWithFinalDetails.listId || !itemWithFinalDetails.userId) {
+             console.error("[handleSaveItem] CRITICAL ERROR: listId or userId became null/undefined right before dispatching ADD!");
+             setIsAddItemModalOpen(false);
+             setEditingItem(null);
+             return;
+        }
+        dispatch({
+            type: 'ADD_SHOPPING_ITEM',
+            payload: itemWithFinalDetails,
+        });
     } else {
-      dispatch({
-        type: 'ADD_SHOPPING_ITEM',
-        payload: { ...itemWithFinalCategoryDetails, listId: selectedListId, checked: false },
-      });
+         // Ensure the update payload includes all required fields
+         const updatePayload: AppShoppingListItem = {
+           ...editingItem, // Start with the existing item
+           ...itemData, // Apply changes from the modal
+           listId: selectedListId, // Ensure listId is correct
+           userId: user.id,        // Ensure userId is correct
+           category: finalCategory, // Apply potentially updated category
+           price: itemData.price ?? 0, // Ensure price is a number
+         };
+         console.log("[handleSaveItem] Dispatching UPDATE_SHOPPING_ITEM with payload:", updatePayload);
+        if (!updatePayload.listId || !updatePayload.userId) {
+            console.error("[handleSaveItem] CRITICAL ERROR: listId or userId became null/undefined right before dispatching UPDATE!");
+            setIsAddItemModalOpen(false);
+            setEditingItem(null);
+            return;
+        }
+        dispatch({
+            type: 'UPDATE_SHOPPING_ITEM',
+            payload: updatePayload,
+        });
     }
+
     setIsAddItemModalOpen(false);
     setEditingItem(null);
   };
@@ -185,19 +212,11 @@ export default function ShoppingListPage() {
      );
   }
 
-  // If authenticated but has no lists, AppLayout should redirect to create-first
-  // We don't need to explicitly render CreateFirstListPage here anymore.
-
-  // --- Main Content: List Display (Render only if authenticated) ---
-  if (!isAuthenticated) {
-       // This state might briefly appear before redirection handles it
-       return (
-        <div className="flex items-center justify-center h-screen">
-            <p className="text-muted-foreground">Redirecting to login...</p>
-            {/* Optionally show a loader */}
-        </div>
-       );
+   // Check if there are no lists AFTER loading is complete and client is mounted
+  if (isClient && !isLoading && lists.length === 0) {
+    return <CreateFirstListPage />;
   }
+
 
   // --- Render the main shopping list UI ---
   return (
@@ -280,3 +299,6 @@ export default function ShoppingListPage() {
     </div>
   );
 }
+
+
+    
