@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useEffect, Fragment, useCallback } from 'react';
 import Link from 'next/link';
@@ -10,11 +11,12 @@ import {
   Info,
   Mail,
   ShieldCheck as Policy, // Renamed ShieldCheck to Policy
-  FileText, // Renamed ArticleIcon to FileText
+  FileText,             // Renamed FileText
   Star,
   AppWindow as AppsIcon, // Corrected AppsIcon to AppWindow
-  Menu as MenuIcon, // Renamed Menu to avoid conflict
+  Menu,                 // Keep Menu as Menu
   X,
+  DollarSign,           // Added for Currency
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -40,7 +42,9 @@ import {
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
-import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
+// Removed AuthProvider related imports
+import { useClientOnly } from '@/hooks/use-client-only'; // Ensure correct import path
+import CreateFirstListPage from '@/app/(app)/list/create-first/page'; // Ensure correct import path
 
 
 // --- Mobile Header Component ---
@@ -55,10 +59,11 @@ const MobileHeader: React.FC = () => {
 
 
   return (
+    // Use flex with justify-between initially, but center the title with a placeholder
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       {/* Left Side: Hamburger Menu Trigger */}
        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-         <SheetTrigger asChild> {/* Wrap the Button with SheetTrigger */}
+         <SheetTrigger> {/* Removed asChild prop */}
            <Button variant="ghost" size="icon" /* onClick removed, Sheet handles it */ className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
              <AnimatePresence initial={false} mode="wait">
                <motion.div
@@ -68,7 +73,7 @@ const MobileHeader: React.FC = () => {
                  exit={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
                  transition={{ duration: 0.2 }}
                >
-                 {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+                 {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                </motion.div>
              </AnimatePresence>
              <span className="sr-only">Toggle Sidebar</span>
@@ -76,12 +81,13 @@ const MobileHeader: React.FC = () => {
          </SheetTrigger>
          {/* Ensure SidebarSheetContent is rendered within Sheet */}
          <SidebarSheetContent side="left" className="w-[280px] sm:w-[300px]">
-            <DesktopSidebarContent onLinkClick={() => setIsOpen(false)} isMobile={true}/>
+            {/* Pass handleLinkClick for mobile sheet closure */}
+           <DesktopSidebarContent onLinkClick={() => setIsOpen(false)} isMobile={true}/>
          </SidebarSheetContent>
        </Sheet>
 
       {/* Center: App Name/Logo */}
-        <Link href="/list" className="flex-grow flex items-center justify-center gap-2 text-lg font-semibold text-primary">
+        <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
            <ShoppingCart className="w-6 h-6" />
            <ClientOnly><span>Neon Shopping</span></ClientOnly>
         </Link>
@@ -92,6 +98,7 @@ const MobileHeader: React.FC = () => {
   );
 };
 
+
 // --- Desktop Sidebar Content (Reusable for Mobile Sheet) ---
 interface DesktopSidebarContentProps {
   onLinkClick?: () => void; // Optional: Callback for when a link is clicked (to close mobile sheet)
@@ -101,17 +108,33 @@ const DesktopSidebarContent: React.FC<DesktopSidebarContentProps> = ({ onLinkCli
   const pathname = usePathname();
   const appContext = useAppContext(); // Use context if needed for other things
   const router = useRouter();
+  const { dispatch } = useAppContext();
 
-  const handleLinkClick = useCallback((href: string, e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault(); // Prevent default link behavior first
-     if (onLinkClick) {
-       onLinkClick(); // Close mobile sheet if callback provided
-     }
-     // Use timeout to allow sheet to close before navigation, preventing layout shifts
-     setTimeout(() => {
-        router.push(href);
-     }, 150); // Adjust delay as needed
-  }, [onLinkClick, router]);
+  // Handle showing interstitial ad and navigation
+   const handleInterstitialLinkClick = (href: string) => {
+       // Call the function to show the ad (assuming it's defined elsewhere)
+       // showPreparedInterstitialAd(); // Removed Admob related code
+       // Optionally add a delay before navigating to allow ad to show briefly
+       setTimeout(() => {
+           router.push(href);
+       }, 150); // Adjust delay as needed (e.g., 150ms)
+       if (onLinkClick) {
+           onLinkClick(); // Close mobile sheet
+       }
+   };
+
+    // Standard navigation click handler
+   const handleLinkClick = useCallback((href: string, e: React.MouseEvent<HTMLAnchorElement>) => {
+     e.preventDefault(); // Prevent default link behavior first
+      if (onLinkClick) {
+        onLinkClick(); // Close mobile sheet if callback provided
+      }
+      // Use timeout to allow sheet to close before navigation, preventing layout shifts
+      setTimeout(() => {
+         router.push(href);
+      }, 150); // Adjust delay as needed
+   }, [onLinkClick, router]);
+
 
    // Define menu items directly within the component or import from a config file
    const primaryMenuItems = [
@@ -130,7 +153,24 @@ const DesktopSidebarContent: React.FC<DesktopSidebarContentProps> = ({ onLinkCli
      { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
    ];
 
-   const renderMenuItem = (item: typeof primaryMenuItems[0]) => (
+   const renderMenuItem = (item: typeof primaryMenuItems[0]) => {
+      // Determine if this item should trigger an interstitial ad
+      const requiresInterstitial = ['/stats', '/history', '/settings'].includes(item.href);
+
+      const clickHandler = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        e.preventDefault();
+        if (requiresInterstitial) {
+          // Call the interstitial handler
+          // handleInterstitialLinkClick(item.href); // Removed Admob related code
+          handleLinkClick(item.href, e); // Fallback to normal navigation for now
+        } else {
+          // Handle normal navigation
+          handleLinkClick(item.href, e);
+        }
+      };
+
+
+      return (
       <SidebarMenuItem key={item.href}>
         <SidebarMenuButton
           asChild
@@ -138,30 +178,33 @@ const DesktopSidebarContent: React.FC<DesktopSidebarContentProps> = ({ onLinkCli
           className={cn(
             "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out",
             "text-neonText hover:text-white",
+             "border border-primary/30 hover:border-secondary/50 hover:shadow-neon focus:shadow-neon-lg", // Added base border and hover/focus effects
             pathname === item.href
               ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30"
               : "hover:bg-primary/10 hover:border-primary/30 hover:shadow-neon"
           )}
         >
+          {/* Conditional rendering based on mobile view */}
           {isMobile ? (
-            <SheetClose asChild>
-              <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
-                <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-                <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-              </Link>
-            </SheetClose>
+              <SheetClose asChild>
+                  <Link href={item.href} onClick={clickHandler}>
+                     <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                     <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+                 </Link>
+              </SheetClose>
           ) : (
-            <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)}>
-              <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-              <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
-            </Link>
+              <Link href={item.href} onClick={clickHandler}>
+                 <item.icon className={cn("transition-colors", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
+                 <span className={cn("transition-colors text-neonText", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+             </Link>
           )}
         </SidebarMenuButton>
       </SidebarMenuItem>
-   );
+      );
+   };
 
   return (
-    <>
+    <Fragment>
       <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
         <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
           <ShoppingCart className="w-6 h-6" />
@@ -177,19 +220,17 @@ const DesktopSidebarContent: React.FC<DesktopSidebarContentProps> = ({ onLinkCli
           <SidebarSeparator className="my-2" />
 
           {/* Secondary Menu */}
-           <SidebarMenu className="space-y-1.5">
+           <SidebarMenu className="space-y-1.5 mt-auto pb-4"> {/* Added mt-auto and padding */}
              {secondaryMenuItems.map(renderMenuItem)}
            </SidebarMenu>
       </SidebarContent>
-       {/* Removed SidebarFooter related to auth/logout */}
-    </>
+    </Fragment>
   );
 };
 
 
 // --- Main AppLayoutContent Component ---
 const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // Call hooks unconditionally at the top level
     const appContext = useAppContext();
     const router = useRouter();
     const pathname = usePathname();
@@ -201,24 +242,22 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
         setIsLoading(appContext.isLoading); // Sync with context's loading state
     }, [appContext.isLoading]);
 
-    // --- Redirect Logic ---
-    // Redirect after ensuring client-side and loading is complete
-    useEffect(() => {
-      if (isClientMounted && !isLoading) {
-        const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+   // --- Redirect Logic ---
+   // Redirect after ensuring client-side and loading is complete
+   useEffect(() => {
+     if (isClientMounted && !isLoading) {
+       const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
 
-        // Redirect to create-first page if no lists exist and not already there
-        if (!hasLists && pathname !== '/list/create-first') {
-           console.log("Redirecting to /list/create-first");
-           router.replace('/list/create-first');
+       // Redirect to create-first page if no lists exist and not already there
+       if (!hasLists && pathname !== '/list/create-first') {
+          router.replace('/list/create-first');
+       }
+        // Redirect to list page if lists exist and currently on create page
+        else if (hasLists && pathname === '/list/create-first') {
+          router.replace('/list');
         }
-         // Redirect to list page if lists exist and currently on create page
-         else if (hasLists && pathname === '/list/create-first') {
-           console.log("Redirecting to /list");
-           router.replace('/list');
-         }
-      }
-    }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]); // Dependencies
+     }
+   }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]); // Dependencies
 
 
     // --- Loading State ---
@@ -236,32 +275,33 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
 
 
     // --- Render full layout ---
-    return (
+   return (
       <Fragment>
-         {/* Mobile Header */}
-         <MobileHeader />
+        {/* Mobile Header */}
+        <MobileHeader />
 
-         {/* Desktop Sidebar */}
-         <Sidebar className="hidden md:flex md:flex-col">
-            <DesktopSidebarContent />
-         </Sidebar>
+        {/* Desktop Sidebar */}
+        <Sidebar className="hidden md:flex md:flex-col">
+          <DesktopSidebarContent />
+        </Sidebar>
 
-        {/* Main Content Area */}
-         <SidebarInset>
-           <main className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 xl:px-10 xl:py-6 bg-background overflow-y-auto">
-              {/* Only render children when client is mounted and not loading */}
-              {isClientMounted && !isLoading ? children : null}
-           </main>
-         </SidebarInset>
-       </Fragment>
-    );
+       {/* Main Content Area */}
+        <SidebarInset>
+          <main className="flex-1 flex flex-col md:p-6 lg:p-8 xl:px-10 xl:py-6 bg-background overflow-y-auto">
+             {/* Only render children when client is mounted and not loading */}
+             {isClientMounted && !isLoading ? children : null}
+          </main>
+        </SidebarInset>
+      </Fragment>
+   );
 }
 
 // --- Main AppLayout Component (Wrapper) ---
+// Note: AuthProvider is removed as per simplification request
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <TooltipProvider delayDuration={0}>
-      <AppLayoutContent>{children}</AppLayoutContent>
+       <AppLayoutContent>{children}</AppLayoutContent>
     </TooltipProvider>
   );
 };
