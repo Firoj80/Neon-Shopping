@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, Fragment, useCallback } from 'react';
@@ -7,9 +6,9 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetTrigger,
-  SheetClose,
 } from "@/components/ui/sheet";
 
 import {
@@ -21,26 +20,27 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
-  SidebarSeparator,
-  SidebarSheetContent
+  SidebarSheetContent,
+  SidebarSeparator
 } from '@/components/ui/sidebar';
 
 import {
-  Menu as MenuIcon,
   ShoppingCart,
   LayoutDashboard,
   History,
   Settings,
-  Palette, 
+  Palette,
   Info,
   Mail,
-  ShieldCheck as Policy, 
-  FileText as Article, 
+  ShieldCheck as PolicyIcon,
+  FileText as ArticleIcon,
   Star,
-  AppWindow, 
+  AppWindow as AppsIcon,
+  Menu as MenuIcon,
   X,
   UserCircle2 as ProfileIcon,
   LogOut as LogoutIcon,
+  Gem as PremiumIcon, // Icon for Premium Plans
 } from 'lucide-react';
 
 import { Button } from '../ui/button';
@@ -58,6 +58,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useClientOnly } from '@/hooks/use-client-only';
 
 
 // --- Mobile Header Component ---
@@ -124,6 +125,7 @@ const ProfileDropdown: React.FC = () => {
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },
     { href: '/themes', label: 'Themes', icon: Palette },
+    { href: '/premium-plans', label: 'Premium Plans', icon: PremiumIcon },
   ];
 
 
@@ -172,7 +174,7 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, isAuthenticated, user } = useAuth(); // Get auth state and user
+  const { logout, isAuthenticated, user } = useAuth();
 
   const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement>) => {
     if (e) e.preventDefault();
@@ -189,29 +191,28 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     logout();
     router.push('/auth'); 
   };
-
-  // Main navigation items - now conditional based on auth state
-  const mainNavItems = [
-    // These items are now part of ProfileDropdown for authenticated users
-    // { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    // { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
-    // { href: '/history', label: 'History', icon: History },
-    // { href: '/settings', label: 'Settings', icon: Settings },
-    // { href: '/themes', label: 'Themes', icon: Palette }, // Added Themes
-  ];
+  
+  const mainNavItems = isAuthenticated ? [
+    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
+    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/themes', label: 'Themes', icon: Palette },
+    { href: '/premium-plans', label: 'Premium Plans', icon: PremiumIcon },
+  ] : [];
 
 
   const secondaryMenuItems = [
     { href: '/about', label: 'About Us', icon: Info },
     { href: '/contact', label: 'Contact Us', icon: Mail },
-    { href: '/privacy', label: 'Privacy Policy', icon: Policy },
-    { href: '/terms', label: 'Terms of Service', icon: Article },
+    { href: '/privacy', label: 'Privacy Policy', icon: PolicyIcon },
+    { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
     { href: '/rate', label: 'Rate App', icon: Star },
-    { href: '/more-apps', label: 'More Apps', icon: AppWindow },
-    { href: '/premium', label: 'Go Premium', icon: Palette }, // Using Palette as placeholder, consider Crown
+    { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
+    { href: '/premium', label: 'Unlock Premium Features', icon: Gem } // Original premium page link
   ];
 
-  const renderMenuItem = (item: typeof secondaryMenuItems[0]) => { // Adjusted for secondary items
+  const renderMenuItem = (item: typeof mainNavItems[0] | typeof secondaryMenuItems[0]) => {
     const clickHandler = (e: React.MouseEvent<HTMLAnchorElement>) => {
       handleLinkClick(item.href, e);
     };
@@ -245,7 +246,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
 
 
   return (
-    <>
+    <Fragment>
       <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
         <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
           <ShoppingCart className="w-6 h-6" />
@@ -254,10 +255,8 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       </SidebarHeader>
       <SidebarContent className="p-2 flex-grow flex flex-col">
         <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-          {/* Render mainNavItems only if user is authenticated and items exist */}
-          {isAuthenticated && mainNavItems.length > 0 && mainNavItems.map(renderMenuItem)}
-          {/* Conditional separator if both main and secondary items are present */}
-          {isAuthenticated && mainNavItems.length > 0 && secondaryMenuItems.length > 0 && <SidebarSeparator className="my-2" />}
+          {mainNavItems.map(renderMenuItem)}
+          {mainNavItems.length > 0 && secondaryMenuItems.length > 0 && <SidebarSeparator className="my-2" />}
           {secondaryMenuItems.map(renderMenuItem)}
         </SidebarMenu>
       </SidebarContent>
@@ -280,7 +279,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
            </Button>
         )}
       </SidebarFooter>
-    </>
+    </Fragment>
   );
 };
 
@@ -295,11 +294,7 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   const authState = useAuth(); 
   const router = useRouter();
   const pathname = usePathname();
-  const [isClientMounted, setIsClientMounted] = useState(false);
-
-  useEffect(() => {
-    setIsClientMounted(true);
-  }, []);
+  const isClientMounted = useClientOnly();
 
   const isLoading = appContext.isLoading || authState.isLoading;
 
@@ -336,11 +331,11 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   }
 
   if (pathname === '/auth') {
-    return <>{children}</>;
+    return <Fragment>{children}</Fragment>;
   }
 
   return (
-     <>
+     <Fragment>
        <MobileHeader />
         <Sidebar className="hidden md:flex md:flex-col">
          <MainMenuContent />
@@ -350,7 +345,7 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
             {children}
           </main>
         </SidebarInset>
-     </>
+     </Fragment>
   );
 }
 

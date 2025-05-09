@@ -26,7 +26,6 @@ import {
 import type { ShoppingListItem } from '@/context/app-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppContext } from '@/context/app-context';
-import { suggestCategory, type SuggestCategoryInput, type SuggestCategoryOutput } from '@/ai/flows/suggest-category-flow'; // Import AI flow
 
 // Form schema for item data, listId will be handled separately
 const formSchema = z.object({
@@ -50,7 +49,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
   const { state: appContextState } = useAppContext();
   const { categories, currency, lists } = appContextState;
 
-  const { register, handleSubmit, control, reset, formState: { errors }, setValue, watch } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, formState: { errors }, setValue } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -59,11 +58,6 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
       category: '',
     }
   });
-
-  const watchedName = watch("name");
-  const [itemNameForSuggestion, setItemNameForSuggestion] = useState('');
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [isAISuggesting, setIsAISuggesting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -74,7 +68,6 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
           price: itemData.price,
           category: itemData.category,
         });
-        setItemNameForSuggestion(''); // Don't suggest for existing items on open
       } else {
         const selectedListObject = lists.find(list => list.id === currentListId);
         const listDefaultCategory = selectedListObject?.defaultCategory || 'uncategorized';
@@ -87,62 +80,9 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                     ? listDefaultCategory
                     : (categories.find(c => c.id !== 'uncategorized')?.id || 'uncategorized'),
         });
-        setItemNameForSuggestion(''); // Reset for new item
       }
     }
   }, [isOpen, itemData, reset, categories, currentListId, lists]);
-
-  // Effect for AI category suggestion
-  useEffect(() => {
-    if (!isOpen || itemData) { // Don't suggest if modal is closed or editing an existing item
-        setItemNameForSuggestion(''); // Clear suggestion trigger when modal closes or on edit
-        return;
-    }
-    
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    if (itemNameForSuggestion.trim()) {
-      debounceTimeoutRef.current = setTimeout(async () => {
-        setIsAISuggesting(true);
-        try {
-          const availableCategories = categories.map(c => ({ id: c.id, name: c.name }));
-          if (availableCategories.length === 0) {
-            setIsAISuggesting(false);
-            return;
-          }
-
-          const result = await suggestCategory({ itemName: itemNameForSuggestion.trim(), availableCategories });
-          if (result && result.suggestedCategoryId) {
-            const isValidSuggestion = availableCategories.some(cat => cat.id === result.suggestedCategoryId);
-            if (isValidSuggestion) {
-              setValue('category', result.suggestedCategoryId, { shouldValidate: true });
-            }
-          }
-        } catch (error) {
-          console.error("Error suggesting category:", error);
-          // Optionally set a default or do nothing
-        } finally {
-          setIsAISuggesting(false);
-        }
-      }, 700); // 700ms debounce
-    }
-
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, [itemNameForSuggestion, categories, setValue, isOpen, itemData]);
-
-  useEffect(() => {
-    // Sync internal state for suggestion with react-hook-form's watched name
-    // Only if not editing, to prevent re-triggering suggestion when form loads with existing data
-    if (isOpen && !itemData) { 
-        setItemNameForSuggestion(watchedName || '');
-    }
-  }, [watchedName, isOpen, itemData]);
 
 
   const onSubmit = (data: FormData) => {
@@ -231,7 +171,6 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
           <div className="grid gap-2">
             <Label htmlFor="category" className="text-neonText/80 flex items-center">
               Category
-              {isAISuggesting && <span className="ml-2 text-xs text-primary animate-pulse">(AI suggesting...)</span>}
             </Label>
             <Controller
               name="category"

@@ -1,17 +1,18 @@
 
-"use client"; // Add this directive
+"use client"; 
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown } from 'lucide-react';
-import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context'; // Import AppContext and constants
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { CheckCircle, XCircle, Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown, Gem } from 'lucide-react';
+import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context'; 
+import { useToast } from '@/hooks/use-toast'; 
+import Link from 'next/link';
 
 
 export default function PremiumPage() {
-  const { state, dispatch } = useAppContext(); // Get state and dispatch from AppContext
-  const { toast } = useToast(); // For showing notifications
+  const { state, dispatch } = useAppContext(); 
+  const { toast } = useToast(); 
 
   const premiumFeatures = [
     { text: "Ad-Free Experience", icon: <XCircle className="h-5 w-5 text-red-500" /> },
@@ -53,8 +54,8 @@ export default function PremiumPage() {
   return (
     <div className="space-y-8 p-2 sm:p-4 md:p-6 max-w-4xl mx-auto">
       <header className="text-center space-y-2">
-        <Crown className="h-12 w-12 text-secondary mx-auto animate-pulse" />
-        <h1 className="text-3xl sm:text-4xl font-bold text-primary">Unlock Neon Premium</h1>
+        <Gem className="h-12 w-12 text-secondary mx-auto animate-pulse" />
+        <h1 className="text-3xl sm:text-4xl font-bold text-primary">Neon Shopping Premium</h1>
         <p className="text-lg text-muted-foreground">
           Supercharge your shopping and budgeting experience with exclusive features.
         </p>
@@ -69,11 +70,11 @@ export default function PremiumPage() {
 
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="flex flex-col gap-6"> {/* Wrapper for Premium Card and Button */}
+        <div className="flex flex-col gap-6"> 
           <Card className="bg-card border-primary/40 shadow-neon glow-border">
             <CardHeader>
               <CardTitle className="text-xl text-primary flex items-center gap-2">
-                <Shield className="h-6 w-6" /> Premium Benefits
+                <ShieldCheck className="h-6 w-6" /> Premium Benefits
               </CardTitle>
               <CardDescription className="text-muted-foreground">
                 Everything you need for ultimate financial control.
@@ -89,16 +90,13 @@ export default function PremiumPage() {
             </CardContent>
           </Card>
 
-          <div className="text-center space-y-3"> {/* Moved button container here */}
-            <Button
-              size="lg"
-              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon-lg hover:shadow-xl hover:shadow-secondary/60 transition-all duration-300 ease-in-out glow-border text-base px-8 py-3 w-full sm:w-auto"
-              onClick={handleUpgrade}
-              disabled={state.isPremium}
-            >
-              <Crown className="mr-2 h-5 w-5" /> Upgrade to Premium Now
+          <div className="text-center space-y-3">
+             <Button asChild size="lg" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon-lg hover:shadow-xl hover:shadow-secondary/60 transition-all duration-300 ease-in-out glow-border text-base px-8 py-3 w-full sm:w-auto">
+                <Link href="/premium-plans">
+                     <Crown className="mr-2 h-5 w-5" /> View Premium Plans
+                </Link>
             </Button>
-             {state.isPremium && (
+             {state.isPremium ? (
                 <Button
                     variant="outline"
                     size="sm"
@@ -107,9 +105,18 @@ export default function PremiumPage() {
                 >
                    Downgrade to Freemium (Test)
                 </Button>
+            ) : (
+                 <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-green-500/50 text-green-500 hover:bg-green-900/10 hover:text-green-400 glow-border-inner w-full sm:w-auto"
+                    onClick={handleUpgrade}
+                >
+                   Enable Premium (Test)
+                </Button>
             )}
             <p className="text-xs text-muted-foreground mt-3">
-              Secure payment processing. Cancel anytime. (Demo)
+              This page is for demonstration. Select a plan on the Premium Plans page.
             </p>
           </div>
         </div>
