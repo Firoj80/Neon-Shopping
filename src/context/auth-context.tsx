@@ -1,18 +1,17 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode, useMemo } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAppContext } from './app-context'; // Assuming context is created here
+import { useRouter, usePathname } from 'next/navigation'; // Use next/navigation for App Router
+import { useAppContext } from './app-context';
 import { useToast } from '@/hooks/use-toast';
 
 // --- Configuration ---
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php'; // Replace with your actual PHP API base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php'; // PHP API Base URL
 
 interface User {
   id: string;
   name: string;
   email: string;
-  // No password stored client-side
 }
 
 interface AuthContextProps {
@@ -21,7 +20,7 @@ interface AuthContextProps {
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<boolean>;
   signup: (name: string, email: string, pass: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -29,20 +28,21 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Start with true
   const router = useRouter();
   const pathname = usePathname();
   const { dispatch: appDispatch, state: appState } = useAppContext();
   const { toast } = useToast();
 
   const checkSession = useCallback(async () => {
-    console.log("AuthContext: checkSession initiated");
+    console.log("AuthContext: checkSession initiated. Current pathname:", pathname);
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/auth/session_status.php`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          // Cookies are typically sent automatically by the browser
         },
       });
 
@@ -53,20 +53,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(data.user);
           setIsAuthenticated(true);
           appDispatch({ type: 'SET_USER_ID', payload: data.user.id });
-          // Trigger data load for authenticated user
-          appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: data.user.id, currencyCode: appState.currency.code } });
+          // Data loading for authenticated user will be triggered by AppContext's useEffect
         } else {
-          console.log("AuthContext: No active session found or invalid data.");
+          console.log("AuthContext: No active session found or invalid data from session_status.php.");
           setIsAuthenticated(false);
           setUser(null);
           appDispatch({ type: 'SET_USER_ID', payload: null });
-          if (pathname !== '/auth' && !pathname.startsWith('/list/create-first')) { // Avoid redirect loops
-             // router.push('/auth'); // Let AppLayout handle initial redirect based on lists
-          }
         }
       } else {
-        // Handle non-OK responses (e.g., server error)
-        console.error("AuthContext: Error checking session status -", response.statusText);
+        // Handle non-OK responses
+        if (response.status === 404) {
+          console.error(
+            `AuthContext: Session check API endpoint not found (404). URL: ${API_BASE_URL}/auth/session_status.php. ` +
+            "Please ensure your backend is correctly deployed and the API_BASE_URL is configured if not using the default."
+          );
+        } else {
+          console.error(`AuthContext: Error checking session status - ${response.status} ${response.statusText}`);
+        }
         setIsAuthenticated(false);
         setUser(null);
         appDispatch({ type: 'SET_USER_ID', payload: null });
@@ -76,16 +79,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthenticated(false);
       setUser(null);
       appDispatch({ type: 'SET_USER_ID', payload: null });
-      // Potentially redirect to auth or show an error if API is unreachable
     } finally {
       setIsLoading(false);
       console.log("AuthContext: checkSession completed. isLoading:", false, "isAuthenticated:", isAuthenticated);
     }
-  }, [pathname, appDispatch, appState.currency.code, isAuthenticated]); // Added isAuthenticated to dependencies
+  }, [appDispatch, isAuthenticated]); // Removed pathname, appState.currency.code as direct dependencies, session check should be independent of these for initial load
 
   useEffect(() => {
+    // Run session check once on mount
     checkSession();
-  }, [checkSession]); // checkSession is memoized, so this runs once on mount
+  }, [checkSession]);
+
 
   const login = async (email: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
@@ -101,9 +105,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(data.user);
         setIsAuthenticated(true);
         appDispatch({ type: 'SET_USER_ID', payload: data.user.id });
-        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: data.user.id, currencyCode: appState.currency.code } }); // Load data after login
+        // AppContext will then load data based on this new userId
         toast({ title: 'Login Successful', description: 'Welcome back!' });
-        router.push(appState.lists && appState.lists.length > 0 ? '/list' : '/list/create-first');
+        // Redirection will be handled by AppLayout or page useEffects
         setIsLoading(false);
         return true;
       } else {
@@ -131,11 +135,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(data.user);
         setIsAuthenticated(true);
         appDispatch({ type: 'SET_USER_ID', payload: data.user.id });
-        // For new users, LOAD_STATE_FROM_API will likely fetch an empty state, which is fine.
-        // AppLayout will then redirect to /list/create-first
-        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: data.user.id, currencyCode: appState.currency.code } });
+        // AppContext will then load data
         toast({ title: 'Sign Up Successful', description: 'Welcome! Your account has been created.' });
-        router.push('/list/create-first');
+        // Redirection handled by AppLayout/page useEffects
         setIsLoading(false);
         return true;
       } else {
@@ -149,20 +151,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const logout = async () => {
+  const logout = () => { // No need for async if just client-side changes now
     setIsLoading(true);
-    try {
-      await fetch(`${API_BASE_URL}/auth/logout.php`, { method: 'POST' });
-    } catch (error) {
-      console.error("Logout API call failed:", error);
-      // Still proceed with client-side logout
-    }
+    fetch(`${API_BASE_URL}/auth/logout.php`, { method: 'POST' }) // Fire and forget logout to backend
+      .catch(err => console.error("AuthContext: Error calling backend logout:", err));
+
     setUser(null);
     setIsAuthenticated(false);
-    appDispatch({ type: 'SET_USER_ID', payload: null });
     appDispatch({ type: 'RESET_APP_STATE_FOR_LOGOUT' }); // Clear user-specific data
     toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
-    router.push('/auth');
+    router.push('/auth'); // Explicitly redirect to auth page on logout
     setIsLoading(false);
   };
 
@@ -173,7 +171,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     signup,
     logout,
-  }), [isAuthenticated, user, isLoading, login, signup, logout]);
+  }), [isAuthenticated, user, isLoading, login, signup, logout]); // Dependencies for useMemo
 
   return (
     <AuthContext.Provider value={contextValue}>
