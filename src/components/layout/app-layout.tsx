@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, Fragment, useCallback } from 'react';
@@ -27,20 +28,21 @@ import {
 import {
   ShoppingCart,
   LayoutDashboard,
-  History,
   Settings,
-  Palette,
   Info,
   Mail,
-  ShieldCheck as PolicyIcon,
-  FileText as ArticleIcon,
   Star,
-  AppWindow as AppsIcon,
   Menu as MenuIcon,
   X,
   UserCircle2 as ProfileIcon,
   LogOut as LogoutIcon,
-  Gem as PremiumIcon, // Icon for Premium Plans
+  History as HistoryIcon, // Renamed to avoid conflict with page
+  Palette as PaletteIcon, // Renamed to avoid conflict with page
+  ShieldCheck as PolicyIcon,
+  FileText as ArticleIcon,
+  AppWindow as AppsIcon,
+  Gem, // Added Gem icon import
+  DollarSign // Added for Currency
 } from 'lucide-react';
 
 import { Button } from '../ui/button';
@@ -122,10 +124,10 @@ const ProfileDropdown: React.FC = () => {
   const profileMenuItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/history', label: 'History', icon: History },
+    { href: '/history', label: 'History', icon: HistoryIcon },
     { href: '/settings', label: 'Settings', icon: Settings },
-    { href: '/themes', label: 'Themes', icon: Palette },
-    { href: '/premium-plans', label: 'Premium Plans', icon: PremiumIcon },
+    { href: '/themes', label: 'Themes', icon: PaletteIcon },
+    { href: '/premium-plans', label: 'Premium Plans', icon: Gem },
   ];
 
 
@@ -183,22 +185,17 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     }
     setTimeout(() => {
       router.push(href);
-    }, isMobile ? 150 : 0); 
+    }, isMobile ? 150 : 0);
   }, [onLinkClick, router, isMobile]);
 
   const handleLogoutClick = () => {
-    if (onLinkClick) onLinkClick(); 
+    if (onLinkClick) onLinkClick();
     logout();
-    router.push('/auth'); 
+    router.push('/auth');
   };
-  
+
   const mainNavItems = isAuthenticated ? [
-    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/history', label: 'History', icon: History },
-    { href: '/settings', label: 'Settings', icon: Settings },
-    { href: '/themes', label: 'Themes', icon: Palette },
-    { href: '/premium-plans', label: 'Premium Plans', icon: PremiumIcon },
+    // Main nav items are now in profile dropdown, this can be empty or for other top-level links if needed
   ] : [];
 
 
@@ -223,7 +220,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
         isActive={pathname === item.href}
         className={cn(
           "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out",
-          "text-neonText hover:text-white", 
+          "text-neonText hover:text-white",
           "hover:border-secondary/50 hover:shadow-neon focus:shadow-neon-lg glow-border-inner",
           pathname === item.href
             ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30"
@@ -255,8 +252,9 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       </SidebarHeader>
       <SidebarContent className="p-2 flex-grow flex flex-col">
         <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-          {mainNavItems.map(renderMenuItem)}
-          {mainNavItems.length > 0 && secondaryMenuItems.length > 0 && <SidebarSeparator className="my-2" />}
+          {/* Main nav items are removed from here as they are in profile dropdown */}
+          {/* {mainNavItems.map(renderMenuItem)} */}
+          {/* {mainNavItems.length > 0 && secondaryMenuItems.length > 0 && <SidebarSeparator className="my-2" />} */}
           {secondaryMenuItems.map(renderMenuItem)}
         </SidebarMenu>
       </SidebarContent>
@@ -291,17 +289,23 @@ interface AppLayoutContentProps {
 
 const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
   const appContext = useAppContext();
-  const authState = useAuth(); 
+  const authState = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const isClientMounted = useClientOnly();
 
-  const isLoading = appContext.isLoading || authState.isLoading;
+  const { isLoading: authLoading, isAuthenticated } = authState;
+  const { isLoading: appLoading } = appContext;
 
+  const isLoading = authLoading || appLoading;
+
+
+  // --- Redirect Logic ---
+  // Moved inside useEffect to prevent rendering during rendering
    useEffect(() => {
      if (isClientMounted && !isLoading) {
        const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
-       if (authState.isAuthenticated) {
+       if (isAuthenticated) {
          if (!hasLists && pathname !== '/list/create-first' && pathname !== '/auth') {
            router.replace('/list/create-first');
          } else if (hasLists && pathname === '/list/create-first') {
@@ -309,14 +313,13 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
          } else if (pathname === '/auth') {
            router.replace('/list');
          }
-       } else { 
+       } else {
          if (pathname !== '/auth') {
            router.replace('/auth');
          }
        }
      }
-   }, [isClientMounted, isLoading, authState.isAuthenticated, appContext.state.lists, pathname, router]);
-
+   }, [isClientMounted, isLoading, isAuthenticated, appContext.state.lists, pathname, router]);
 
 
   if (!isClientMounted || isLoading) {
@@ -330,13 +333,18 @@ const AppLayoutContent: React.FC<AppLayoutContentProps> = ({ children }) => {
     );
   }
 
+  // If on auth page, just render children (the auth page itself)
   if (pathname === '/auth') {
-    return <Fragment>{children}</Fragment>;
+    return <>{children}</>;
   }
 
+  // --- Render full layout ---
   return (
      <Fragment>
+       {/* Mobile Header */}
        <MobileHeader />
+
+        {/* Desktop Sidebar */}
         <Sidebar className="hidden md:flex md:flex-col">
          <MainMenuContent />
         </Sidebar>
@@ -357,3 +365,5 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     </TooltipProvider>
   );
 };
+
+    
