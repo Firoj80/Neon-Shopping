@@ -2,37 +2,35 @@
 <?php
 // api/utils.php
 
-// **IMPORTANT:** In production, replace '*' with your specific frontend domain.
-// For local Next.js dev, it's usually http://localhost:3000 or similar.
-// For your deployed frontend, it would be its actual domain.
-define('ALLOWED_ORIGIN', '*'); // Allow all for now, CHANGE FOR PRODUCTION
+// **IMPORTANT:** 
+// For development, set this to your Next.js development server's origin.
+// For production, set this to your deployed Next.js application's domain.
+// Example for development: define('ALLOWED_ORIGIN', 'http://localhost:3000');
+// Example from error log: define('ALLOWED_ORIGIN', 'https://6000-idx-studio-1746177151292.cluster-htdgsbmflbdmov5xrjithceibm.cloudworkstations.dev');
+
+// Define multiple allowed origins if necessary, e.g., for dev and prod
+$allowed_origins = [
+    'http://localhost:3000', // Common local Next.js dev port
+    'https://6000-idx-studio-1746177151292.cluster-htdgsbmflbdmov5xrjithceibm.cloudworkstations.dev', // Your IDX dev environment
+    // Add your production frontend URL here once deployed, e.g., 'https://your-neon-shopping.com'
+];
+
 define('JWT_SECRET', 'your-very-strong-and-secret-jwt-key-here'); // CHANGE THIS! Ensure it's strong and kept secret.
 
 function set_cors_headers() {
-    if (isset($_SERVER['HTTP_ORIGIN'])) {
-        $origin = $_SERVER['HTTP_ORIGIN'];
-        // If ALLOWED_ORIGIN is not '*', check if $origin is in a list of allowed origins
-        if (ALLOWED_ORIGIN === '*' || $origin === ALLOWED_ORIGIN /* you might check against an array of allowed origins */) {
-            header("Access-Control-Allow-Origin: {$origin}");
-        } else {
-            // Optionally, log or handle origins not explicitly allowed if not using '*'
-            // For now, if not '*', we won't set the header, which will likely block.
-            // Or, for stricter control where '*' is not desired even in dev for some reason:
-            // header("Access-Control-Allow-Origin: " . (SOME_DEFAULT_OR_FALLBACK_IF_NOT_MATCHED));
-            // But for testing, '*' is often simplest. If you have a fixed dev URL, use that.
-        }
+    global $allowed_origins;
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+    if (in_array($origin, $allowed_origins)) {
+        header("Access-Control-Allow-Origin: {$origin}");
     } else {
-        // Requests without an Origin header (e.g. same-origin, server-to-server, or some tools like Postman)
-        // Generally, for browser-based AJAX, Origin will be present.
-        // If you still want to allow these, and not set a specific origin:
-        if (ALLOWED_ORIGIN === '*') { // Only allow * if explicitly set as such
-             header("Access-Control-Allow-Origin: *");
-        }
+        // Optionally, deny the request if the origin is not in the allowed list and not a same-origin request (though browsers usually block this anyway)
+        // For now, we just won't set the header if it's not an allowed origin, which might lead to a CORS error on the client.
+        // error_log("CORS: Origin '{$origin}' not in allowed list.");
     }
 
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-    // Ensure all headers your frontend might send are listed here
-    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-User-ID"); // Added X-User-ID if used
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-User-ID");
     header("Access-Control-Allow-Credentials: true"); // Crucial for credentialed requests (cookies, sessions)
 }
 
@@ -45,6 +43,14 @@ function handle_options_request() {
 }
 
 function send_json_response($data, $status_code = 200) {
+    // Ensure CORS headers are set before any JSON output, especially if not an OPTIONS request
+    // It's good practice to call set_cors_headers() early in your script execution path
+    // or ensure handle_options_request() which calls it, is always invoked first.
+    // If not already set by handle_options_request (for non-OPTIONS calls):
+    if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') {
+        set_cors_headers();
+    }
+    
     http_response_code($status_code);
     header('Content-Type: application/json'); // Explicitly set Content-Type
     echo json_encode($data);
@@ -53,25 +59,20 @@ function send_json_response($data, $status_code = 200) {
 
 function start_secure_session() {
     if (session_status() == PHP_SESSION_NONE) {
-        // More secure session settings
-        ini_set('session.cookie_httponly', 1); 
-        // For production, ensure 'session.cookie_secure' is 1 if using HTTPS.
-        // For local dev over HTTP, this might need to be 0 or commented out if HTTPS isn't set up.
         $is_https = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-        ini_set('session.cookie_secure', $is_https ? 1 : 0); 
-        ini_set('session.use_only_cookies', 1);
-        ini_set('session.gc_maxlifetime', 28800); // 8 hours example
+        
         session_set_cookie_params([
-            'lifetime' => 28800, // Should match gc_maxlifetime
+            'lifetime' => 28800, // 8 hours example, should match gc_maxlifetime
             'path' => '/',
-            // 'domain' => ".yourdomain.com", // Set your domain for production, ensure leading dot for subdomains
-            'secure' => $is_https, 
-            'httponly' => true,
-            'samesite' => 'Lax' // Or 'Strict' or 'None' (if 'None', 'Secure' must be true)
+            // 'domain' => ".yourdomain.com", // For production, set your domain, ensure leading dot for subdomains
+            'secure' => $is_https, // True if HTTPS, false otherwise
+            'httponly' => true,    // Prevents client-side script access to the cookie
+            'samesite' => $is_https ? 'None' : 'Lax' // 'None' requires 'Secure'; 'Lax' is a good default
         ]);
         session_start();
     }
 }
+
 
 function get_current_user_id() {
     start_secure_session();
