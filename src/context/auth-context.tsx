@@ -12,7 +12,8 @@ export interface User {
   name: string;
   email: string;
   isPremium?: boolean;
-  // Add other user properties as needed
+  subscriptionStatus?: 'free' | 'premium';
+  subscriptionExpiryDate?: string | null;
 }
 
 interface AuthContextProps {
@@ -22,7 +23,7 @@ interface AuthContextProps {
   login: (email: string, password: string) => Promise<boolean>;
   signup: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  checkSession: () => Promise<void>; // Exposed for potential manual checks
+  checkSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -30,28 +31,31 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start with loading true
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { dispatch: appDispatch, state: appState } = useAppContext();
+  const { dispatch: appDispatch } = useAppContext(); // Removed appState as it's not directly used here for redirection logic
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'; // Make sure this is correct
+  // API_BASE_URL is handled by fetchFromApi utility
+  // const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/neon/api';
 
   const checkSession = useCallback(async () => {
     console.log("AuthContext: Checking session...");
     setIsLoading(true);
     try {
-      // Attempt to fetch session status from the backend
-      const response = await fetchFromApi(`${API_BASE_URL}/auth/session_status.php`, { method: 'GET' });
+      const response = await fetchFromApi('auth/session_status.php', { method: 'GET' });
       console.log("AuthContext: Session status response", response);
 
       if (response && response.isAuthenticated && response.user) {
         setIsAuthenticated(true);
-        setUser(response.user as User);
-        appDispatch({ type: 'SET_USER_ID', payload: response.user.id });
-        appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!response.user.isPremium });
+        const fetchedUser = response.user as User;
+        setUser(fetchedUser);
+        appDispatch({ type: 'SET_USER_ID', payload: fetchedUser.id });
+        appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!fetchedUser.isPremium });
+        // Load user-specific data now that we know the user ID
+        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: fetchedUser.id, apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || '/neon/api' } });
 
-        // If authenticated and on the auth page, redirect
+
         if (pathname === '/auth') {
           console.log("AuthContext: Authenticated, on /auth, redirecting to /list/create-first");
           router.replace('/list/create-first');
@@ -60,11 +64,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsAuthenticated(false);
         setUser(null);
         appDispatch({ type: 'SET_USER_ID', payload: null });
-        // If not authenticated and not on auth page, redirect (middleware should primarily handle this)
-        // This client-side redirect is a fallback or for specific cases after initial load
-        if (pathname !== '/auth' && !isLoading) { // Added !isLoading to prevent redirect during initial load race conditions
-          console.log("AuthContext: Not authenticated, not on /auth, redirecting to /auth. Current pathname:", pathname);
-         // router.push('/auth?redirect=' + pathname); // Let middleware handle redirection primarily
+        if (pathname !== '/auth' && !isLoading) {
+           // Let middleware handle primary redirection
         }
       }
     } catch (error: any) {
@@ -72,44 +73,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsAuthenticated(false);
       setUser(null);
       appDispatch({ type: 'SET_USER_ID', payload: null });
-      // if (pathname !== '/auth' && !isLoading) { // Added !isLoading
-      //   console.log("AuthContext: Error, redirecting to /auth. Current pathname:", pathname);
-      //    router.push('/auth?redirect=' + pathname); // Let middleware handle redirection
-      // }
     } finally {
       setIsLoading(false);
-      console.log("AuthContext: Session check finished. isLoading:", false);
+      console.log("AuthContext: Session check finished. isLoading:", false, "isAuthenticated:", isAuthenticated);
     }
-  }, [router, pathname, appDispatch, API_BASE_URL, isLoading]); // Added isLoading to dependency array
+  }, [router, pathname, appDispatch, isLoading, isAuthenticated]); // Added isAuthenticated to dependencies
 
   useEffect(() => {
     checkSession();
-  }, [pathname]); // Rerun checkSession if pathname changes, e.g., after login/logout redirect
+  }, [pathname]);
 
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const response = await fetchFromApi(`${API_BASE_URL}/auth/login.php`, {
+      const response = await fetchFromApi('auth/login.php', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
       if (response.success && response.user) {
         setIsAuthenticated(true);
-        setUser(response.user as User);
-        appDispatch({ type: 'SET_USER_ID', payload: response.user.id });
-        appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!response.user.isPremium });
-        // After successful login, load user-specific data
-        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: response.user.id, apiBaseUrl: API_BASE_URL } });
-        router.replace(response.user.lists > 0 ? '/list' : '/list/create-first');
+        const loggedInUser = response.user as User;
+        setUser(loggedInUser);
+        appDispatch({ type: 'SET_USER_ID', payload: loggedInUser.id });
+        appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!loggedInUser.isPremium });
+        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: loggedInUser.id, apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || '/neon/api' } });
+        // Redirection to /list or /list/create-first will be handled by AppLayout after data loads
         return true;
       } else {
         console.error("Login failed:", response.message);
+        // Use toast for user feedback
+        // toast({ title: "Login Failed", description: response.message || "Please check your credentials.", variant: "destructive" });
         alert(response.message || "Login failed. Please check your credentials.");
         return false;
       }
     } catch (error: any) {
       console.error("Login error:", error);
+      // toast({ title: "Login Error", description: error.message || "An error occurred during login.", variant: "destructive" });
       alert(error.message || "An error occurred during login.");
       return false;
     } finally {
@@ -120,26 +120,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signup = async (name: string, email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const response = await fetchFromApi(`${API_BASE_URL}/auth/register.php`, {
+      const response = await fetchFromApi('auth/register.php', {
         method: 'POST',
         body: JSON.stringify({ name, email, password }),
       });
       if (response.success && response.user) {
         setIsAuthenticated(true);
-        setUser(response.user as User);
-        appDispatch({ type: 'SET_USER_ID', payload: response.user.id });
-        appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!response.user.isPremium });
-         // After successful signup, load initial empty state for this user or trigger API load
-        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: response.user.id, apiBaseUrl: API_BASE_URL } });
-        router.replace('/list/create-first');
+        const signedUpUser = response.user as User;
+        setUser(signedUpUser);
+        appDispatch({ type: 'SET_USER_ID', payload: signedUpUser.id });
+        appDispatch({ type: 'SET_PREMIUM_STATUS', payload: !!signedUpUser.isPremium });
+        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: signedUpUser.id, apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || '/neon/api' } });
+        // Redirection handled by AppLayout
         return true;
       } else {
         console.error("Signup failed:", response.message);
+        // toast({ title: "Signup Failed", description: response.message || "Could not create account.", variant: "destructive" });
         alert(response.message || "Signup failed. Please try again.");
         return false;
       }
     } catch (error: any) {
       console.error("Signup error:", error);
+      // toast({ title: "Signup Error", description: error.message || "An error occurred during signup.", variant: "destructive" });
       alert(error.message || "An error occurred during signup.");
       return false;
     } finally {
@@ -150,19 +152,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     setIsLoading(true);
     try {
-      await fetchFromApi(`${API_BASE_URL}/auth/logout.php`, { method: 'POST'});
+      await fetchFromApi('auth/logout.php', { method: 'POST' });
     } catch (error) {
       console.error("Logout API call failed, proceeding with client-side logout:", error);
     } finally {
       setIsAuthenticated(false);
       setUser(null);
-      appDispatch({ type: 'SET_USER_ID', payload: null });
-      appDispatch({ type: 'RESET_STATE_FOR_LOGOUT' }); // Clear user-specific app data
-      router.push('/auth'); // Redirect to login page
+      appDispatch({ type: 'RESET_STATE_FOR_LOGOUT' });
+      router.push('/auth');
       setIsLoading(false);
     }
   };
-  
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, isLoading, login, signup, logout, checkSession }}>
@@ -173,9 +173,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = (): AuthContextProps => {
   const context = useContext(AuthContext);
-  // console.log("useAuth called, context value:", context); // For debugging
   if (context === undefined) {
-    // console.error("useAuth error: AuthContext is undefined. Ensure AuthProvider wraps this component."); // For debugging
+    console.error("useAuth error: AuthContext is undefined. Ensure AuthProvider wraps this component.");
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
