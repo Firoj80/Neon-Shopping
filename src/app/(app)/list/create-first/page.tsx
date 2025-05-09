@@ -1,33 +1,47 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ListPlus, PlusCircle } from 'lucide-react';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
-import { useAuth } from '@/context/auth-context'; // Import useAuth hook
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
+import { useAppContext } from '@/context/app-context';
 
-// This component specifically handles the "Create First List" scenario
+
 export default function CreateFirstListPage() {
     const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
-    const { isAuthenticated, isLoading } = useAuth(); // Get auth state AND loading state
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { state: appState, isLoading: appLoading } = useAppContext();
     const router = useRouter();
 
+    const isLoading = authLoading || appLoading;
+
+    useEffect(() => {
+        // If user is not authenticated and not loading, redirect to auth page
+        if (!isLoading && !isAuthenticated) {
+            router.replace('/auth');
+        }
+        // If user is authenticated, has lists, and is on this page, redirect to main list page
+        if (!isLoading && isAuthenticated && appState.lists && appState.lists.length > 0) {
+            router.replace('/list');
+        }
+    }, [isLoading, isAuthenticated, appState.lists, router]);
+
+
     const handleCreateListClick = () => {
-         // Check loading state first
-         if (isLoading) {
-             // Optionally show a temporary disabled state or message
-             console.log("Auth still loading, please wait...");
+        if (isLoading) {
+             console.log("Auth/App still loading, please wait...");
              return;
          }
-
         if (isAuthenticated) {
-            setIsAddListModalOpen(true); // Open modal if logged in
+            setIsAddListModalOpen(true);
         } else {
-            router.push('/auth'); // Redirect to login/signup if not logged in
+            // This case should ideally be caught by the useEffect redirect,
+            // but as a fallback:
+            router.push('/auth');
         }
     };
 
-    // Optional: Show a loader while auth is loading
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
@@ -36,6 +50,15 @@ export default function CreateFirstListPage() {
         );
     }
 
+    // If not authenticated (and not loading), this page shouldn't really be reachable due to useEffect redirect.
+    // However, as a safeguard, we can return null or a message.
+    if (!isAuthenticated) {
+        return (
+             <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
+                <p className="text-muted-foreground">Redirecting to login...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center py-10">
@@ -48,13 +71,10 @@ export default function CreateFirstListPage() {
                 onClick={handleCreateListClick}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-neon glow-border"
                 size="lg"
-                disabled={isLoading} // Disable button while auth is loading
             >
                 <PlusCircle className="mr-2 h-5 w-5" /> Create New List
             </Button>
-            {/* Conditionally render modal only if authenticated user might open it */}
-            {/* Ensure modal only renders if user is confirmed authenticated */}
-            {isAuthenticated && !isLoading && (
+            {isAuthenticated && (
                  <AddEditListModal
                      isOpen={isAddListModalOpen}
                      onClose={() => setIsAddListModalOpen(false)}

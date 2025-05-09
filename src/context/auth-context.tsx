@@ -1,27 +1,27 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode, useMemo } from 'react';
-import { useRouter, usePathname } from 'next/navigation'; // Use next/navigation for App Router
+import { useRouter, usePathname } from 'next/navigation';
 import { useAppContext } from './app-context'; // Assuming context is created here
+import { useToast } from '@/hooks/use-toast';
 
-// Keys for localStorage
-const USERS_STORAGE_KEY = 'neonShoppingUsers';
-const LOGGED_IN_USER_EMAIL_KEY = 'neonShoppingLoggedInEmail'; // Key to store logged-in user's email
+// --- Configuration ---
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php'; // Replace with your actual PHP API base URL
 
 interface User {
-  id: string; // Use email as ID for simplicity with localStorage
+  id: string;
   name: string;
   email: string;
-  // Password should not be stored here for security
+  // No password stored client-side
 }
 
 interface AuthContextProps {
   isAuthenticated: boolean;
   user: User | null;
-  isLoading: boolean; // Represents auth loading specifically
+  isLoading: boolean;
   login: (email: string, pass: string) => Promise<boolean>;
   signup: (name: string, email: string, pass: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -29,154 +29,152 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Auth specific loading state
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { dispatch: appDispatch } = useAppContext();
+  const { dispatch: appDispatch, state: appState } = useAppContext();
+  const { toast } = useToast();
 
-  // --- LocalStorage User Management ---
-  const getUsersFromStorage = (): User[] => {
-    if (typeof window !== 'undefined') {
-      const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-      try {
-        return storedUsers ? JSON.parse(storedUsers) : [];
-      } catch (e) {
-        console.error("Error parsing users from localStorage:", e);
-        return []; // Return empty array on error
-      }
-    }
-    return [];
-  };
-
-  const saveUsersToStorage = (users: User[]) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    }
-  };
-
-  // --- Session Check ---
   const checkSession = useCallback(async () => {
     console.log("AuthContext: checkSession initiated");
-    setIsLoading(true); // Start auth loading
-    if (typeof window !== 'undefined') {
-      const loggedInEmail = localStorage.getItem(LOGGED_IN_USER_EMAIL_KEY);
-      console.log("AuthContext: loggedInEmail from localStorage:", loggedInEmail);
-      if (loggedInEmail) {
-        const users = getUsersFromStorage();
-        const loggedInUser = users.find(u => u.email === loggedInEmail);
-        if (loggedInUser) {
-          console.log("AuthContext: User found in session:", loggedInUser);
-          setUser(loggedInUser);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/session_status.php`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.isAuthenticated && data.user) {
+          console.log("AuthContext: User session valid:", data.user);
+          setUser(data.user);
           setIsAuthenticated(true);
-          appDispatch({ type: 'SET_USER_ID', payload: loggedInUser.id }); // Dispatch user ID to AppContext
-          // Optional: Load user-specific data if needed (though AppContext handles general load)
-          // appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: loggedInUser.id } });
+          appDispatch({ type: 'SET_USER_ID', payload: data.user.id });
+          // Trigger data load for authenticated user
+          appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: data.user.id, currencyCode: appState.currency.code } });
         } else {
-          // If email is stored but user doesn't exist (data inconsistency), clear session
-          console.log("AuthContext: Inconsistent session data found, clearing.");
-          localStorage.removeItem(LOGGED_IN_USER_EMAIL_KEY);
+          console.log("AuthContext: No active session found or invalid data.");
           setIsAuthenticated(false);
           setUser(null);
           appDispatch({ type: 'SET_USER_ID', payload: null });
-          // Redirect only if not already on auth page
-          if (pathname !== '/auth') {
-             router.push('/auth');
+          if (pathname !== '/auth' && !pathname.startsWith('/list/create-first')) { // Avoid redirect loops
+             // router.push('/auth'); // Let AppLayout handle initial redirect based on lists
           }
         }
       } else {
-        console.log("AuthContext: No logged-in user email found.");
+        // Handle non-OK responses (e.g., server error)
+        console.error("AuthContext: Error checking session status -", response.statusText);
         setIsAuthenticated(false);
         setUser(null);
         appDispatch({ type: 'SET_USER_ID', payload: null });
-         // Redirect to auth if not already there and not on create-first page (which handles its own redirect)
-         // This redirection is now primarily handled by middleware or AppLayout
-         // if (pathname !== '/auth' && pathname !== '/list/create-first') {
-         //    router.push('/auth');
-         // }
       }
+    } catch (error) {
+      console.error("AuthContext: Error in checkSession fetch:", error);
+      setIsAuthenticated(false);
+      setUser(null);
+      appDispatch({ type: 'SET_USER_ID', payload: null });
+      // Potentially redirect to auth or show an error if API is unreachable
+    } finally {
+      setIsLoading(false);
+      console.log("AuthContext: checkSession completed. isLoading:", false, "isAuthenticated:", isAuthenticated);
     }
-     setIsLoading(false); // Finish auth loading
-     console.log("AuthContext: checkSession completed. isLoading:", false);
-  }, [router, pathname, appDispatch]); // Added appDispatch dependency
+  }, [pathname, appDispatch, appState.currency.code, isAuthenticated]); // Added isAuthenticated to dependencies
 
   useEffect(() => {
     checkSession();
-  }, [checkSession]);
+  }, [checkSession]); // checkSession is memoized, so this runs once on mount
 
-  // --- Login ---
   const login = async (email: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
-    const users = getUsersFromStorage();
-    // THIS IS A SIMPLIFIED AND INSECURE PASSWORD CHECK FOR localStorage DEMO.
-    const foundUser = users.find(u => u.email === email && localStorage.getItem(`${u.email}_password`) === pass); // Direct password check (INSECURE)
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      const data = await response.json();
 
-    if (foundUser) {
-      setUser(foundUser);
-      setIsAuthenticated(true);
-      localStorage.setItem(LOGGED_IN_USER_EMAIL_KEY, foundUser.email);
-      appDispatch({ type: 'SET_USER_ID', payload: foundUser.id });
-      // Consider loading user-specific data here if necessary
-      // appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: foundUser.id } });
-      router.push('/list'); // Redirect after successful login
-      setIsLoading(false);
-      return true;
+      if (response.ok && data.success && data.user) {
+        setUser(data.user);
+        setIsAuthenticated(true);
+        appDispatch({ type: 'SET_USER_ID', payload: data.user.id });
+        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: data.user.id, currencyCode: appState.currency.code } }); // Load data after login
+        toast({ title: 'Login Successful', description: 'Welcome back!' });
+        router.push(appState.lists && appState.lists.length > 0 ? '/list' : '/list/create-first');
+        setIsLoading(false);
+        return true;
+      } else {
+        toast({ title: 'Login Failed', description: data.message || 'Invalid email or password.', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({ title: 'Login Error', description: 'An unexpected error occurred.', variant: 'destructive' });
     }
     setIsLoading(false);
     return false;
   };
 
-  // --- Signup ---
   const signup = async (name: string, email: string, pass: string): Promise<boolean> => {
     setIsLoading(true);
-    let users = getUsersFromStorage();
-    if (users.find(u => u.email === email)) {
-      setIsLoading(false);
-      alert("Email already exists."); // Provide user feedback
-      return false; // User already exists
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password: pass }),
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success && data.user) {
+        setUser(data.user);
+        setIsAuthenticated(true);
+        appDispatch({ type: 'SET_USER_ID', payload: data.user.id });
+        // For new users, LOAD_STATE_FROM_API will likely fetch an empty state, which is fine.
+        // AppLayout will then redirect to /list/create-first
+        appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: data.user.id, currencyCode: appState.currency.code } });
+        toast({ title: 'Sign Up Successful', description: 'Welcome! Your account has been created.' });
+        router.push('/list/create-first');
+        setIsLoading(false);
+        return true;
+      } else {
+        toast({ title: 'Sign Up Failed', description: data.message || 'Could not create account.', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Sign up error:', error);
+      toast({ title: 'Sign Up Error', description: 'An unexpected error occurred.', variant: 'destructive' });
     }
-
-    const newUser: User = { id: email, name, email }; // Using email as ID
-    users.push(newUser);
-    saveUsersToStorage(users);
-    // Store password directly in localStorage (VERY INSECURE - for demo only)
-    localStorage.setItem(`${email}_password`, pass);
-
-    setUser(newUser);
-    setIsAuthenticated(true);
-    localStorage.setItem(LOGGED_IN_USER_EMAIL_KEY, newUser.email);
-    appDispatch({ type: 'SET_USER_ID', payload: newUser.id });
-     // Load initial state or specific data for the new user if needed
-     // appDispatch({ type: 'LOAD_STATE_FROM_API', payload: { userId: newUser.id } });
-
-    // Redirect to create first list page AFTER signup
-    router.push('/list/create-first');
     setIsLoading(false);
-    return true;
+    return false;
   };
 
-  // --- Logout ---
-  const logout = () => {
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout.php`, { method: 'POST' });
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+      // Still proceed with client-side logout
+    }
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem(LOGGED_IN_USER_EMAIL_KEY);
     appDispatch({ type: 'SET_USER_ID', payload: null });
-    // Optionally reset other app state parts specific to the user
-    // appDispatch({ type: 'RESET_USER_SPECIFIC_STATE' });
-    router.push('/auth'); // Redirect to login page after logout
+    appDispatch({ type: 'RESET_APP_STATE_FOR_LOGOUT' }); // Clear user-specific data
+    toast({ title: 'Logged Out', description: 'You have been successfully logged out.' });
+    router.push('/auth');
+    setIsLoading(false);
   };
 
-   // Memoize context value to prevent unnecessary re-renders
-   const contextValue = useMemo(() => ({
+  const contextValue = useMemo(() => ({
     isAuthenticated,
     user,
-    isLoading, // Use the auth-specific loading state
+    isLoading,
     login,
     signup,
     logout,
-   }), [isAuthenticated, user, isLoading]); // Add isLoading dependency
+  }), [isAuthenticated, user, isLoading, login, signup, logout]);
 
-
-   console.log("AuthContext.Provider rendering with value:", contextValue); // Log provider value
   return (
     <AuthContext.Provider value={contextValue}>
       {children}
@@ -184,15 +182,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// --- Hook ---
-export const useAuth = (): AuthContextProps => { // Explicit return type
+export const useAuth = (): AuthContextProps => {
   const context = useContext(AuthContext);
-  console.log("useAuth called, context value:", context); // Log context value when hook is used
   if (context === undefined) {
-    // This error should ideally not happen if wrapped correctly, but keep the check
     console.error("useAuth error: AuthContext is undefined. Ensure AuthProvider wraps this component.");
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  // Return the context directly. Components using it should check the isLoading state.
   return context;
 };

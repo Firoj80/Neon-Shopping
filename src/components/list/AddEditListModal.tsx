@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form'; // Import Controller
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -20,18 +20,19 @@ import {
   SelectTrigger,
   SelectContent,
   SelectItem,
-  SelectValue,
   SelectGroup,
   SelectLabel
-} from '@/components/ui/select'; // Corrected imports for Select components
+} from '@/components/ui/select';
 import type { List, Category } from '@/context/app-context';
 import { useAppContext } from '@/context/app-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php';
+
 const listFormSchema = z.object({
   name: z.string().min(1, "List name is required").max(50, "List name too long"),
-  budgetLimit: z.number().min(0, "Budget limit cannot be negative").nullable().default(0), // Allow null, default to 0
-  defaultCategory: z.string().optional().default(''), // Default to empty string if not provided
+  budgetLimit: z.number().min(0, "Budget limit cannot be negative").nullable().default(0),
+  defaultCategory: z.string().optional().default(''),
 });
 
 type ListFormData = z.infer<typeof listFormSchema>;
@@ -44,14 +45,14 @@ interface AddEditListModalProps {
 
 export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onClose, listData }) => {
   const { dispatch, state } = useAppContext();
-  const { categories, currency } = state;
+  const { categories, currency, userId, isPremium, lists } = state; // Added lists and isPremium
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ListFormData>({
     resolver: zodResolver(listFormSchema),
     defaultValues: {
       name: '',
-      budgetLimit: null, // Default to null to show placeholder
-      defaultCategory: '', // Start with empty string
+      budgetLimit: null,
+      defaultCategory: '',
     }
   });
 
@@ -60,34 +61,66 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
       if (listData) {
         reset({
           name: listData.name,
-          budgetLimit: listData.budgetLimit, // Use existing value
-          defaultCategory: listData.defaultCategory || '', // Use empty string if undefined/null
+          budgetLimit: listData.budgetLimit,
+          defaultCategory: listData.defaultCategory || 'uncategorized',
         });
       } else {
         reset({
           name: '',
-          budgetLimit: null, // Start with null for new list
-          defaultCategory: '', // Start with empty string for new list
+          budgetLimit: null,
+          defaultCategory: 'uncategorized',
         });
       }
     }
   }, [isOpen, listData, reset]);
 
-  const onSubmit = (data: ListFormData) => {
-    const payload = {
-      ...data,
-      // Ensure budgetLimit is 0 if null
+  const onSubmit = async (data: ListFormData) => {
+    if (!userId) {
+      console.error("User ID is not available. Cannot save list.");
+      // Optionally show a toast to the user
+      return;
+    }
+
+    if (!isPremium && !listData && lists.length >= FREEMIUM_LIST_LIMIT) {
+        // UI should ideally prevent opening the modal if this is the case,
+        // but this is a fallback check.
+        alert(`Freemium users can only create up to ${FREEMIUM_LIST_LIMIT} lists. Please upgrade.`);
+        onClose();
+        return;
+    }
+
+
+    const payloadForApi = {
+      userId, // Include userId
+      id: listData ? listData.id : undefined, // Include id if editing
+      name: data.name,
       budgetLimit: data.budgetLimit ?? 0,
-      // Ensure defaultCategory is set to 'uncategorized' if left empty or invalid
       defaultCategory: data.defaultCategory && categories.some(c => c.id === data.defaultCategory) ? data.defaultCategory : 'uncategorized',
     };
 
-    if (listData) {
-      dispatch({ type: 'UPDATE_LIST', payload: { ...listData, ...payload } });
-    } else {
-      dispatch({ type: 'ADD_LIST', payload });
+    try {
+      const response = await fetch(`${API_BASE_URL}/lists/${listData ? 'update_list.php' : 'create_list.php'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadForApi),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to save list');
+      }
+
+      if (listData) {
+        dispatch({ type: 'UPDATE_LIST', payload: result.list as List });
+      } else {
+        dispatch({ type: 'ADD_LIST', payload: result.list as List });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Error saving list:", error);
+      // Optionally show a toast to the user with the error message
+      alert(`Error: ${error instanceof Error ? error.message : 'Could not save list.'}`);
     }
-    onClose();
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -132,11 +165,10 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
                   {...field}
                   onChange={(e) => {
                       const value = e.target.value;
-                      // Allow empty input, handle potential negative, parse as float
                       field.onChange(value === '' ? null : Math.max(0, parseFloat(value) || 0));
                   }}
-                  value={field.value === null || field.value === undefined ? '' : field.value} // Show empty string if null/undefined
-                  placeholder="0.00" // Use placeholder
+                  value={field.value === null || field.value === undefined ? '' : String(field.value)}
+                  placeholder="0.00"
                   className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary text-sm glow-border-inner"
                   min="0"
                   aria-invalid={errors.budgetLimit ? "true" : "false"}
@@ -154,14 +186,13 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
               render={({ field }) => (
                 <Select
                   onValueChange={field.onChange}
-                  value={field.value || 'uncategorized'} // Handle null/undefined value, default to 'uncategorized' visual
+                  value={field.value || 'uncategorized'}
                 >
                   <SelectTrigger
                     id="defaultCategory"
                     className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-sm glow-border-inner"
                     aria-invalid={errors.defaultCategory ? "true" : "false"}
                   >
-                    {/* Display selected value or placeholder */}
                     <SelectValue placeholder="-- No Default --" />
                   </SelectTrigger>
                   <SelectContent
@@ -172,14 +203,13 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
                     <ScrollArea className="h-[200px] w-full">
                       <SelectGroup>
                         <SelectLabel className="text-muted-foreground/80 text-xs px-2">Categories</SelectLabel>
-                        {/* Add an option for no default category */}
                         <SelectItem
-                            value="uncategorized" // Represent no specific selection with 'uncategorized'
+                            value="uncategorized"
                             className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm text-muted-foreground"
                         >
                              -- No Default --
                         </SelectItem>
-                        {categories.filter(cat => cat.id !== 'uncategorized').map((category) => ( // Exclude 'uncategorized' from defaults
+                        {categories.filter(cat => cat.id !== 'uncategorized').map((category) => (
                           <SelectItem
                             key={category.id}
                             value={category.id}

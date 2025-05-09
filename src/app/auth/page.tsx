@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,11 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/context/auth-context'; // Import the auth context hook
+import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, User, LogIn, UserPlus } from 'lucide-react';
-import { ShoppingCart } from 'lucide-react';
+import { Mail, Lock, User, LogIn, UserPlus, ShoppingCart } from 'lucide-react';
+import { useAppContext } from '@/context/app-context'; // Import AppContext to access currency
 
 // --- Validation Schemas ---
 const signUpSchema = z.object({
@@ -24,18 +24,19 @@ const signUpSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(1, { message: 'Password is required.' }), // Basic check for login
+  password: z.string().min(1, { message: 'Password is required.' }),
 });
 
 type SignUpFormData = z.infer<typeof signUpSchema>;
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function AuthPage() {
-  const { login, signup } = useAuth();
+  const { login, signup, isLoading: authIsLoading, isAuthenticated } = useAuth(); // Get isLoading from auth context
+  const { dispatch: appDispatch, state: appState } = useAppContext(); // Get app context for currency
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('login'); // 'login' or 'signup'
+  const [isSubmitting, setIsSubmitting] = useState(false); // Local submitting state for forms
+  const [activeTab, setActiveTab] = useState('login');
 
   // --- Forms ---
   const {
@@ -56,54 +57,56 @@ export default function AuthPage() {
     resolver: zodResolver(signUpSchema),
   });
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authIsLoading && isAuthenticated) {
+      // Redirect based on whether lists exist or not
+      if (appState.lists && appState.lists.length > 0) {
+        router.replace('/list');
+      } else {
+        router.replace('/list/create-first');
+      }
+    }
+  }, [authIsLoading, isAuthenticated, router, appState.lists]);
+
+
   // --- Handlers ---
   const onLoginSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
-    try {
-      const success = await login(data.email, data.password);
-      if (success) {
-        toast({ title: 'Login Successful', description: 'Welcome back!' });
-        router.push('/list'); // Redirect to the main list page
-      } else {
-        toast({ title: 'Login Failed', description: 'Invalid email or password.', variant: 'destructive' });
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      toast({ title: 'Login Error', description: 'An unexpected error occurred.', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-      resetLogin(); // Reset form after submission attempt
+    setIsSubmitting(true);
+    const success = await login(data.email, data.password);
+    if (success) {
+      // Redirection is handled by useEffect or AppLayout now
     }
+    setIsSubmitting(false);
+    resetLogin();
   };
 
   const onSignUpSubmit = async (data: SignUpFormData) => {
-    setIsLoading(true);
-    try {
-      const success = await signup(data.name, data.email, data.password);
-      if (success) {
-        toast({ title: 'Sign Up Successful', description: 'Welcome! Your account has been created.' });
-        router.push('/list/create-first'); // Redirect to create first list page
-      } else {
-        // Error message is handled within the signup function in context now
-        // We still show a generic one here in case context doesn't toast
-         toast({ title: 'Sign Up Failed', description: 'Could not create account. Email might be taken.', variant: 'destructive' });
-      }
-    } catch (error) {
-      console.error('Sign up error:', error);
-      toast({ title: 'Sign Up Error', description: 'An unexpected error occurred.', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-      resetSignUp(); // Reset form after submission attempt
+    setIsSubmitting(true);
+    const success = await signup(data.name, data.email, data.password);
+    if (success) {
+     // Redirection is handled by useEffect or AppLayout now
     }
+    setIsSubmitting(false);
+    resetSignUp();
   };
 
-   // Reset forms when tab changes
-    const handleTabChange = (value: string) => {
-        setActiveTab(value);
-        resetLogin();
-        resetSignUp();
-        setIsLoading(false); // Reset loading state on tab change
-    };
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    resetLogin();
+    resetSignUp();
+    setIsSubmitting(false);
+  };
+
+  // Show a global loading indicator if auth is still loading
+  if (authIsLoading) {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-card to-background p-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-card to-background p-4">
@@ -154,8 +157,8 @@ export default function AuthPage() {
                   />
                   {loginErrors.password && <p className="text-red-500 text-xs pt-1">{loginErrors.password.message}</p>}
                 </div>
-                 <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow glow-border-inner" disabled={isLoading}>
-                    {isLoading ? 'Logging in...' : 'Login'}
+                 <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-lg hover:shadow-primary/50 transition-shadow glow-border-inner" disabled={isSubmitting}>
+                    {isSubmitting ? 'Logging in...' : 'Login'}
                 </Button>
               </form>
             </TabsContent>
@@ -199,8 +202,8 @@ export default function AuthPage() {
                   />
                   {signUpErrors.password && <p className="text-red-500 text-xs pt-1">{signUpErrors.password.message}</p>}
                 </div>
-                 <Button type="submit" className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-neon hover:shadow-lg hover:shadow-secondary/50 transition-shadow glow-border-inner" disabled={isLoading}>
-                    {isLoading ? 'Creating Account...' : 'Sign Up'}
+                 <Button type="submit" className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-neon hover:shadow-lg hover:shadow-secondary/50 transition-shadow glow-border-inner" disabled={isSubmitting}>
+                    {isSubmitting ? 'Creating Account...' : 'Sign Up'}
                  </Button>
               </form>
             </TabsContent>

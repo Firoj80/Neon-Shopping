@@ -16,10 +16,9 @@ import {
 } from '@/components/ui/dialog';
 import {
   Select,
+  SelectTrigger,
   SelectContent,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
   SelectGroup,
   SelectLabel
 } from '@/components/ui/select';
@@ -27,7 +26,8 @@ import type { ShoppingListItem } from '@/context/app-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppContext } from '@/context/app-context';
 
-// Form schema for item data, listId will be handled separately
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php';
+
 const formSchema = z.object({
   name: z.string().min(1, "Item name is required"),
   quantity: z.number().min(1, "Quantity must be at least 1").int(),
@@ -40,14 +40,13 @@ type FormData = z.infer<typeof formSchema>;
 interface AddEditItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Omit<ShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId' | 'userId'>) => void;
   itemData?: ShoppingListItem | null;
   currentListId: string | null;
 }
 
-export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onClose, onSave, itemData, currentListId }) => {
-  const { state: appContextState } = useAppContext();
-  const { categories, currency, lists } = appContextState;
+export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onClose, itemData, currentListId }) => {
+  const { state: appContextState, dispatch } = useAppContext();
+  const { categories, currency, lists, userId } = appContextState;
 
   const { register, handleSubmit, control, reset, formState: { errors }, setValue } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -85,13 +84,46 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
   }, [isOpen, itemData, reset, categories, currentListId, lists]);
 
 
-  const onSubmit = (data: FormData) => {
-    const dataToSave = {
+  const onSubmit = async (data: FormData) => {
+    if (!currentListId || !userId) {
+      console.error("Current list ID or User ID is not available. Cannot save item.");
+      alert("Error: Could not determine the current list or user. Please try again.");
+      return;
+    }
+
+    const payloadForApi = {
       ...data,
+      id: itemData ? itemData.id : undefined, // Include id if editing
+      listId: currentListId,
+      userId: userId,
       price: data.price ?? 0,
+      // 'checked' and 'dateAdded' will be handled by backend or set on successful response
     };
-    onSave(dataToSave);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/items/${itemData ? 'update_item.php' : 'add_item.php'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadForApi),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to save item');
+      }
+      
+      if (itemData) {
+        dispatch({ type: 'UPDATE_SHOPPING_ITEM', payload: result.item as ShoppingListItem });
+      } else {
+        dispatch({ type: 'ADD_SHOPPING_ITEM', payload: result.item as ShoppingListItem });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Error saving item:", error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Could not save item.'}`);
+    }
   };
+
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -132,7 +164,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                       const value = e.target.value;
                       field.onChange(value === '' ? '' : Math.max(1, parseInt(value, 10) || 1));
                     }}
-                    value={field.value === 0 ? '' : field.value}
+                    value={field.value === 0 ? '' : String(field.value)} // Ensure string value for input
                     placeholder="1"
                     className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary text-sm glow-border-inner"
                     min="1"
@@ -201,13 +233,15 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({ isOpen, onCl
                             key={category.id}
                             value={category.id}
                             className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm"
-                            disabled={category.id === 'uncategorized' && categories.length <= 1}
+                            disabled={category.id === 'uncategorized' && categories.length <= 1 && categories.filter(c => c.id !== 'uncategorized').length === 0}
                           >
                             {category.name}
                           </SelectItem>
                         ))}
-                        {categories.filter(cat => cat.id !== 'uncategorized').length === 0 && (
-                          <p className='text-center text-muted-foreground text-xs p-2'>No other categories defined. Add some in Settings!</p>
+                         {categories.filter(cat => cat.id !== 'uncategorized').length === 0 && (
+                           <SelectItem value="no-categories" disabled className="text-muted-foreground text-center py-2 text-sm">
+                                No other categories defined.
+                           </SelectItem>
                         )}
                       </SelectGroup>
                     </ScrollArea>

@@ -1,5 +1,4 @@
-
-"use client"; // Keep this as layout uses hooks
+"use client";
 
 import { Inter } from 'next/font/google';
 // Removed Metadata export as it conflicts with "use client" for now
@@ -7,14 +6,13 @@ import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import './globals.css';
 import { Providers } from './providers'; // Providers includes AppProvider
-import { AppLayout } from '@/components/layout/app-layout'; // Corrected import path
+import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
-// AuthProvider is now inside Providers
-// import { AuthProvider } from '@/context/auth-context';
-// ClientOnly component wrapper removed, useClientOnly hook is used inside AppLayoutContent
-// import ClientOnly from '@/components/client-only';
+import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
+import ClientOnly from '@/components/client-only'; // Import ClientOnly
 import { ThemeWatcher } from '@/context/theme-watcher';
-import Script from 'next/script'; // Import Script component
+import Script from 'next/script';
+
 
 const inter = Inter({
   variable: '--font-inter',
@@ -40,25 +38,17 @@ export default function RootLayout({
           'font-sans antialiased min-h-screen flex flex-col bg-background',
         )}
       >
-        {/* Razorpay SDK Script - It's often recommended to place this in the <head> or early in <body> */}
-        {/* However, for Next.js App Router, placing it here or in PremiumPlansPage is common. */}
-        {/* If it causes issues, consider moving to <Head> in a page.tsx or using next/script in _document.js (Pages Router) */}
-        {/* For App Router, directly in layout or page is fine. */}
-        {/* <Script
-          id="razorpay-checkout-js"
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          strategy="beforeInteractive" // Load before page is interactive
-        /> */}
-        {/* Note: Moved Razorpay SDK script to PremiumPlansPage for more localized loading */}
-
-        <Providers> {/* Providers now includes AuthProvider */}
-           <ThemeWatcher>
-             {/* ClientOnly component wrapper removed here */}
+        <Providers> {/* AppProvider is inside Providers */}
+          <AuthProvider> {/* AuthProvider wraps ThemeWatcher and AppLayout */}
+            <ThemeWatcher>
+              <ClientOnly> {/* ClientOnly ensures AppLayout renders client-side */}
                 <AppLayout>
                   {children}
                 </AppLayout>
-                <Toaster />
-           </ThemeWatcher>
+              </ClientOnly>
+              <Toaster />
+            </ThemeWatcher>
+          </AuthProvider>
         </Providers>
       </body>
     </html>
