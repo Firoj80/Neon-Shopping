@@ -1,11 +1,11 @@
 
 <?php
 // api/user/preferences.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
@@ -18,10 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         if ($prefs && !empty($prefs['currency_code'])) {
             // Placeholder: Ideally fetch full currency details (symbol, name) from a 'currencies' table
+            // For now, assume client has a map or this basic structure is enough.
             send_json_response(['success' => true, 'currency' => ['code' => $prefs['currency_code'], 'symbol' => '$', 'name' => $prefs['currency_code']]]);
         } else {
-            // No preferences found, client can use its default or auto-detected
-            send_json_response(['success' => true, 'currency' => null, 'message' => 'No saved preferences.']);
+            send_json_response(['success' => true, 'currency' => null, 'message' => 'No saved currency preference.']);
         }
     } catch (PDOException $e) {
         error_log("Get User Preferences DB Error: " . $e->getMessage());
@@ -34,8 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
     $currency_code = sanitize_input($input['currencyCode']);
 
-    // Validate currency code (e.g., check against a list of supported codes)
-    // For now, we'll assume it's valid.
+    // Optional: Validate currency_code against a list of supported codes if you have one in the DB or hardcoded.
 
     try {
         // Check if preferences row exists for the user
@@ -60,27 +59,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 } else {
     send_json_response(['success' => false, 'message' => 'Invalid request method.'], 405);
 }
-
-/**
- * SQL for user_preferences table:
- *
-CREATE TABLE user_preferences (
-    user_id VARCHAR(36) PRIMARY KEY,
-    currency_code VARCHAR(3) DEFAULT 'USD', -- Default currency
-    -- Add other preferences like theme, notifications_enabled, etc.
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (currency_code) REFERENCES currencies(code) -- If you have a currencies table
-);
- *
- * If you don't have a separate `currencies` table, you can remove the foreign key for currency_code.
- * Example for a basic `currencies` table (optional but good for data integrity):
- *
-CREATE TABLE currencies (
-    code VARCHAR(3) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    symbol VARCHAR(10) NOT NULL
-);
-INSERT INTO currencies (code, name, symbol) VALUES ('USD', 'US Dollar', '$'), ('EUR', 'Euro', '€'), ('INR', 'Indian Rupee', '₹');
--- Add more currencies as needed
- */
 ?>

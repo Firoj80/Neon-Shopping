@@ -1,11 +1,11 @@
 
 <?php
 // api/auth/register.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $conn = get_db_connection();
 $input = json_decode(file_get_contents('php://input'), true);
@@ -48,7 +48,7 @@ $password_hash = password_hash($password, PASSWORD_DEFAULT);
 try {
     $stmt_insert = $conn->prepare("INSERT INTO users (id, name, email, password_hash, subscription_status, subscription_expiry_date) VALUES (?, ?, ?, ?, 'free', NULL)");
     if ($stmt_insert->execute([$user_id, $name, $email, $password_hash])) {
-        start_secure_session();
+        start_secure_session(); // Start session before setting variables
         $_SESSION['user_id'] = $user_id;
         $_SESSION['user_name'] = $name;
         $_SESSION['user_email'] = $email;

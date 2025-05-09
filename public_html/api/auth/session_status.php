@@ -1,13 +1,13 @@
 
 <?php
 // api/auth/session_status.php
-require_once '../utils.php';
-require_once '../db_config.php'; // Needed to check subscription status from DB as source of truth
+require_once '../utils.php'; // Adjust path if your utils.php is elsewhere
+require_once '../db_config.php'; 
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
-$user_id = get_current_user_id(); // This function starts the session
+$user_id = get_current_user_id(); // This function also starts the session
 
 if ($user_id) {
     $conn = get_db_connection();
@@ -23,12 +23,11 @@ if ($user_id) {
             }
 
             // If session status is premium but DB says expired (or free), update session
-             if ($_SESSION['subscription_status'] === 'premium' && !$is_premium) {
+             if (isset($_SESSION['subscription_status']) && $_SESSION['subscription_status'] === 'premium' && !$is_premium) {
                 $_SESSION['subscription_status'] = 'free';
                 $_SESSION['subscription_expiry_date'] = null;
-                // Optionally update database if there's a discrepancy not handled by login/update_subscription
-            } else if ($_SESSION['subscription_status'] !== $user_data['subscription_status']) {
-                 // Sync session if DB status is different (e.g. admin change)
+            } else if (!isset($_SESSION['subscription_status']) || $_SESSION['subscription_status'] !== $user_data['subscription_status']) {
+                 // Sync session if DB status is different (e.g. admin change or initial load)
                  $_SESSION['subscription_status'] = $user_data['subscription_status'];
                  $_SESSION['subscription_expiry_date'] = $user_data['subscription_expiry_date'];
             }
@@ -40,7 +39,7 @@ if ($user_id) {
                     'id' => $user_id,
                     'name' => $_SESSION['user_name'] ?? $user_data['name'], // Prefer session, fallback to DB
                     'email' => $_SESSION['user_email'] ?? $user_data['email'],
-                    'isPremium' => $is_premium, // Use the re-calculated premium status
+                    'isPremium' => $is_premium, 
                 ]
             ]);
         } else {
@@ -51,9 +50,7 @@ if ($user_id) {
 
     } catch (PDOException $e) {
         error_log("Session Status DB Error: " . $e->getMessage());
-        // Don't destroy session here, but indicate an error occurred.
-        // Client might retry or user might still be partially functional if frontend caches user data.
-        send_json_response(['isAuthenticated' => true, 'user' => null, 'error' => 'Could not verify user details.'], 500);
+        send_json_response(['isAuthenticated' => false, 'error' => 'Could not verify user details due to a database issue.'], 500);
     }
 
 } else {

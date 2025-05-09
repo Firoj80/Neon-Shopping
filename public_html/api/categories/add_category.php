@@ -1,13 +1,13 @@
 
 <?php
 // api/categories/add_category.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
-$user_id = ensure_authenticated(); // Categories are user-specific
+$user_id = ensure_authenticated(); 
 $conn = get_db_connection();
 $input = json_decode(file_get_contents('php://input'), true);
 
@@ -16,9 +16,6 @@ if (!$input || empty($input['name'])) {
 }
 $name = sanitize_input($input['name']);
 
-// Freemium check for custom categories (if defaults are considered separate)
-// Assuming default categories are marked with user_id IS NULL or a specific system ID
-// and 'uncategorized' is always allowed.
 $is_premium = false;
 $stmt_user = $conn->prepare("SELECT subscription_status, subscription_expiry_date FROM users WHERE id = ?");
 $stmt_user->execute([$user_id]);
@@ -28,40 +25,25 @@ if ($user_details = $stmt_user->fetch(PDO::FETCH_ASSOC)) {
     }
 }
 
-// Count user-defined categories (excluding global/default ones if any)
+// Count user-defined categories 
 $stmt_cat_count = $conn->prepare("SELECT COUNT(*) as category_count FROM categories WHERE user_id = ?");
 $stmt_cat_count->execute([$user_id]);
 $cat_count_data = $stmt_cat_count->fetch(PDO::FETCH_ASSOC);
 $user_category_count = $cat_count_data ? (int)$cat_count_data['category_count'] : 0;
 
-// Example: Allow up to 5 custom categories for freemium users
-// (DEFAULT_CATEGORIES constant is from frontend, server needs its own logic or constant)
-define('FREEMIUM_CATEGORY_LIMIT', 5); // Define this based on your app's logic
+define('FREEMIUM_CATEGORY_LIMIT_PHP', 5); 
 
-if (!$is_premium && $user_category_count >= FREEMIUM_CATEGORY_LIMIT) {
-    // Check if the category name matches one of the predefined default names (case-insensitive)
-    // This list should ideally be managed consistently between frontend and backend
-    $default_category_names = ['Home Appliances', 'Health', 'Grocery', 'Fashion', 'Electronics']; // Example
-    $is_trying_to_add_default = false;
-    foreach ($default_category_names as $default_name) {
-        if (strtolower($name) === strtolower($default_name)) {
-            $is_trying_to_add_default = true;
-            break;
-        }
-    }
-    // If limit reached and not trying to add a known default (which shouldn't happen if they are pre-created with NULL user_id)
-    if (!$is_trying_to_add_default) {
-         send_json_response(['success' => false, 'message' => 'Freemium users have a limit of ' . FREEMIUM_CATEGORY_LIMIT . ' custom categories. Please upgrade.'], 403);
-    }
+if (!$is_premium && $user_category_count >= FREEMIUM_CATEGORY_LIMIT_PHP) {
+    send_json_response(['success' => false, 'message' => 'Freemium users have a limit of ' . FREEMIUM_CATEGORY_LIMIT_PHP . ' custom categories. Please upgrade.'], 403);
 }
 
-
-// Check if category name already exists for this user
+// Check if category name already exists for this user (custom categories)
+// Global categories (user_id IS NULL) can have same names as user's custom ones.
 try {
-    $stmt_check = $conn->prepare("SELECT id FROM categories WHERE name = ? AND (user_id = ? OR user_id IS NULL)");
+    $stmt_check = $conn->prepare("SELECT id FROM categories WHERE name = ? AND user_id = ?");
     $stmt_check->execute([$name, $user_id]);
     if ($stmt_check->fetch()) {
-        send_json_response(['success' => false, 'message' => 'Category name already exists.'], 409);
+        send_json_response(['success' => false, 'message' => 'You already have a custom category with this name.'], 409);
     }
 } catch (PDOException $e) {
      error_log("Add Category - Check Name DB Error: " . $e->getMessage());

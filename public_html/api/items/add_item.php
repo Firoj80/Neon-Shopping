@@ -1,11 +1,11 @@
 
 <?php
 // api/items/add_item.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
@@ -19,11 +19,11 @@ $list_id = sanitize_input($input['listId'] ?? '');
 $name = sanitize_input($input['name'] ?? '');
 $quantity = isset($input['quantity']) ? (int)$input['quantity'] : 1;
 $price = isset($input['price']) ? (float)$input['price'] : 0.00;
-$category = sanitize_input($input['category'] ?? 'uncategorized'); // Category ID
-$checked = false; // New items are unchecked by default
-$date_added = round(microtime(true) * 1000); // Milliseconds timestamp
+$category = sanitize_input($input['category'] ?? 'uncategorized'); 
+$checked = false; 
+$date_added = round(microtime(true) * 1000); 
 
-if (empty($list_id) || empty($name) || $quantity < 0) { // Allow quantity 0 if needed, or set to 1 min
+if (empty($list_id) || empty($name) || $quantity < 0) { 
     send_json_response(['success' => false, 'message' => 'List ID, item name, and valid quantity are required.'], 400);
 }
 
@@ -39,7 +39,7 @@ try {
     send_json_response(['success' => false, 'message' => 'Error verifying list ownership.'], 500);
 }
 
-$item_id = bin2hex(random_bytes(16)); // Generate UUID-like ID
+$item_id = bin2hex(random_bytes(16)); 
 
 try {
     $stmt_insert = $conn->prepare("INSERT INTO shopping_list_items (id, list_id, user_id, name, quantity, price, category, checked, date_added) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");

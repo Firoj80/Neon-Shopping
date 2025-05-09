@@ -1,11 +1,11 @@
 
 <?php
 // api/categories/delete_category.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
@@ -18,19 +18,21 @@ $category_id_to_delete = sanitize_input($input['categoryId']);
 $reassign_to_id = sanitize_input($input['reassignToId'] ?? 'uncategorized');
 
 
-// Prevent deletion of 'uncategorized' or predefined default categories by non-premium/non-admin
 if (strtolower($category_id_to_delete) === 'uncategorized') {
     send_json_response(['success' => false, 'message' => "'Uncategorized' category cannot be deleted."], 403);
 }
 
-// Check if the category to delete is a predefined default (user_id IS NULL)
-$stmt_check_default = $conn->prepare("SELECT user_id FROM categories WHERE id = ?");
-$stmt_check_default->execute([$category_id_to_delete]);
-$category_info = $stmt_check_default->fetch(PDO::FETCH_ASSOC);
+$stmt_check_category = $conn->prepare("SELECT user_id, name FROM categories WHERE id = ?");
+$stmt_check_category->execute([$category_id_to_delete]);
+$category_info = $stmt_check_category->fetch(PDO::FETCH_ASSOC);
 
-if ($category_info && $category_info['user_id'] === null) {
-    // This is a predefined default category. Check if user is premium/admin to allow deletion.
-    $is_premium = false;
+if (!$category_info) {
+    send_json_response(['success' => false, 'message' => 'Category not found.'], 404);
+}
+
+// Check if it's a predefined default category (user_id IS NULL)
+if ($category_info['user_id'] === null) {
+    $is_premium = false; // Check actual premium status
     $stmt_user = $conn->prepare("SELECT subscription_status, subscription_expiry_date FROM users WHERE id = ?");
     $stmt_user->execute([$user_id]);
     if ($user_details = $stmt_user->fetch(PDO::FETCH_ASSOC)) {
@@ -38,14 +40,12 @@ if ($category_info && $category_info['user_id'] === null) {
             $is_premium = $user_details['subscription_expiry_date'] === null || strtotime($user_details['subscription_expiry_date']) > time();
         }
     }
-    if (!$is_premium) { // And not an admin
+    if (!$is_premium) { 
         send_json_response(['success' => false, 'message' => 'Freemium users cannot delete predefined default categories.'], 403);
     }
-} elseif ($category_info && $category_info['user_id'] !== $user_id) {
-    // Trying to delete a category that belongs to another user
+} elseif ($category_info['user_id'] !== $user_id) {
+    // Trying to delete a category that belongs to another user (should not happen with proper client-side logic)
     send_json_response(['success' => false, 'message' => 'Access denied. This category does not belong to you.'], 403);
-} elseif (!$category_info) {
-    send_json_response(['success' => false, 'message' => 'Category not found.'], 404);
 }
 
 
@@ -60,10 +60,14 @@ try {
     $stmt_update_lists = $conn->prepare("UPDATE shopping_lists SET default_category = ? WHERE default_category = ? AND user_id = ?");
     $stmt_update_lists->execute([$reassign_to_id, $category_id_to_delete, $user_id]);
     
-    // Delete the category itself (only if it's user-owned or user is admin/premium for default ones)
-    // The checks above already handle permission for default categories
-    $stmt_delete_category = $conn->prepare("DELETE FROM categories WHERE id = ? AND (user_id = ? OR user_id IS NULL)"); // Allow admin to delete NULL user_id ones if logic permits
-    $stmt_delete_category->execute([$category_id_to_delete, $user_id]);
+    // Determine ownership for delete query
+    if ($category_info['user_id'] === null) { // Global default category
+        $stmt_delete_category = $conn->prepare("DELETE FROM categories WHERE id = ? AND user_id IS NULL");
+        $stmt_delete_category->execute([$category_id_to_delete]);
+    } else { // User-owned category
+        $stmt_delete_category = $conn->prepare("DELETE FROM categories WHERE id = ? AND user_id = ?");
+        $stmt_delete_category->execute([$category_id_to_delete, $user_id]);
+    }
 
 
     if ($stmt_delete_category->rowCount() > 0) {
@@ -71,8 +75,7 @@ try {
         send_json_response(['success' => true, 'message' => 'Category deleted and items reassigned successfully.']);
     } else {
         $conn->rollBack();
-        // This might happen if the category was already deleted or didn't belong to the user (if not a default one)
-        send_json_response(['success' => false, 'message' => 'Failed to delete category or category not found for this user.'], 404);
+        send_json_response(['success' => false, 'message' => 'Failed to delete category. It might have been already deleted or not found.'], 404);
     }
 } catch (PDOException $e) {
     $conn->rollBack();

@@ -1,11 +1,11 @@
 
 <?php
 // api/lists/delete_list.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
@@ -39,7 +39,7 @@ try {
         $conn->commit();
         send_json_response(['success' => true, 'message' => 'List and its items deleted successfully.']);
     } else {
-        $conn->rollBack(); // Rollback if list deletion didn't affect any rows (already verified, but good practice)
+        $conn->rollBack(); 
         send_json_response(['success' => false, 'message' => 'Failed to delete list or list not found.'], 404);
     }
 } catch (PDOException $e) {

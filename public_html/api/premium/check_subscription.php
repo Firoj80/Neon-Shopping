@@ -1,11 +1,11 @@
 
 <?php
 // api/premium/check_subscription.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
@@ -27,18 +27,19 @@ try {
                 if ($expiry_timestamp && $expiry_timestamp > time()) {
                     $is_premium = true;
                 } else {
-                    $is_expired = true; // Explicitly mark as expired
+                    $is_expired = true; 
                 }
             }
         }
         
-        // If subscription expired, update status to 'free' in DB and session
         if ($is_expired) {
             $stmt_update = $conn->prepare("UPDATE users SET subscription_status = 'free', subscription_expiry_date = NULL WHERE id = ?");
             $stmt_update->execute([$user_id]);
+             // Update session as well
+            start_secure_session();
             $_SESSION['subscription_status'] = 'free';
             $_SESSION['subscription_expiry_date'] = null;
-             $is_premium = false; // Ensure is_premium is false if it just expired
+            $is_premium = false; 
         }
 
 

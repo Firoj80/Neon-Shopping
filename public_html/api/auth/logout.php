@@ -1,10 +1,11 @@
 
 <?php
 // api/auth/logout.php
-require_once '../utils.php'; // We only need utils for session management
+require_once '../utils.php'; 
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
+
 start_secure_session(); // Ensure session is started before trying to destroy
 
 // Unset all of the session variables.

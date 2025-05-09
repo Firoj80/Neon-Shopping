@@ -1,13 +1,13 @@
 
 <?php
 // api/lists/create_list.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-define('FREEMIUM_LIST_LIMIT', 3); // Define the limit for freemium users
+define('FREEMIUM_LIST_LIMIT_PHP', 3); 
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
@@ -23,11 +23,10 @@ $default_category = sanitize_input($input['defaultCategory'] ?? 'uncategorized')
 
 if (empty($name)) {
     send_json_response(['success' => false, 'message' => 'List name is required.'], 400);
-    exit;
 }
 
 // Check list limit for non-premium users
-$is_premium = false; // Default to false
+$is_premium = false; 
 $stmt_user = $conn->prepare("SELECT subscription_status, subscription_expiry_date FROM users WHERE id = ?");
 $stmt_user->execute([$user_id]);
 if ($user_details = $stmt_user->fetch(PDO::FETCH_ASSOC)) {
@@ -40,13 +39,12 @@ if (!$is_premium) {
     $stmt_count = $conn->prepare("SELECT COUNT(*) as list_count FROM shopping_lists WHERE user_id = ?");
     $stmt_count->execute([$user_id]);
     $count_data = $stmt_count->fetch(PDO::FETCH_ASSOC);
-    if ($count_data && $count_data['list_count'] >= FREEMIUM_LIST_LIMIT) {
-        send_json_response(['success' => false, 'message' => 'Freemium users can create up to ' . FREEMIUM_LIST_LIMIT . ' lists. Please upgrade.'], 403); // 403 Forbidden
-        exit;
+    if ($count_data && $count_data['list_count'] >= FREEMIUM_LIST_LIMIT_PHP) {
+        send_json_response(['success' => false, 'message' => 'Freemium users can create up to ' . FREEMIUM_LIST_LIMIT_PHP . ' lists. Please upgrade.'], 403); 
     }
 }
 
-$list_id = bin2hex(random_bytes(16)); // Generate UUID-like ID
+$list_id = bin2hex(random_bytes(16)); 
 
 try {
     $stmt_insert = $conn->prepare("INSERT INTO shopping_lists (id, user_id, name, budget_limit, default_category) VALUES (?, ?, ?, ?, ?)");

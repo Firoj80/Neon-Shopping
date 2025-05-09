@@ -1,11 +1,11 @@
 
 <?php
 // api/auth/login.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $conn = get_db_connection();
 $input = json_decode(file_get_contents('php://input'), true);
@@ -27,7 +27,7 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user && password_verify($password, $user['password_hash'])) {
-        start_secure_session();
+        start_secure_session(); // Ensure session is started before setting variables
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
         $_SESSION['user_email'] = $user['email'];
@@ -55,7 +55,6 @@ try {
                 'name' => $user['name'],
                 'email' => $user['email'],
                 'isPremium' => $is_premium,
-                 // Add other user data you want to send to frontend
             ]
         ]);
     } else {

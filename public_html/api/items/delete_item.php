@@ -1,11 +1,11 @@
 
 <?php
 // api/items/delete_item.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
@@ -29,10 +29,11 @@ try {
         if ($stmt_delete->rowCount() > 0) {
             send_json_response(['success' => true, 'message' => 'Item deleted successfully.']);
         } else {
-            send_json_response(['success' => false, 'message' => 'Failed to delete item or item not found.'], 404); // Should have been caught by verify
+            // This case should ideally be caught by the verify step
+            send_json_response(['success' => false, 'message' => 'Failed to delete item or item not found.'], 404); 
         }
     } else {
-        send_json_response(['success' => false, 'message' => 'Failed to delete item.'], 500);
+        send_json_response(['success' => false, 'message' => 'Failed to execute delete operation.'], 500);
     }
 } catch (PDOException $e) {
     error_log("Delete Item DB Error: " . $e->getMessage());

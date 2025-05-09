@@ -1,11 +1,11 @@
 
 <?php
 // api/lists/update_list.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
@@ -44,8 +44,7 @@ try {
             ];
             send_json_response(['success' => true, 'message' => 'List updated successfully.', 'list' => $updated_list]);
         } else {
-            // No rows affected, could mean data was the same or list not found (though verified)
-            send_json_response(['success' => true, 'message' => 'No changes made to the list or list not found.']);
+            send_json_response(['success' => true, 'message' => 'No changes made to the list.']);
         }
     } else {
         send_json_response(['success' => false, 'message' => 'Failed to update list.'], 500);

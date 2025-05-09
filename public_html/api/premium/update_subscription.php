@@ -1,23 +1,37 @@
 
 <?php
 // api/premium/update_subscription.php
+require_once '../utils.php'; 
 require_once '../db_config.php';
-require_once '../utils.php';
 
-handle_options_request();
-set_cors_headers();
+handle_options_request(); // Must be called before any output
+set_cors_headers();       // Must be called before any output
 
 $user_id = ensure_authenticated();
 $conn = get_db_connection();
 $input = json_decode(file_get_contents('php://input'), true);
 
-if (!$input || empty($input['planId']) || empty($input['paymentDetails'])) { // paymentDetails can be a transaction ID or some confirmation
+// This endpoint would typically be called by a payment gateway webhook or after client-side payment confirmation
+// For simplicity, this example assumes a direct call after "payment"
+// In a real app, VERIFY THE PAYMENT DETAILS SECURELY with the payment gateway (e.g., Razorpay server-side verification)
+
+if (!$input || empty($input['planId']) || empty($input['paymentDetails'])) { 
     send_json_response(['success' => false, 'message' => 'Plan ID and payment confirmation are required.'], 400);
 }
 
 $plan_id = sanitize_input($input['planId']);
-$payment_details = sanitize_input($input['paymentDetails']); // Sanitize if it's simple string like transaction ID
-// If paymentDetails is an object, sanitize its fields individually.
+$payment_details_token = sanitize_input($input['paymentDetails']); // e.g., Razorpay payment_id, order_id, signature
+
+// --- !!! CRITICAL: PAYMENT VERIFICATION !!! ---
+// This is where you'd integrate with Razorpay's server-side SDK to verify the payment.
+// Example: $api->payment->fetch($payment_details_token['razorpay_payment_id'])->capture([...]);
+// And verify the signature: $api->utility->verifyPaymentSignature([...]);
+// For this example, we'll assume payment is verified for brevity.
+$payment_verified_successfully = true; // <<<< REPLACE THIS WITH ACTUAL VERIFICATION LOGIC
+
+if (!$payment_verified_successfully) {
+    send_json_response(['success' => false, 'message' => 'Payment verification failed.'], 402); // Payment Required or Bad Request
+}
 
 // Fetch plan details to determine duration
 try {
@@ -30,57 +44,45 @@ try {
     }
 
     $new_status = 'premium';
-    $expiry_date = null;
-    $current_time = time();
+    $expiry_date_sql = null;
+    $current_date = new DateTime(); // Use current server time
 
-    if ($plan['price_monthly']) { // Monthly or N-monthly plan
-        $months_valid = 0;
-        if ($plan_id === 'monthly_basic') $months_valid = 1;
-        if ($plan_id === 'three_month_standard') $months_valid = 3;
-        // Add more cases for other N-monthly plans
-
-        if ($months_valid > 0) {
-            $expiry_date_obj = new DateTime();
-            $expiry_date_obj->setTimestamp($current_time);
-            $expiry_date_obj->modify("+{$months_valid} months");
-            $expiry_date = $expiry_date_obj->format('Y-m-d H:i:s');
-        } else {
-             // Fallback or error if plan duration not determinable
-            send_json_response(['success' => false, 'message' => 'Could not determine plan duration.'], 400);
-        }
-    } elseif ($plan['price_yearly']) { // Yearly plan
-        $expiry_date_obj = new DateTime();
-        $expiry_date_obj->setTimestamp($current_time);
-        $expiry_date_obj->modify('+1 year');
-        $expiry_date = $expiry_date_obj->format('Y-m-d H:i:s');
+    // Determine expiry date based on plan_id (use the plan IDs from your premium_plans table)
+    if ($plan_id === 'monthly_basic') { // Example plan ID
+        $current_date->modify('+1 month');
+    } elseif ($plan_id === 'three_month_standard') { // Example plan ID
+        $current_date->modify('+3 months');
+    } elseif ($plan_id === 'yearly_premium') { // Example plan ID
+        $current_date->modify('+1 year');
     } else {
-        // Potentially a lifetime plan or misconfiguration
-        // For this example, we'll assume monthly/yearly have prices.
-        // If it's a lifetime plan, expiry_date remains null.
+        // Fallback or error if plan duration not determinable or unknown plan_id
+        send_json_response(['success' => false, 'message' => 'Could not determine plan duration for the given plan ID.'], 400);
     }
+    $expiry_date_sql = $current_date->format('Y-m-d H:i:s');
     
 
-    // Here, you would typically verify the $payment_details with Razorpay (or your payment gateway)
-    // This is a critical step for security and to prevent fraud.
-    // For this example, we'll assume payment is verified.
-    $payment_verified = true; // Placeholder for actual payment verification logic
-
-    if (!$payment_verified) {
-        send_json_response(['success' => false, 'message' => 'Payment verification failed.'], 402); // Payment Required
-    }
-
-    // Update user's subscription status
-    $stmt_update = $conn->prepare("UPDATE users SET subscription_status = ?, subscription_expiry_date = ? WHERE id = ?");
-    if ($stmt_update->execute([$new_status, $expiry_date, $user_id])) {
+    // Update user's subscription status in 'users' table
+    $stmt_update_user = $conn->prepare("UPDATE users SET subscription_status = ?, subscription_expiry_date = ? WHERE id = ?");
+    if ($stmt_update_user->execute([$new_status, $expiry_date_sql, $user_id])) {
         // Update session
+        start_secure_session(); // Ensure session is active
         $_SESSION['subscription_status'] = $new_status;
-        $_SESSION['subscription_expiry_date'] = $expiry_date;
+        $_SESSION['subscription_expiry_date'] = $expiry_date_sql;
+        if (isset($_SESSION['user_data'])) { // If you store user data object in session
+            $_SESSION['user_data']['isPremium'] = true; 
+        }
+
+
+        // Optionally, log the transaction in a 'transactions' table
+        // $stmt_log = $conn->prepare("INSERT INTO transactions (user_id, plan_id, payment_id, amount, currency, status, transaction_date) VALUES (?, ?, ?, ?, ?, 'success', NOW())");
+        // $stmt_log->execute([$user_id, $plan_id, $payment_details_token['razorpay_payment_id'] ?? 'N/A', $input['amount'] ?? 0, $input['currency'] ?? 'USD']);
+
 
         send_json_response([
             'success' => true,
             'message' => 'Subscription updated successfully.',
             'newStatus' => $new_status,
-            'expiryDate' => $expiry_date
+            'expiryDate' => $expiry_date_sql
         ]);
     } else {
         send_json_response(['success' => false, 'message' => 'Failed to update subscription status.'], 500);
