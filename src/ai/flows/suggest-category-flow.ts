@@ -43,7 +43,7 @@ export type SuggestCategoryOutput = z.infer<typeof SuggestCategoryOutputSchema>;
  */
 export async function suggestCategory(
   input: SuggestCategoryInput
-): Promise<SuggestCategoryOutput> {
+): Promise<DiagnosePlantOutput> {
   // Ensure there's at least one category, and one of them is 'uncategorized' or a sensible default
   if (input.availableCategories.length === 0) {
     return { suggestedCategoryId: '' }; // Or handle as an error
@@ -59,7 +59,7 @@ export async function suggestCategory(
 
 const suggestCategoryPrompt = ai.definePrompt({
   name: 'suggestCategoryPrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Updated model name with 'googleai/' prefix
+  model: 'googleai/gemini-pro', // Changed to gemini-pro as gemini-1.5-flash-latest was not found
   input: { schema: SuggestCategoryInputSchema },
   output: { schema: SuggestCategoryOutputSchema },
   prompt: `You are an intelligent assistant that helps categorize shopping list items.
@@ -99,3 +99,5 @@ const suggestCategoryFlow = ai.defineFlow(
   }
 );
 
+// Added missing DiagnosePlantOutput type, assuming it was intended to be SuggestCategoryOutput
+export type DiagnosePlantOutput = z.infer<typeof SuggestCategoryOutputSchema>;
