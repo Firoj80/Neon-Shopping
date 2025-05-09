@@ -7,7 +7,7 @@ import { ItemCard } from '@/components/shopping/item-card';
 import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context';
 import type { ShoppingListItem as AppShoppingListItem, List } from '@/context/app-context';
 import { AddEditItemModal } from '@/components/shopping/add-edit-item-modal';
-import { BudgetCard } from '@/components/budget/budget-panel';
+import { BudgetCard, BudgetCardSkeleton } from '@/components/budget/budget-panel';
 import { ListsCarousel } from '@/components/list/ListsCarousel';
 import {
   AlertDialog,
@@ -26,29 +26,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ClientOnly from '@/components/client-only';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
-import { useRouter, usePathname } from 'next/navigation'; // Added usePathname
+import { useRouter, usePathname } from 'next/navigation';
 import CreateFirstListPage from './create-first/page';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 
+const CREATE_FIRST_LIST_ROUTE_FULL_PATH = '/list/create-first'; // Define this if not already available globally
+
 export default function ShoppingListPage() {
-  const { state, dispatch, isLoading: contextIsLoading } = useAppContext();
+  const { state: appState, dispatch, isLoading: appContextIsLoading } = useAppContext();
   const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const pathname = usePathname(); // Instantiate pathname
+  const pathname = usePathname();
 
-  const isLoading = contextIsLoading || authIsLoading;
+  const isLoading = appContextIsLoading || authIsLoading;
+  const isClient = useClientOnly();
+
 
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AppShoppingListItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'purchased'>('current');
-  const isClient = useClientOnly();
+  
 
-  const { selectedListId, shoppingListItems, lists, userId: contextUserId, isPremium } = state;
+  const { selectedListId, shoppingListItems, lists, userId: contextUserId, isPremium } = appState;
   const currentUserId = user?.id || contextUserId;
 
 
@@ -59,7 +63,6 @@ export default function ShoppingListPage() {
 
   const handleAddItemClick = () => {
     if (!selectedListId) {
-      console.error("No list selected, cannot add item.");
       toast({
         title: "No List Selected",
         description: "Please select or create a list before adding items.",
@@ -67,6 +70,7 @@ export default function ShoppingListPage() {
       });
       return;
     }
+    // Logic to check premium for item limits could be added here if needed
     setEditingItem(null);
     setIsAddItemModalOpen(true);
   };
@@ -90,20 +94,21 @@ export default function ShoppingListPage() {
   const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId' | 'userId'>) => {
     if (!selectedListId || !currentUserId) {
       console.error("[handleSaveItem] Error: No list selected or User ID not available.");
+      toast({ title: "Error", description: "Cannot save item. List or user not identified.", variant: "destructive"});
       setIsAddItemModalOpen(false);
       return;
     }
     const listDefaultCategory = selectedList?.defaultCategory || 'uncategorized';
-    const finalCategory = itemData.category && state.categories.some(c => c.id === itemData.category)
+    const finalCategory = itemData.category && appState.categories.some(c => c.id === itemData.category)
                             ? itemData.category
-                            : listDefaultCategory && state.categories.some(c => c.id === listDefaultCategory)
+                            : listDefaultCategory && appState.categories.some(c => c.id === listDefaultCategory)
                               ? listDefaultCategory
                               : 'uncategorized';
     const itemWithFinalDetails: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked'> = {
       ...itemData, listId: selectedListId, userId: currentUserId, category: finalCategory, price: itemData.price ?? 0,
     };
     if (!editingItem) {
-      dispatch({ type: 'ADD_SHOPPING_ITEM', payload: itemWithFinalDetails });
+      dispatch({ type: 'ADD_SHOPPING_ITEM', payload: itemWithFinalDetails as Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked'> });
     } else {
       const updatePayload: AppShoppingListItem = {
         ...editingItem, ...itemData, listId: selectedListId, userId: currentUserId, category: finalCategory, price: itemData.price ?? 0,
@@ -173,18 +178,22 @@ export default function ShoppingListPage() {
 
    if (!isClient || isLoading) {
        return (
+         <div className="flex flex-col h-full">
             <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
-                <Skeleton className="h-[88px] w-full rounded-lg mb-2" /> {/* BudgetCard Skeleton */}
+                <BudgetCardSkeleton/>
                 <Skeleton className="h-10 w-full rounded-lg mb-2" /> {/* ListsCarousel Skeleton */}
                 <Skeleton className="h-10 w-full rounded-lg" /> {/* TabsList Skeleton */}
             </div>
+             <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+                {renderSkeletons()}
+            </div>
+         </div>
        );
    }
    
-   // Redirect to create-first if no lists for the user (regardless of authentication, handled by middleware too)
-   if (userLists.length === 0 && pathname !== '/list/create-first') {
-        return <CreateFirstListPage />;
-   }
+   // AppLayoutContent now handles the redirect to create-first if no lists exist.
+   // This page will only render if AppLayoutContent has determined it's okay to be here.
+   // For instance, if user has lists and selectedListId is valid, or if user is on /list/create-first.
 
 
   return (
@@ -193,7 +202,7 @@ export default function ShoppingListPage() {
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
             <BudgetCard />
             <ListsCarousel />
-            <ClientOnly> {/* Ensure Tabs are client-side only */}
+            <ClientOnly>
                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'current' | 'purchased')} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2">
                         <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
@@ -215,7 +224,7 @@ export default function ShoppingListPage() {
             </div>
            ) : (
              <ClientOnly>
-                 <Tabs value={activeTab} className="w-full"> {/* This Tabs instance is fine here, as it's inside ClientOnly */}
+                 <Tabs value={activeTab} className="w-full">
                      <TabsContent value="current" className="mt-0 pt-2">
                          {renderItemList(currentItems, "No current items in this list. Add some!")}
                      </TabsContent>
@@ -230,12 +239,6 @@ export default function ShoppingListPage() {
         {/* Floating Action Button */}
         <Button
             onClick={() => {
-                const canProceed = selectedListId ? userLists.some(l => l.id === selectedListId) : true;
-
-                if (!canProceed && selectedListId) { // Ensure selectedListId exists before showing this specific error
-                     toast({ title: "Error", description: "Cannot add item to this list.", variant: "destructive" });
-                     return;
-                }
                  if (!selectedListId) {
                      toast({
                          title: "No List Selected",
@@ -257,7 +260,7 @@ export default function ShoppingListPage() {
         <AddEditItemModal
             isOpen={isAddItemModalOpen}
             onClose={() => { setIsAddItemModalOpen(false); setEditingItem(null); }}
-            onSave={handleSaveItem}
+            // onSave={handleSaveItem} // This was passed previously, but dispatch is used directly now
             itemData={editingItem}
             currentListId={selectedListId}
         />
