@@ -5,7 +5,7 @@ require_once '../utils.php'; // Adjust path if your utils.php is elsewhere
 require_once '../db_config.php'; 
 
 handle_options_request(); // Must be called before any output
-set_cors_headers();       // Must be called before any output
+// set_cors_headers(); // This is now handled by send_json_response or handle_options_request
 
 $user_id = get_current_user_id(); // This function also starts the session
 

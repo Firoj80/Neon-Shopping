@@ -13,6 +13,8 @@ $allowed_origins = [
     'http://localhost:3000', // Common local Next.js dev port
     'https://6000-idx-studio-1746177151292.cluster-htdgsbmflbdmov5xrjithceibm.cloudworkstations.dev', // Your IDX dev environment
     // Add your production frontend URL here once deployed, e.g., 'https://your-neon-shopping.com'
+    // Add the domain your Next.js app will be hosted on for production
+    // 'https://your-production-domain.com' 
 ];
 
 define('JWT_SECRET', 'your-very-strong-and-secret-jwt-key-here'); // CHANGE THIS! Ensure it's strong and kept secret.
@@ -24,30 +26,31 @@ function set_cors_headers() {
     if (in_array($origin, $allowed_origins)) {
         header("Access-Control-Allow-Origin: {$origin}");
     } else {
-        // Optionally, deny the request if the origin is not in the allowed list and not a same-origin request (though browsers usually block this anyway)
-        // For now, we just won't set the header if it's not an allowed origin, which might lead to a CORS error on the client.
-        // error_log("CORS: Origin '{$origin}' not in allowed list.");
+        // If the origin is not in the allowed list, you might choose to not send the header,
+        // which will result in a CORS error on the client, or send a specific one like your main domain.
+        // For now, we are only allowing specified origins.
+        // error_log("CORS: Origin '{$origin}' not in allowed list: " . implode(', ', $allowed_origins));
     }
 
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-User-ID");
+    // Ensure all necessary headers are allowed, especially for authentication or custom client headers
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-User-ID, Cookie");
     header("Access-Control-Allow-Credentials: true"); // Crucial for credentialed requests (cookies, sessions)
 }
 
 function handle_options_request() {
+    // This must be called BEFORE any other output
     if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
         set_cors_headers(); // Ensure CORS headers are sent for OPTIONS preflight
         http_response_code(204); // No Content - Standard for successful OPTIONS
-        exit;
+        exit; // Terminate script execution after sending preflight response
     }
 }
 
 function send_json_response($data, $status_code = 200) {
-    // Ensure CORS headers are set before any JSON output, especially if not an OPTIONS request
     // It's good practice to call set_cors_headers() early in your script execution path
-    // or ensure handle_options_request() which calls it, is always invoked first.
-    // If not already set by handle_options_request (for non-OPTIONS calls):
-    if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') {
+    // or ensure handle_options_request() which calls it, is always invoked first for all request types.
+    if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') { // Avoid double-sending for OPTIONS
         set_cors_headers();
     }
     
@@ -59,6 +62,7 @@ function send_json_response($data, $status_code = 200) {
 
 function start_secure_session() {
     if (session_status() == PHP_SESSION_NONE) {
+        // Determine if running over HTTPS
         $is_https = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
         
         session_set_cookie_params([
@@ -75,7 +79,7 @@ function start_secure_session() {
 
 
 function get_current_user_id() {
-    start_secure_session();
+    start_secure_session(); // Ensures session is started
     return $_SESSION['user_id'] ?? null;
 }
 

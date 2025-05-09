@@ -5,7 +5,7 @@ require_once '../utils.php';
 require_once '../db_config.php';
 
 handle_options_request(); // Must be called before any output
-set_cors_headers();       // Must be called before any output
+// set_cors_headers(); // This is now handled by send_json_response or handle_options_request
 
 $conn = get_db_connection();
 $input = json_decode(file_get_contents('php://input'), true);

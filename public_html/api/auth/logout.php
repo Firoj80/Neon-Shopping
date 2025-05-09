@@ -4,7 +4,7 @@
 require_once '../utils.php'; 
 
 handle_options_request(); // Must be called before any output
-set_cors_headers();       // Must be called before any output
+// set_cors_headers(); // This is now handled by send_json_response or handle_options_request
 
 start_secure_session(); // Ensure session is started before trying to destroy
 
