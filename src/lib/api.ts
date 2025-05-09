@@ -8,24 +8,20 @@ export async function fetchFromApi(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<any> {
-  // Ensure NEXT_PUBLIC_API_URL is used from .env.local or environment variables
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   if (!API_BASE_URL) {
-    const errorMessage = "API_BASE_URL is not defined. Please set NEXT_PUBLIC_API_URL in your .env.local file or hosting provider's environment settings.";
+    const errorMessage = "API_BASE_URL is not defined. Please set NEXT_PUBLIC_API_URL in your .env.local or hosting provider's environment settings.";
     console.error(errorMessage);
-    // Return a rejected promise or throw to ensure calling code handles this
     return Promise.reject(new Error(errorMessage));
   }
 
-  // Normalize URL construction
   const cleanApiBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const url = `${cleanApiBaseUrl}/${cleanEndpoint}`;
 
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
-    // 'Accept': 'application/json', // Often good to include
   };
 
   const config: RequestInit = {
@@ -34,38 +30,52 @@ export async function fetchFromApi(
       ...defaultHeaders,
       ...options.headers,
     },
-    credentials: 'include', // Essential for sending/receiving session cookies
+    credentials: 'include',
   };
   
-  console.log(`Calling API: ${config.method || 'GET'} ${url}`);
-  if (config.body && typeof config.body === 'string' && config.body.length < 500) {
-     // console.log('With body:', config.body); // Keep this commented or use for specific debugging
-  }
+  // console.log(`Calling API: ${config.method || 'GET'} ${url}`);
+  // if (config.body && typeof config.body === 'string' && config.body.length < 500) {
+  //    console.log('With body:', config.body); 
+  // }
 
 
   try {
     const response = await fetch(url, config);
     const responseText = await response.text();
     
-    // console.log(`Raw response text from ${url} (status ${response.status}):`, responseText); // Debugging raw response
+    // console.log(`Raw response text from ${url} (status ${response.status}):`, responseText.substring(0, 500));
 
     if (!response.ok) {
-      let errorResponseMessage = `API Error: ${response.status} ${response.statusText}`;
-      let errorDetails: any = { responseBody: responseText, status: response.status };
+      let errorResponseMessage = `API Error: ${response.status} ${response.statusText || 'Status Code ' + response.status }`;
+      let errorDetails: any = { responseBody: responseText, status: response.status, parsedSpecificMessage: null };
+      
       try {
-        if (responseText && (responseText.startsWith('{') || responseText.startsWith('['))) {
+        if (responseText && responseText.trim().startsWith('{')) { // More robust check for JSON
           const parsedError = JSON.parse(responseText);
-          if (parsedError && (parsedError.message || parsedError.error)) {
-            errorResponseMessage = parsedError.message || parsedError.error;
+          if (parsedError && typeof parsedError.message === 'string' && parsedError.message.trim() !== '') {
+            errorResponseMessage = parsedError.message; // Use specific message from API
             errorDetails.parsedError = parsedError;
+            errorDetails.parsedSpecificMessage = parsedError.message;
+          } else if (parsedError && typeof parsedError.error === 'string' && parsedError.error.trim() !== '') {
+            errorResponseMessage = parsedError.error; // Fallback to error field
+            errorDetails.parsedError = parsedError;
+            errorDetails.parsedSpecificMessage = parsedError.error;
           }
+           else {
+            console.warn("Parsed JSON error response did not contain a valid 'message' or 'error' field. Response:", parsedError);
+          }
+        } else if (responseText.trim() !== '') {
+            console.warn(`Non-JSON error response received from API for ${url} (Status: ${response.status}). Body:`, responseText.substring(0,200));
+        } else {
+            console.warn(`Empty error response received from API for ${url} (Status: ${response.status})`);
         }
       } catch (e) {
-        console.warn("Could not parse non-OK API response as JSON:", e);
-        // errorResponseMessage will remain the default HTTP status message
+        console.warn(`Could not parse non-OK API response as JSON from ${url}. Status: ${response.status}. Error:`, e, "Response Text:", responseText.substring(0,200));
       }
-      console.error(`API call to ${url} failed with status ${response.status}:`, errorResponseMessage, "Details:", errorDetails);
-      const error = new Error(errorResponseMessage) as any; // Cast to any to add properties
+      
+      console.error(`API call to ${url} failed. Status: ${response.status}. Final Error Message: "${errorResponseMessage}". Raw Response (first 200 chars): "${responseText.substring(0, 200)}..."`, "Full Details:", errorDetails);
+      
+      const error = new Error(errorResponseMessage) as any; 
       error.status = response.status;
       error.responseBody = responseText; 
       error.details = errorDetails;
@@ -73,18 +83,16 @@ export async function fetchFromApi(
     }
 
     // Handle successful responses
-    if (responseText && (responseText.startsWith('{') || responseText.startsWith('['))) {
+    if (responseText && (responseText.trim().startsWith('{') || responseText.trim().startsWith('['))) {
       try {
         const jsonData = JSON.parse(responseText);
-        // console.log(`API JSON response from ${url}:`, jsonData); // Debugging successful JSON response
+        // console.log(`API JSON response from ${url}:`, jsonData);
         return jsonData;
       } catch (e: any) {
-        console.error(`Failed to parse successful response as JSON from ${url}:`, e.message, "Response text:", responseText);
-        // If responseText is empty but status is 2xx, it might be an intentional empty success (e.g., 204 No Content)
+        console.error(`Failed to parse successful response as JSON from ${url}:`, e.message, "Response text:", responseText.substring(0,500));
         if (responseText.trim() === '' && response.status >= 200 && response.status < 300) {
             return { success: true, message: `Operation successful with status ${response.status}, no content.` };
         }
-        // If parsing fails for non-empty text, it's an issue.
         throw new Error(`Received successful HTTP status (${response.status}), but response was not valid JSON and not empty.`);
       }
     } else if (responseText.trim() === '' && response.status >= 200 && response.status < 300) {
@@ -92,20 +100,19 @@ export async function fetchFromApi(
       return { success: true, message: `Operation successful with status ${response.status}, no content.` };
     }
     
-    // Fallback for successful non-JSON, non-empty responses (less common for APIs)
-    // console.log(`API call to ${url} returned non-JSON text:`, responseText);
-    return { success: true, data: responseText }; // Or handle as an error if JSON is always expected
+    // console.log(`API call to ${url} returned non-JSON text:`, responseText.substring(0,500));
+    return { success: true, data: responseText };
 
   } catch (error: any) {
-    // This catches network errors (e.g., DNS, no connection, CORS blocked by browser *before* response)
-    // or errors thrown from the !response.ok block.
+    // This catches network errors or errors thrown from the !response.ok block.
     console.error(`Error during API call to ${url}:`, error.message);
-    // Ensure the error thrown here is an actual Error object
-    if (error instanceof Error) {
-        throw error;
-    } else {
-        // If it's not an Error object, wrap it or create a new one
-        throw new Error(String(error.message || error || "Unknown fetch error"));
+    if (!(error instanceof Error)) { // Ensure it's always an Error object being thrown
+        const newError = new Error(String(error.message || error || "Unknown fetch error"));
+        (newError as any).status = error.status; // Preserve status if it was set
+        (newError as any).responseBody = error.responseBody;
+        (newError as any).details = error.details;
+        throw newError;
     }
+    throw error;
   }
 }
