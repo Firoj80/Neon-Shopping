@@ -28,7 +28,7 @@ import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
 import { useAuth } from '@/context/auth-context'; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
-import CreateFirstListPage from './create-first/page'; // Corrected import path
+import CreateFirstListPage from '@/components/list/create-first-list-page'; // Corrected import path
 
 
 export default function ShoppingListPage() {
@@ -50,6 +50,9 @@ export default function ShoppingListPage() {
       if (!Array.isArray(lists)) return undefined;
       return lists.find(list => list.id === selectedListId);
   }, [lists, selectedListId]);
+
+  // Redirect to create-first page if authenticated but no lists exist
+  // Moved redirect logic to AppLayout to handle it centrally
 
   const handleAddItemClick = () => {
     if (!selectedListId) {
@@ -77,72 +80,50 @@ export default function ShoppingListPage() {
     }
   };
 
-  const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId' | 'userId'>) => {
-
-    // **Stricter Checks and Logging**
+  const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId'>) => {
+    // Derive listId and userId within the function before dispatching
     if (!selectedListId) {
-        console.error("[handleSaveItem] Error: No list selected (selectedListId is null). Cannot save item.");
-        setIsAddItemModalOpen(false);
-        return;
-    }
-
-    if (!user || !user.id) {
-      console.error("[handleSaveItem] Error: User not authenticated (user or user.id is null/undefined). Cannot save item.");
+      console.error("[handleSaveItem] Error: No list selected (selectedListId is null). Cannot save item.");
       setIsAddItemModalOpen(false);
       return;
     }
-    // **End Stricter Checks**
+     if (!user || !user.id) {
+       console.error("[handleSaveItem] Error: User not authenticated (user or user.id is null/undefined). Cannot save item.");
+       setIsAddItemModalOpen(false);
+       return;
+     }
 
     const listDefaultCategory = selectedList?.defaultCategory || 'uncategorized';
     const finalCategory = itemData.category || listDefaultCategory;
 
-    // Construct the payload with listId and userId
-     const itemWithFinalDetails: Omit<ShoppingListItem, 'id' | 'dateAdded' | 'checked'> = {
+    const itemWithFinalDetails: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked'> = {
       ...itemData,
-      listId: selectedListId, // We've confirmed selectedListId is not null
-      userId: user.id,        // We've confirmed user.id is not null
+      listId: selectedListId, // Include derived listId
+      userId: user.id, // Include userId
       category: finalCategory,
+      price: itemData.price ?? 0, // Ensure price is a number
     };
 
-    // Log right before dispatching ADD
     if (!editingItem) {
-        console.log("[handleSaveItem] Dispatching ADD_SHOPPING_ITEM with payload:", itemWithFinalDetails);
-        if (!itemWithFinalDetails.listId || !itemWithFinalDetails.userId) {
-             console.error("[handleSaveItem] CRITICAL ERROR: listId or userId became null/undefined right before dispatching ADD!");
-             setIsAddItemModalOpen(false);
-             setEditingItem(null);
-             return;
-        }
-        dispatch({
-            type: 'ADD_SHOPPING_ITEM',
-            payload: itemWithFinalDetails,
-        });
+      console.log("[handleSaveItem] Dispatching ADD_SHOPPING_ITEM with payload:", itemWithFinalDetails);
+      dispatch({ type: 'ADD_SHOPPING_ITEM', payload: itemWithFinalDetails });
     } else {
-         // Ensure the update payload includes all required fields
-         const updatePayload: AppShoppingListItem = {
-           ...editingItem, // Start with the existing item
-           ...itemData, // Apply changes from the modal
-           listId: selectedListId, // Ensure listId is correct
-           userId: user.id,        // Ensure userId is correct
-           category: finalCategory, // Apply potentially updated category
-           price: itemData.price ?? 0, // Ensure price is a number
-         };
-         console.log("[handleSaveItem] Dispatching UPDATE_SHOPPING_ITEM with payload:", updatePayload);
-        if (!updatePayload.listId || !updatePayload.userId) {
-            console.error("[handleSaveItem] CRITICAL ERROR: listId or userId became null/undefined right before dispatching UPDATE!");
-            setIsAddItemModalOpen(false);
-            setEditingItem(null);
-            return;
-        }
-        dispatch({
-            type: 'UPDATE_SHOPPING_ITEM',
-            payload: updatePayload,
-        });
+      const updatePayload: AppShoppingListItem = {
+        ...editingItem, // Start with existing item
+        ...itemData, // Apply changes
+        listId: selectedListId, // Ensure listId
+        userId: user.id, // Ensure userId
+        category: finalCategory, // Apply final category
+        price: itemData.price ?? 0, // Ensure price
+      };
+      console.log("[handleSaveItem] Dispatching UPDATE_SHOPPING_ITEM with payload:", updatePayload);
+      dispatch({ type: 'UPDATE_SHOPPING_ITEM', payload: updatePayload });
     }
 
     setIsAddItemModalOpen(false);
     setEditingItem(null);
   };
+
 
   const renderSkeletons = () => (
     Array.from({ length: 3 }).map((_, index) => (
@@ -203,30 +184,33 @@ export default function ShoppingListPage() {
   );
 
   // --- Loading and Authentication Checks ---
-  if (!isClient || isLoading) {
-     // Show loader while hydrating, loading auth state, or loading app data
-     return (
-       <div className="flex items-center justify-center h-screen">
-         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
-       </div>
-     );
-  }
+   if (!isClient || isLoading) {
+       // Show loader while hydrating, loading auth state, or loading app data
+       return (
+           <div className="flex items-center justify-center h-full"> {/* Adjusted height */}
+               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+           </div>
+       );
+   }
 
-   // Check if there are no lists AFTER loading is complete and client is mounted
-  if (isClient && !isLoading && lists.length === 0) {
-    return <CreateFirstListPage />;
-  }
+   // Check if authenticated user has no lists AFTER loading & client mount
+   // Note: This logic might now be handled primarily by AppLayout's redirection
+   // Keeping it here as a fallback or if direct navigation happens.
+   if (isClient && !isLoading && lists.length === 0) {
+     return <CreateFirstListPage />;
+   }
 
 
   // --- Render the main shopping list UI ---
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--header-height,4rem))]"> {/* Adjust height calculation */}
+    <div className="flex flex-col h-full"> {/* Use h-full for container */}
+
         {/* Sticky Header Section */}
-        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-4 md:px-6 lg:px-8 xl:px-10"> {/* Use consistent padding */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-6 lg:px-8 xl:px-10"> {/* Adjusted padding */}
             <BudgetCard />
             <ListsCarousel />
-            <ClientOnly>
-                <Tabs value={state.selectedListId ? 'current' : undefined} className="w-full"> {/* Manage Tabs value */}
+             <ClientOnly> {/* Wrap Tabs */}
+               <Tabs value={state.selectedListId ? 'current' : undefined} className="w-full"> {/* Manage Tabs value */}
                     <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2">
                         <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
                             <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
@@ -235,27 +219,30 @@ export default function ShoppingListPage() {
                             <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
                         </TabsTrigger>
                     </TabsList>
-
-                    {/* Scrollable Item List Area */}
-                    <div className="flex-grow overflow-y-auto mt-1 pb-[calc(5rem+env(safe-area-inset-bottom))]"> {/* Adjust padding-bottom */}
-                      {!selectedListId && Array.isArray(lists) && lists.length > 0 ? (
-                        <div className="flex items-center justify-center h-full text-center py-10">
-                          <p className="text-muted-foreground text-neonText">Please select or create a shopping list.</p>
-                        </div>
-                      ) : (
-                         <>
-                            <TabsContent value="current" className="mt-0 pt-2">
-                                {renderItemList(currentItems, "No current items in this list. Add some!")}
-                            </TabsContent>
-                            <TabsContent value="purchased" className="mt-0 pt-2">
-                                {renderItemList(purchasedItems, "No items purchased in this list yet.")}
-                            </TabsContent>
-                         </>
-                      )}
-                    </div>
-                </Tabs>
+               </Tabs>
             </ClientOnly>
         </div>
+
+       {/* Scrollable Item List Area - Adjust padding-bottom */}
+        <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-6 lg:px-8 xl:px-10 pb-[calc(6rem+env(safe-area-inset-bottom))]"> {/* Added padding-bottom */}
+          {!selectedListId && Array.isArray(lists) && lists.length > 0 ? (
+            <div className="flex items-center justify-center h-full text-center py-10">
+              <p className="text-muted-foreground text-neonText">Please select or create a shopping list.</p>
+            </div>
+           ) : (
+             <ClientOnly> {/* Wrap TabsContent */}
+               <Tabs defaultValue="current" value={state.selectedListId ? 'current' : undefined}> {/* Repeat Tabs context for content */}
+                 <TabsContent value="current" className="mt-0 pt-2">
+                   {renderItemList(currentItems, "No current items in this list. Add some!")}
+                 </TabsContent>
+                 <TabsContent value="purchased" className="mt-0 pt-2">
+                   {renderItemList(purchasedItems, "No items purchased in this list yet.")}
+                 </TabsContent>
+               </Tabs>
+             </ClientOnly>
+           )}
+        </div>
+
 
         {/* Add Item Floating Action Button */}
         <Button
@@ -299,6 +286,3 @@ export default function ShoppingListPage() {
     </div>
   );
 }
-
-
-    
