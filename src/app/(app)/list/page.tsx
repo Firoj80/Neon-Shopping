@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -26,39 +25,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ClientOnly from '@/components/client-only';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
-import { useAuth } from '@/context/auth-context'; // Import useAuth
-import { useRouter } from 'next/navigation'; // Import useRouter
-import CreateFirstListPage from '@/components/list/create-first-list-page'; // Corrected import path
-
+// Removed Auth related imports
+// import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
+import CreateFirstListPage from './create-first/page'; // Corrected import path to relative
 
 export default function ShoppingListPage() {
-  const { state, dispatch, isLoading: isAppLoading } = useAppContext();
-  const { user, isLoading: isAuthLoading } = useAuth(); // Get auth state including user
+  // Hooks called unconditionally at the top level
+  const { state, dispatch, isLoading } = useAppContext();
   const router = useRouter(); // Get router
-
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AppShoppingListItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'current' | 'purchased'>('current'); // Default to current tab
   const isClient = useClientOnly(); // Hook to ensure client-side execution
 
-  const { selectedListId, shoppingListItems, lists } = state;
+  const { selectedListId, shoppingListItems, lists, userId } = state; // Added userId from state
 
-  // Combined loading state
-  const isLoading = isAppLoading || isAuthLoading;
+   const selectedList: List | undefined = useMemo(() => {
+       if (!Array.isArray(lists)) return undefined;
+       return lists.find(list => list.id === selectedListId);
+   }, [lists, selectedListId]);
 
-  const selectedList: List | undefined = useMemo(() => {
-      if (!Array.isArray(lists)) return undefined;
-      return lists.find(list => list.id === selectedListId);
-  }, [lists, selectedListId]);
-
-  // Redirect to create-first page if authenticated but no lists exist
-  // Moved redirect logic to AppLayout to handle it centrally
-
+  // --- Event Handlers ---
   const handleAddItemClick = () => {
     if (!selectedListId) {
-        console.error("No list selected, cannot add item.");
-        // Optionally show a toast message here
-        return;
+      console.error("No list selected, cannot add item.");
+      return;
     }
     setEditingItem(null);
     setIsAddItemModalOpen(true);
@@ -80,26 +73,31 @@ export default function ShoppingListPage() {
     }
   };
 
-  const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId'>) => {
-    // Derive listId and userId within the function before dispatching
+  const handleSaveItem = (itemData: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked' | 'listId' | 'userId'>) => {
     if (!selectedListId) {
-      console.error("[handleSaveItem] Error: No list selected (selectedListId is null). Cannot save item.");
+      console.error("[handleSaveItem] Error: No list selected. Cannot save item.");
       setIsAddItemModalOpen(false);
       return;
     }
-     if (!user || !user.id) {
-       console.error("[handleSaveItem] Error: User not authenticated (user or user.id is null/undefined). Cannot save item.");
-       setIsAddItemModalOpen(false);
-       return;
-     }
+    if (!userId) {
+      console.error("[handleSaveItem] Error: User ID not available. Cannot save item.");
+      setIsAddItemModalOpen(false);
+      return;
+    }
 
     const listDefaultCategory = selectedList?.defaultCategory || 'uncategorized';
-    const finalCategory = itemData.category || listDefaultCategory;
+    // Use provided category, fallback to list default, then to 'uncategorized'
+    const finalCategory = itemData.category && state.categories.some(c => c.id === itemData.category)
+                            ? itemData.category
+                            : listDefaultCategory && state.categories.some(c => c.id === listDefaultCategory)
+                              ? listDefaultCategory
+                              : 'uncategorized';
+
 
     const itemWithFinalDetails: Omit<AppShoppingListItem, 'id' | 'dateAdded' | 'checked'> = {
       ...itemData,
-      listId: selectedListId, // Include derived listId
-      userId: user.id, // Include userId
+      listId: selectedListId,
+      userId: userId,
       category: finalCategory,
       price: itemData.price ?? 0, // Ensure price is a number
     };
@@ -112,7 +110,7 @@ export default function ShoppingListPage() {
         ...editingItem, // Start with existing item
         ...itemData, // Apply changes
         listId: selectedListId, // Ensure listId
-        userId: user.id, // Ensure userId
+        userId: userId, // Ensure userId
         category: finalCategory, // Apply final category
         price: itemData.price ?? 0, // Ensure price
       };
@@ -124,7 +122,16 @@ export default function ShoppingListPage() {
     setEditingItem(null);
   };
 
+  // --- Data Memoization ---
+  const itemsForSelectedList = useMemo(() => {
+    if (!selectedListId || !Array.isArray(shoppingListItems)) return [];
+    return shoppingListItems.filter(item => item.listId === selectedListId);
+  }, [selectedListId, shoppingListItems]);
 
+  const currentItems = useMemo(() => itemsForSelectedList.filter(item => !item.checked), [itemsForSelectedList]);
+  const purchasedItems = useMemo(() => itemsForSelectedList.filter(item => item.checked), [itemsForSelectedList]);
+
+  // --- Render Logic ---
   const renderSkeletons = () => (
     Array.from({ length: 3 }).map((_, index) => (
       <CardSkeleton key={index} />
@@ -152,14 +159,6 @@ export default function ShoppingListPage() {
     </Card>
   );
 
-  const itemsForSelectedList = useMemo(() => {
-    if (!selectedListId || !Array.isArray(shoppingListItems)) return [];
-    return shoppingListItems.filter(item => item.listId === selectedListId);
-  }, [selectedListId, shoppingListItems]);
-
-  const currentItems = useMemo(() => itemsForSelectedList.filter(item => !item.checked), [itemsForSelectedList]);
-  const purchasedItems = useMemo(() => itemsForSelectedList.filter(item => item.checked), [itemsForSelectedList]);
-
  const renderItemList = (items: AppShoppingListItem[], emptyMessage: string) => (
      isLoading && itemsForSelectedList.length === 0 ? (
          <div className="flex flex-col gap-2 pb-4">
@@ -183,34 +182,30 @@ export default function ShoppingListPage() {
     )
   );
 
-  // --- Loading and Authentication Checks ---
+  // --- Loading and Initial State Handling ---
    if (!isClient || isLoading) {
-       // Show loader while hydrating, loading auth state, or loading app data
        return (
-           <div className="flex items-center justify-center h-full"> {/* Adjusted height */}
+           <div className="flex items-center justify-center h-full">
                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
            </div>
        );
    }
 
-   // Check if authenticated user has no lists AFTER loading & client mount
-   // Note: This logic might now be handled primarily by AppLayout's redirection
-   // Keeping it here as a fallback or if direct navigation happens.
-   if (isClient && !isLoading && lists.length === 0) {
-     return <CreateFirstListPage />;
-   }
-
+   // --- Redirect to Create First List if needed (handled by AppLayout now) ---
+   // if (isClient && !isLoading && lists.length === 0) {
+   //  return <CreateFirstListPage />;
+   // }
 
   // --- Render the main shopping list UI ---
   return (
-    <div className="flex flex-col h-full"> {/* Use h-full for container */}
+    <div className="flex flex-col h-full">
 
         {/* Sticky Header Section */}
-        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-6 lg:px-8 xl:px-10"> {/* Adjusted padding */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
             <BudgetCard />
             <ListsCarousel />
-             <ClientOnly> {/* Wrap Tabs */}
-               <Tabs value={state.selectedListId ? 'current' : undefined} className="w-full"> {/* Manage Tabs value */}
+            <ClientOnly>
+               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'current' | 'purchased')} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2">
                         <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
                             <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
@@ -223,26 +218,25 @@ export default function ShoppingListPage() {
             </ClientOnly>
         </div>
 
-       {/* Scrollable Item List Area - Adjust padding-bottom */}
-        <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-6 lg:px-8 xl:px-10 pb-[calc(6rem+env(safe-area-inset-bottom))]"> {/* Added padding-bottom */}
+       {/* Scrollable Item List Area */}
+        <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
           {!selectedListId && Array.isArray(lists) && lists.length > 0 ? (
             <div className="flex items-center justify-center h-full text-center py-10">
               <p className="text-muted-foreground text-neonText">Please select or create a shopping list.</p>
             </div>
            ) : (
-             <ClientOnly> {/* Wrap TabsContent */}
-               <Tabs defaultValue="current" value={state.selectedListId ? 'current' : undefined}> {/* Repeat Tabs context for content */}
-                 <TabsContent value="current" className="mt-0 pt-2">
-                   {renderItemList(currentItems, "No current items in this list. Add some!")}
-                 </TabsContent>
-                 <TabsContent value="purchased" className="mt-0 pt-2">
-                   {renderItemList(purchasedItems, "No items purchased in this list yet.")}
-                 </TabsContent>
-               </Tabs>
+             <ClientOnly>
+                 <Tabs value={activeTab} className="w-full"> {/* Ensure Tabs context wraps Content */}
+                     <TabsContent value="current" className="mt-0 pt-2">
+                         {renderItemList(currentItems, "No current items in this list. Add some!")}
+                     </TabsContent>
+                     <TabsContent value="purchased" className="mt-0 pt-2">
+                         {renderItemList(purchasedItems, "No items purchased in this list yet.")}
+                     </TabsContent>
+                 </Tabs>
              </ClientOnly>
            )}
         </div>
-
 
         {/* Add Item Floating Action Button */}
         <Button
@@ -250,7 +244,7 @@ export default function ShoppingListPage() {
             size="lg"
             className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-6 md:right-8 z-30 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
-            disabled={!selectedListId || isLoading} // Also disable if loading
+            disabled={!selectedListId || isLoading}
         >
             <PlusCircle className="h-6 w-6" />
         </Button>
@@ -264,7 +258,7 @@ export default function ShoppingListPage() {
             }}
             onSave={handleSaveItem}
             itemData={editingItem}
-            currentListId={selectedListId} // Pass current list ID
+            currentListId={selectedListId}
         />
 
         <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>

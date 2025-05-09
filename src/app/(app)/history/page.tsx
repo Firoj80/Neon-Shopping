@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -29,6 +28,7 @@ import 'jspdf-autotable';
 
 type CategoryFilter = string; // 'all' or specific category ID
 type SortOption = 'dateDesc' | 'dateAsc' | 'priceDesc' | 'priceAsc';
+type ListFilter = string | null; // null means 'All Lists'
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDFWithAutoTable;
@@ -36,33 +36,27 @@ interface jsPDFWithAutoTable extends jsPDF {
 
 
 export default function HistoryPage() {
+    // Hooks called unconditionally at the top level
     const { state, dispatch, formatCurrency, isLoading } = useAppContext();
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
     const [sortOption, setSortOption] = useState<SortOption>('dateDesc');
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         const endDate = endOfDay(new Date());
-        const startDate = startOfDay(subDays(endDate, 29));
+        const startDate = startOfDay(subDays(endDate, 29)); // Default to last 30 days
         return { from: startDate, to: endDate };
     });
-    const [selectedListId, setSelectedListId] = useState<string | null>(null);
+     const [selectedListId, setSelectedListId] = useState<ListFilter>(null); // null means 'All Lists'
 
-    useEffect(() => {
-        if (selectedListId === undefined && state.lists.length > 0) {
-            setSelectedListId(state.lists[0].id);
-        } else if (state.lists.length === 0 && selectedListId !== null) {
-            setSelectedListId(null);
-        }
-    }, [state.lists, selectedListId]);
-
-
+    // Filter and sort items based on selections
     const historyItems = useMemo(() => {
-        let items: ShoppingListItem[] = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : [];
+        let items = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : []; // Only purchased items
 
          if (selectedListId !== null) {
-            items = items.filter(item => item.listId === selectedListId);
+            items = items.filter(item => item.listId === selectedListId); // List Filter
         }
 
+        // Date Range Filter
         if (dateRange?.from && dateRange?.to) {
             const startDate = startOfDay(dateRange.from);
             const endDate = endOfDay(dateRange.to);
@@ -72,10 +66,12 @@ export default function HistoryPage() {
             });
         }
 
+        // Category Filter
         if (selectedCategory !== 'all') {
             items = items.filter(item => item.category === selectedCategory);
         }
 
+        // Sorting
         items.sort((a, b) => {
             switch (sortOption) {
                 case 'dateAsc': return a.dateAdded - b.dateAdded;
@@ -87,8 +83,10 @@ export default function HistoryPage() {
         });
 
         return items;
-    }, [state.shoppingListItems, dateRange, selectedCategory, sortOption, selectedListId]);
+    }, [state.shoppingListItems, dateRange, selectedCategory, sortOption, selectedListId]); // Added selectedListId dependency
 
+
+    // --- Event Handlers ---
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
     };
@@ -104,121 +102,128 @@ export default function HistoryPage() {
         }
      };
 
+     // --- Helper Functions ---
     const getCategoryName = (categoryId: string): string => {
       return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
     };
 
-    const getFilterLabel = () => {
-      let dateLabel = 'All Time';
-       if (dateRange?.from && dateRange?.to) {
-           dateLabel = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`;
-       }
-      const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
-      const listName = selectedListId === null ? 'All Lists' : state.lists.find(list => list.id === selectedListId)?.name || 'Unknown List';
-
-      return `${listName} | ${dateLabel}${categoryLabel}`;
-    };
-
-     const handleExportPDF = () => {
-        const doc = new jsPDF() as jsPDFWithAutoTable;
-        const tableCellStyles = { fontSize: 8 };
-        const tableHeaderStyles = { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' };
-
-        doc.setFontSize(18);
-        doc.text("Neon Shopping - Purchase History Report", 14, 22);
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        doc.text(`Report Generated: ${format(new Date(), 'MMM d, yyyy HH:mm')}`, 14, 32);
-        doc.text(`Filters Applied: ${getFilterLabel()}`, 14, 38);
-
-        const tableData = historyItems.map(item => [
-            item.name,
-            item.quantity,
-            formatCurrency(item.price),
-            formatCurrency(item.price * item.quantity),
-            getCategoryName(item.category),
-            format(new Date(item.dateAdded), 'MMM d, yyyy')
-        ]);
-
-        doc.autoTable({
-            startY: 45,
-            head: [['Item Name', 'Qty', 'Price', 'Total', 'Category', 'Date Purchased']],
-            body: tableData,
-            theme: 'grid',
-            headStyles: tableHeaderStyles,
-            styles: tableCellStyles,
-        });
-
-        doc.save('purchase_history_report.pdf');
-    };
-
-    const downloadCSV = (csvContent: string, fileName: string) => {
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", fileName);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+     const getFilterLabel = () => {
+       let dateLabel = 'All Time';
+        if (dateRange?.from && dateRange?.to) {
+            dateLabel = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`;
         }
-    };
+       const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
+       const listName = selectedListId === null ? 'All Lists' : state.lists.find(list => list.id === selectedListId)?.name || 'Unknown List';
 
-    const handleExportCSV = () => {
-        let csvContent = "";
-        const headers = ["Item Name", "Quantity", "Price", "Total Price", "Category", "Date Purchased", "List Name"];
-        csvContent += headers.join(",") + "\r\n";
+       return `${listName} | ${dateLabel}${categoryLabel}`;
+     };
 
-        historyItems.forEach(item => {
-            const listName = state.lists.find(l => l.id === item.listId)?.name || 'N/A';
-            const row = [
-                `"${item.name.replace(/"/g, '""')}"`, // Escape double quotes
-                item.quantity,
-                item.price, // Raw number for CSV
-                item.price * item.quantity, // Raw number
-                `"${getCategoryName(item.category).replace(/"/g, '""')}"`,
-                format(new Date(item.dateAdded), 'yyyy-MM-dd'),
-                `"${listName.replace(/"/g, '""')}"`
-            ];
-            csvContent += row.join(",") + "\r\n";
-        });
+     // --- PDF & CSV Export ---
+     const handleExportPDF = () => {
+         const doc = new jsPDF() as jsPDFWithAutoTable;
+         const tableCellStyles = { fontSize: 8 };
+         const tableHeaderStyles = { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' }; // Example color
 
-        downloadCSV(csvContent, 'purchase_history_report.csv');
-    };
+         doc.setFontSize(18);
+         doc.text("Neon Shopping - Purchase History Report", 14, 22);
+         doc.setFontSize(11);
+         doc.setTextColor(100);
+         doc.text(`Report Generated: ${format(new Date(), 'MMM d, yyyy HH:mm')}`, 14, 32);
+         doc.text(`Filters Applied: ${getFilterLabel()}`, 14, 38);
+
+         const tableData = historyItems.map(item => [
+             item.name,
+             item.quantity,
+             formatCurrency(item.price),
+             formatCurrency(item.price * item.quantity),
+             getCategoryName(item.category),
+             format(new Date(item.dateAdded), 'MMM d, yyyy')
+         ]);
+
+         doc.autoTable({
+             startY: 45,
+             head: [['Item Name', 'Qty', 'Price', 'Total', 'Category', 'Date Purchased']],
+             body: tableData,
+             theme: 'grid',
+             headStyles: tableHeaderStyles,
+             styles: tableCellStyles,
+         });
+
+         doc.save('purchase_history_report.pdf');
+     };
+
+     const downloadCSV = (csvContent: string, fileName: string) => {
+         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+         const link = document.createElement("a");
+         if (link.download !== undefined) {
+             const url = URL.createObjectURL(blob);
+             link.setAttribute("href", url);
+             link.setAttribute("download", fileName);
+             link.style.visibility = 'hidden';
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+             URL.revokeObjectURL(url);
+         }
+     };
+
+     const handleExportCSV = () => {
+         let csvContent = "";
+         const headers = ["Item Name", "Quantity", "Price", "Total Price", "Category", "Date Purchased", "List Name"];
+         csvContent += headers.join(",") + "\r\n";
+
+         historyItems.forEach(item => {
+             const listName = state.lists.find(l => l.id === item.listId)?.name || 'N/A';
+             const row = [
+                 `"${item.name.replace(/"/g, '""')}"`, // Escape double quotes
+                 item.quantity,
+                 item.price, // Raw number for CSV
+                 item.price * item.quantity, // Raw number
+                 `"${getCategoryName(item.category).replace(/"/g, '""')}"`,
+                 format(new Date(item.dateAdded), 'yyyy-MM-dd'),
+                 `"${listName.replace(/"/g, '""')}"`
+             ];
+             csvContent += row.join(",") + "\r\n";
+         });
+
+         downloadCSV(csvContent, 'purchase_history_report.csv');
+     };
 
 
+    // --- Loading State ---
     if (isLoading) {
         return <HistoryPageSkeleton />;
     }
 
+    // --- Render ---
     return (
         <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full">
-            <h1 className="text-xl sm:text-2xl font-bold text-primary flex items-center gap-2">
-                <History className="h-6 w-6" /> Purchase History
-            </h1>
+             {/* Header */}
+             <div className="flex justify-between items-center">
+                 <h1 className="text-xl sm:text-2xl font-bold text-primary flex items-center gap-2">
+                     <History className="h-6 w-6" /> Purchase History
+                 </h1>
+                 <div className="flex gap-2">
+                     <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF
+                     </Button>
+                     <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV
+                     </Button>
+                 </div>
+             </div>
 
+              {/* Filter & Sort Section */}
               <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border-inner">
                   <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                            <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2 mb-2 sm:mb-0">
-                                <Filter className="h-4 w-4" /> Filters & Sort
-                            </CardTitle>
-                             <div className="flex gap-2">
-                                <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
-                                    <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> Export PDF
-                                </Button>
-                                <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
-                                    <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> Export CSV
-                                </Button>
-                            </div>
-                        </div>
+                       <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2 mb-2 sm:mb-0">
+                             <Filter className="h-4 w-4" /> Filters &amp; Sort
+                       </CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
+                      {/* List Filter */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                           <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)} disabled={state.lists.length === 0}>
+                           <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
                                <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
                                   <WalletCards className="h-4 w-4 mr-2 opacity-70" />
                                  <SelectValue placeholder="Select Shopping List" />
@@ -227,17 +232,15 @@ export default function HistoryPage() {
                                   <SelectGroup>
                                       <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Shopping List</SelectLabel>
                                       <SelectItem value="all" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">All Lists</SelectItem>
-                                      {state.lists.length > 0 ? (
-                                        state.lists.map((list) => (
-                                            <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
-                                        ))
-                                      ) : (
-                                        <SelectItem value="no-lists" disabled>No lists available</SelectItem>
-                                      )}
+                                      {state.lists.map((list) => (
+                                          <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
+                                      ))}
+                                       {state.lists.length === 0 && <SelectItem value="no-lists" disabled>No lists available</SelectItem>}
                                   </SelectGroup>
                               </SelectContent>
                           </Select>
                       </div>
+                      {/* Date Range Picker */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
                           <DateRangePicker
                               range={dateRange}
@@ -246,6 +249,7 @@ export default function HistoryPage() {
                               align="start"
                           />
                       </div>
+                      {/* Category Filter */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
@@ -268,6 +272,7 @@ export default function HistoryPage() {
                               </SelectContent>
                           </Select>
                       </div>
+                       {/* Sort Select */}
                        <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
                               <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary text-xs sm:text-sm glow-border-inner">
@@ -288,6 +293,7 @@ export default function HistoryPage() {
                   </CardContent>
               </Card>
 
+            {/* History Items List */}
             <div className="flex-grow overflow-y-auto mt-4">
                 <ScrollArea className="h-full pr-1">
                     {historyItems.length > 0 ? (
@@ -304,6 +310,7 @@ export default function HistoryPage() {
                 </ScrollArea>
             </div>
 
+            {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
                 <AlertDialogContent className="glow-border">
                     <AlertDialogHeader>
@@ -325,6 +332,7 @@ export default function HistoryPage() {
     );
 }
 
+// --- History Item Card Component ---
 interface HistoryItemCardProps {
     item: ShoppingListItem;
     formatCurrency: (amount: number) => string;
@@ -340,6 +348,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
   return (
     <Card className="rounded-lg shadow-sm p-3 w-full border-secondary/20 bg-card/70 hover:border-secondary/40 transition-colors duration-200 glow-border-inner">
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        {/* Item Details */}
         <div className="flex-grow min-w-0">
           <p className="text-sm font-medium leading-tight text-neonText/90">{item.name}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
@@ -352,6 +361,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
           </div>
         </div>
 
+        {/* Date and Delete Button */}
          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 mt-2 sm:mt-0">
              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <CalendarDays className="h-3 w-3" /> {purchaseDate}
@@ -372,28 +382,33 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
   );
 };
 
+
+// --- Skeleton Loader Component ---
 const HistoryPageSkeleton: React.FC = () => (
     <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">
-        <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" />
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+            <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" />
+            <div className="flex gap-2">
+                 <Skeleton className="h-8 w-16 rounded-md" />
+                 <Skeleton className="h-8 w-16 rounded-md" />
+             </div>
+        </div>
 
+        {/* Filter Section Skeleton */}
         <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border-inner">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                    <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
-                    <div className="flex gap-2">
-                        <Skeleton className="h-8 w-24 rounded-md" /> {/* PDF Button */}
-                        <Skeleton className="h-8 w-24 rounded-md" /> {/* CSV Button */}
-                    </div>
-                </div>
+                 <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
-                <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px] rounded-md" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px] rounded-md" />
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
             </CardContent>
         </Card>
 
+         {/* List Area Skeleton */}
          <div className="flex-grow overflow-y-auto mt-4">
             <ScrollArea className="h-full pr-1">
                 <div className="flex flex-col gap-2 pb-4">
