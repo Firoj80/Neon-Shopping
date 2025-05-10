@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -24,6 +25,9 @@ import { ItemCard } from '@/components/shopping/item-card';
 import { PlusCircle, Search, LayoutList, ShoppingCart } from 'lucide-react';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
+// Import CreateFirstListPage to handle the "no lists" scenario directly
+import CreateFirstListPage from './create-first/page';
+
 
 export default function ShoppingListPage() {
   const { state, dispatch, isLoading } = useAppContext();
@@ -54,8 +58,7 @@ export default function ShoppingListPage() {
 
   const purchasedItems = useMemo(() => {
     return itemsForSelectedList.filter(item => item.checked && item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [shoppingListItems, searchTerm, selectedListId]); // Added selectedListId dependency
-
+  }, [itemsForSelectedList, searchTerm]); // removed shoppingListItems, selectedListId as itemsForSelectedList already covers them
 
   const handleAddItemClick = () => {
     if (!selectedListId || !userId) {
@@ -104,68 +107,63 @@ export default function ShoppingListPage() {
   
   if (!isClient || isLoading || !state.isInitialDataLoaded) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="flex flex-col items-center">
-            <ShoppingCart className="w-16 h-16 animate-pulse text-primary" />
-            <p className="mt-4 text-lg font-semibold">Loading Your Shopping Space...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-primary">
+        <ShoppingCart className="w-16 h-16 animate-pulse text-primary" />
+        <p className="mt-4 text-lg font-semibold">Loading Your Shopping Space...</p>
       </div>
     );
   }
   
-  if (lists.length === 0 && !isLoading) {
-     return (
-        <div className="flex items-center justify-center h-screen">
-            <p>No lists found. You should be redirected to create one.</p>
-        </div>
-     );
+  // If no lists and data is loaded, AppLayout or HomePage should redirect to /list/create-first
+  // This can be a fallback or removed if redirects are solid.
+  if (lists.length === 0 && state.isInitialDataLoaded && !isLoading) {
+     return <CreateFirstListPage />; // Directly render the CreateFirstListPage component
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="sticky top-0 z-10 bg-background pt-4 shadow-sm">
-        <div className="px-4 sm:px-6 md:px-8">
-          <BudgetCard
-            list={selectedList}
-            items={itemsForSelectedList}
-            currency={currency}
-            onEditBudget={() => selectedList && handleEditList(selectedList)}
-          />
+    <div className="flex flex-col h-screen_minus_header overflow-hidden"> {/* Ensure full height */}
+      <div className="sticky top-0 z-10 bg-background pt-4 shadow-sm px-4 sm:px-6 md:px-8"> {/* Added padding here */}
+        <BudgetCard
+          list={selectedList}
+          items={itemsForSelectedList}
+          currency={currency}
+          onEditBudget={() => selectedList && handleEditList(selectedList)}
+        />
 
-          <ListsCarousel
-              lists={lists}
-              selectedListId={selectedListId}
-              onSelectList={handleSelectList}
-              onAddNewList={handleCreateNewList}
-              onEditList={handleEditList}
-              isPremium={state.isPremium}
-          />
-          
-          <div className="relative mt-2 mb-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-              type="search"
-              placeholder="Search items..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-border/30 focus:border-primary focus:shadow-neon"
-              />
-          </div>
-
-          <Tabs defaultValue="current" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-2 bg-card border border-primary/20 shadow-sm">
-              <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
-                  Current ({currentItems.length})
-              </TabsTrigger>
-              <TabsTrigger value="purchased" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
-                  Purchased ({purchasedItems.length})
-              </TabsTrigger>
-              </TabsList>
-          </Tabs>
+        <ListsCarousel
+            lists={lists}
+            selectedListId={selectedListId}
+            onSelectList={handleSelectList}
+            onAddNewList={handleCreateNewList}
+            onEditList={handleEditList}
+            isPremium={state.isPremium}
+        />
+        
+        <div className="relative mt-2 mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+            type="search"
+            placeholder="Search items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-border/30 focus:border-primary focus:shadow-neon"
+            />
         </div>
+
+        <Tabs defaultValue="current" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-2 bg-card border border-primary/20 shadow-sm">
+            <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
+                Current ({currentItems.length})
+            </TabsTrigger>
+            <TabsTrigger value="purchased" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
+                Purchased ({purchasedItems.length})
+            </TabsTrigger>
+            </TabsList>
+        </Tabs>
       </div>
       
-      <ScrollArea className="flex-grow mt-1 px-4 sm:px-6 md:px-8">
+      <ScrollArea className="flex-grow px-4 sm:px-6 md:px-8"> {/* Added padding here */}
+        {/* TabsContent needs to be inside a single Tabs component or handled differently */}
         <Tabs defaultValue="current" className="w-full">
           <TabsContent value="current" className="mt-0">
             {currentItems.length === 0 ? (
@@ -246,7 +244,7 @@ export default function ShoppingListPage() {
        )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="bg-card border-primary/40 shadow-neon rounded-lg">
+        <AlertDialogContent className="bg-card border-primary/40 shadow-neon rounded-lg card-glow">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>

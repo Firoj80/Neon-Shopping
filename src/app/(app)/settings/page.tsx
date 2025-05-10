@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '@/context/app-context';
@@ -9,22 +10,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/use-toast';
-import { CheckCircle, Palette, DollarSign, Info, Trash2, Edit2, PlusCircle } from 'lucide-react';
-import { themes, defaultThemeId } from '@/config/themes'; // Import themes
-import type { Theme } from '@/config/themes';
+import { CheckCircle, DollarSign, Info, Settings as SettingsIcon } from 'lucide-react'; // Renamed Settings to SettingsIcon
+import { cn } from '@/lib/utils';
 import { useClientOnly } from '@/hooks/use-client-only';
 
 const SettingsPage: React.FC = () => {
-  const { state, dispatch } = useAppContext();
+  const { state, dispatch, isLoading: isAppContextLoading } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(state.currency);
-  const [selectedThemeId, setSelectedThemeId] = useState<string>(state.theme || defaultThemeId);
   const isClient = useClientOnly();
 
   useEffect(() => {
     setSelectedCurrency(state.currency);
-    setSelectedThemeId(state.theme || defaultThemeId);
-  }, [state.currency, state.theme]);
+  }, [state.currency]);
 
   const handleCurrencyChange = (currency: Currency) => {
     setSelectedCurrency(currency);
@@ -38,16 +36,6 @@ const SettingsPage: React.FC = () => {
       className: "bg-primary text-primary-foreground border-primary/50 shadow-neon",
     });
   };
-
-  const handleThemeChange = (themeId: string) => {
-    setSelectedThemeId(themeId);
-    dispatch({ type: 'SET_THEME', payload: themeId });
-    toast({
-      title: "Theme Updated",
-      description: `Theme changed to ${themes.find(t => t.id === themeId)?.name || 'Selected Theme'}.`,
-      className: "bg-primary text-primary-foreground border-primary/50 shadow-neon",
-    });
-  };
   
   const filteredCurrencies = समर्थितमुद्राएँ.filter(currency =>
     currency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,20 +43,20 @@ const SettingsPage: React.FC = () => {
     currency.symbol.includes(searchTerm)
   );
 
-  if (!isClient) {
+  if (!isClient || isAppContextLoading || !state.isInitialDataLoaded) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Settings className="w-16 h-16 animate-pulse text-primary" />
-        <p className="ml-4 text-lg font-semibold">Loading Settings...</p>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <SettingsIcon className="w-16 h-16 animate-pulse text-primary" />
+        <p className="mt-4 text-lg font-semibold">Loading Settings...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 p-2 sm:p-4 md:p-6 max-w-4xl mx-auto">
+    <div className="space-y-8 p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
       <header className="mb-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-primary tracking-tight flex items-center">
-          <Settings className="mr-3 h-8 w-8 sm:h-10 sm:h-10" /> Settings
+          <SettingsIcon className="mr-3 h-8 w-8 sm:h-10 sm:h-10" /> Settings
         </h1>
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">
           Manage your application preferences.
@@ -76,7 +64,7 @@ const SettingsPage: React.FC = () => {
       </header>
 
       {/* Currency Settings Card */}
-      <Card className="shadow-neon-sm border-primary/20 bg-card/80 backdrop-blur-sm">
+      <Card className="shadow-neon-sm border-primary/20 bg-card/80 backdrop-blur-sm card-glow">
         <CardHeader>
           <CardTitle className="text-xl text-primary flex items-center">
             <DollarSign className="mr-2 h-6 w-6" /> Currency
@@ -128,59 +116,17 @@ const SettingsPage: React.FC = () => {
           </Button>
         </CardFooter>
       </Card>
-
-      {/* Theme Settings Card */}
-      <Card className="shadow-neon-sm border-primary/20 bg-card/80 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-xl text-primary flex items-center">
-            <Palette className="mr-2 h-6 w-6" /> Appearance & Themes
-          </CardTitle>
-          <CardDescription>
-            Customize the look and feel of your application.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {themes.map((theme) => (
-              <Button
-                key={theme.id}
-                variant={selectedThemeId === theme.id ? 'secondary' : 'outline'}
-                onClick={() => handleThemeChange(theme.id)}
-                className={cn(
-                  "w-full h-20 sm:h-24 flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all duration-200 ease-in-out",
-                  selectedThemeId === theme.id ? 'border-primary shadow-neon bg-primary/10' : 'border-border/50 hover:border-primary/70',
-                )}
-                style={{
-                  // @ts-ignore
-                  '--preview-bg': theme.colors['--background'],
-                  '--preview-fg': theme.colors['--foreground'],
-                  '--preview-primary': theme.colors['--primary'],
-                  '--preview-card': theme.colors['--card'],
-                } as React.CSSProperties}
-              >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full mb-1.5 sm:mb-2 flex items-center justify-center bg-[var(--preview-primary)]">
-                   <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-sm bg-[var(--preview-card)] shadow-inner"></div>
-                </div>
-                <span className="text-xs sm:text-sm font-medium text-center text-[var(--preview-fg)] truncate w-full">{theme.name}</span>
-                 {selectedThemeId === theme.id && (
-                  <CheckCircle className="absolute top-1.5 right-1.5 h-4 w-4 text-primary" />
-                )}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
       
       {/* About Section */}
-      <Card className="shadow-neon-sm border-primary/20 bg-card/80 backdrop-blur-sm">
+      <Card className="shadow-neon-sm border-primary/20 bg-card/80 backdrop-blur-sm card-glow">
         <CardHeader>
           <CardTitle className="text-xl text-primary flex items-center">
             <Info className="mr-2 h-6 w-6" /> About Neon Shopping
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Neon Shopping List helps you manage your shopping lists and track your expenses with a vibrant cyberpunk aesthetic.</p>
-          <p>Version: 0.1.0 (Rollback a5b0e2a0)</p>
+          <p>Neon Shopping helps you manage your shopping lists and track your expenses with a vibrant cyberpunk aesthetic.</p>
+          <p>Version: 0.1.0 (LocalStorage Mode)</p>
         </CardContent>
       </Card>
     </div>

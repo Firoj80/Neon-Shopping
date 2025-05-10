@@ -102,17 +102,4 @@
       background-position: 0 0;
     }
   }
-
-  /* Enhanced glow for specific interactions or primary cards */
-  .card-glow-intense {
-    border: 1px solid hsl(var(--primary) / 0.5);
-  }
-  .card-glow-intense::before,
-  .card-glow-intense::after {
-    opacity: 0.3; /* Initial opacity for intense glow */
-  }
-  .card-glow-intense:hover::before,
-  .card-glow-intense:hover::after {
-    opacity: 0.8; /* Stronger glow on hover */
-  }
 }

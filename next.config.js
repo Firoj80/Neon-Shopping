@@ -12,9 +12,7 @@ const nextConfig = {
       },
     ],
   },
-  // If you were using output: 'export' for static sites, ensure it's appropriate for your current setup.
-  // For a standard dev server, you might not need it.
-  // output: 'export',
+  // output: 'export', // Keep this commented out unless specifically needed for static export
 };
 
 module.exports = nextConfig;

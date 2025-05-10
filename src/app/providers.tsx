@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppProvider } from '@/context/app-context';
-import { AuthProvider } from '@/context/auth-context';
+import { AppProvider } from '@/context/app-context'; // Ensure alias resolves correctly
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,11 +16,9 @@ const queryClient = new QueryClient({
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider> {/* AuthProvider should wrap AppProvider if AppContext depends on AuthContext */}
-        <AppProvider>
-          {children}
-        </AppProvider>
-      </AuthProvider>
+      <AppProvider>
+        {children}
+      </AppProvider>
     </QueryClientProvider>
   );
 }
