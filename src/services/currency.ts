@@ -1,3 +1,4 @@
+// src/services/currency.ts
 
 /**
  * Represents currency information.
@@ -17,67 +18,53 @@ export interface Currency {
   name: string;
 }
 
-// Mapping from country codes (ISO 3166-1 alpha-2) to currency codes
-// This is a simplified list, a more comprehensive library might be needed for full coverage
 const countryCurrencyMap: Record<string, string> = {
   US: 'USD', GB: 'GBP', DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', CA: 'CAD',
   AU: 'AUD', JP: 'JPY', CN: 'CNY', IN: 'INR', BR: 'BRL', RU: 'RUB', ZA: 'ZAR',
   MX: 'MXN', KR: 'KRW', SG: 'SGD', HK: 'HKD', NZ: 'NZD', CH: 'CHF', SE: 'SEK',
-  NO: 'NOK', DK: 'DKK', PL: 'PLN', TR: 'TRY', AE: 'AED', SA: 'SAR', BD: 'BDT', // Added BDT for Bangladesh
-  // ... add more as needed
+  NO: 'NOK', DK: 'DKK', PL: 'PLN', TR: 'TRY', AE: 'AED', SA: 'SAR', BD: 'BDT',
 };
 
 /**
  * Attempts to retrieve the user's likely currency based on geolocation or IP.
- * Requires user permission for location access.
- *
- * @returns A promise that resolves to the detected Currency object or null if detection fails.
+ * Returns null if detection fails or an error occurs.
  */
 export async function getUserCurrency(): Promise<Currency | null> {
   console.log("Attempting to get user currency...");
+  const supported = await getSupportedCurrencies(); // Get supported currencies once
 
   // 1. Try Browser Geolocation API (Requires HTTPS and User Permission)
   if (typeof window !== 'undefined' && navigator.geolocation) {
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 5000 // 5-second timeout
-        });
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
       });
       console.log("Geolocation success:", position.coords);
 
-      // For demonstration, we simulate a reverse geocoding call.
-      // In a real app, you would use a reverse geocoding API.
+      // --- SIMULATED REVERSE GEOCODING ---
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
-      
-      // --- SIMULATED REVERSE GEOCODING ---
-      // This part is highly dependent on the actual reverse geocoding service you would use.
-      // Here, we'll try to map some broad lat/lon ranges to country codes.
       let countryCode: string | undefined = undefined;
-      if (lat > 23 && lat < 28 && lon > 88 && lon < 93) countryCode = 'BD'; // Approx Bangladesh
-      else if (lat > 24 && lat < 72 && lon < -52 && lon > -169) countryCode = 'US'; // North America
-      else if (lat > 34 && lat < 71 && lon > -10 && lon < 40) countryCode = 'DE'; // Europe (Germany as example)
-      else if (lat > 6 && lat < 38 && lon > 68 && lon < 98) countryCode = 'IN'; // India
-      console.log("Simulated country code from Geolocation:", countryCode);
+      if (lat > 23 && lat < 28 && lon > 88 && lon < 93) countryCode = 'BD';
+      else if (lat > 24 && lat < 72 && lon < -52 && lon > -169) countryCode = 'US';
+      else if (lat > 34 && lat < 71 && lon > -10 && lon < 40) countryCode = 'DE';
+      else if (lat > 6 && lat < 38 && lon > 68 && lon < 98) countryCode = 'IN';
       // --- END SIMULATION ---
+      console.log("Simulated country code from Geolocation:", countryCode);
 
       if (countryCode && countryCurrencyMap[countryCode]) {
         const currencyCode = countryCurrencyMap[countryCode];
-        const supported = await getSupportedCurrencies();
         const foundCurrency = supported.find(c => c.code === currencyCode);
         if (foundCurrency) {
           console.log(`Currency detected via Geolocation: ${foundCurrency.code}`);
           return foundCurrency;
         }
-      } else {
-        console.log("Could not map geolocation to a known country/currency or country code was undefined.");
       }
     } catch (error: any) {
       if (error.code === error.PERMISSION_DENIED) {
         console.warn("Geolocation permission denied by user.");
       } else {
-        console.warn("Error getting geolocation:", error.message, "Code:", error.code);
+        console.warn("Error getting geolocation:", error.message);
       }
     }
   } else {
@@ -87,11 +74,9 @@ export async function getUserCurrency(): Promise<Currency | null> {
   // 2. Fallback to IP-Based Geolocation
   try {
     console.log("Attempting IP-based geolocation via ipapi.co...");
-    // Ensure this request is made over HTTPS if your site is HTTPS
-    const response = await fetch('https://ipapi.co/json/', { cache: 'no-store' }); // Added no-store to avoid caching issues with IP
+    const response = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
      if (!response.ok) {
-         const errorText = await response.text();
-         throw new Error(`IP Geolocation request failed with status: ${response.status}. Response: ${errorText}`);
+         throw new Error(`IP Geolocation request failed with status: ${response.status}`);
      }
     const data = await response.json();
     const countryCode = data.country_code?.toUpperCase();
@@ -99,30 +84,22 @@ export async function getUserCurrency(): Promise<Currency | null> {
 
     if (countryCode && countryCurrencyMap[countryCode]) {
       const currencyCode = countryCurrencyMap[countryCode];
-      const supported = await getSupportedCurrencies();
       const foundCurrency = supported.find(c => c.code === currencyCode);
       if (foundCurrency) {
         console.log(`Currency detected via IP Geolocation: ${foundCurrency.code}`);
         return foundCurrency;
       }
-    } else {
-         console.log("Could not determine currency from IP Geolocation data:", data);
     }
   } catch (error) {
     console.error("Error during IP-based geolocation:", error);
   }
 
-  // 3. Return null if all detection fails
   console.log("Currency detection failed, returning null (will use default).");
   return null;
 }
 
-/**
- * Asynchronously retrieves a list of supported currencies.
- * @returns A promise that resolves to an array of Currency objects.
- */
+
 export async function getSupportedCurrencies(): Promise<Currency[]> {
-  // Keep the comprehensive list from previous step
   return [
     { code: 'USD', symbol: '$', name: 'US Dollar' },
     { code: 'EUR', symbol: '€', name: 'Euro' },
@@ -159,7 +136,6 @@ export async function getSupportedCurrencies(): Promise<Currency[]> {
     { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal' },
     { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit' },
     { code: 'RON', symbol: 'lei', name: 'Romanian Leu' },
-    { code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka' }, // Added BDT
-     // Add more currencies as needed...
-  ].sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
+    { code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka' },
+  ].sort((a, b) => a.name.localeCompare(b.name));
 }
