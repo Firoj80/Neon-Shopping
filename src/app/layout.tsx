@@ -1,53 +1,50 @@
-// src/app/layout.tsx
-"use client"; 
-
 import { Inter } from 'next/font/google';
+import type { Metadata } from 'next';
 import './globals.css';
-import { Providers } from './providers'; 
-import { AppLayout } from '@/components/layout/app-layout'; 
+import { Providers } from './providers'; // Providers includes AppProvider
+import { AppLayout } from '@/components/layout/app-layout'; // Corrected import path
 import { Toaster } from "@/components/ui/toaster";
-// AuthProvider removed
-import ClientOnly from '@/components/client-only'; 
-import { SidebarProvider } from '@/components/ui/sidebar'; 
+import ClientOnly from '@/components/client-only'; // Import ClientOnly
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { ThemeWatcher } from '@/context/theme-watcher';
 import { cn } from '@/lib/utils';
 
+
 const inter = Inter({
-  variable: '--font-inter',
   subsets: ['latin'],
+  variable: '--font-inter',
 });
 
-// Metadata should be defined in a server component if needed, or as static export
-// export const metadata: Metadata = {
-// title: 'Neon Shopping',
-// description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
-// icons: [{ rel: 'icon', url: '/favicon.ico' }],
-// };
+export const metadata: Metadata = {
+  title: 'Neon Shopping',
+  description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
+  icons: [{ rel: 'icon', url: '/favicon.ico' }],
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          inter.variable, 
-          'font-sans antialiased min-h-screen flex flex-col bg-background',
+          inter.variable,
+          'font-sans antialiased min-h-screen flex flex-col bg-background'
         )}
       >
-        <Providers> {/* Providers now only includes AppProvider (and QueryClientProvider) */}
-            <SidebarProvider> {/* Keep SidebarProvider if AppLayout relies on it */}
-              <ThemeWatcher>
-                <ClientOnly>
-                  <AppLayout>
-                    {children}
-                  </AppLayout>
-                </ClientOnly>
-                <Toaster />
-              </ThemeWatcher>
-            </SidebarProvider>
+        <Providers> {/* AppProvider is wrapped inside Providers */}
+          <ThemeWatcher>
+            <ClientOnly> {/* Ensures client-side only rendering for components using browser APIs */}
+              <SidebarProvider> {/* SidebarProvider for sidebar state */}
+                <AppLayout>
+                  {children}
+                </AppLayout>
+              </SidebarProvider>
+            </ClientOnly>
+          </ThemeWatcher>
+          <Toaster />
         </Providers>
       </body>
     </html>

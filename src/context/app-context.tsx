@@ -1,242 +1,239 @@
 // src/context/app-context.tsx
 "use client";
 
-import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { format } from 'date-fns';
+import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
+import { format, startOfDay, isSameDay } from 'date-fns';
+import { themes, defaultThemeId } from '@/config/themes';
 import { v4 as uuidv4 } from 'uuid';
-import { getUserCurrency, type Currency } from '@/services/currency';
-// fetchFromApi might still be used for currency detection or other non-auth external calls
-import { fetchFromApi } from '@/lib/api'; 
+import { getUserCurrency, type Currency, defaultCurrency } from '@/services/currency';
+// Removed fetchFromApi import
 
-const LOCAL_STORAGE_KEY = 'neonShoppingState_v4_anon'; // Key for anonymous user data
-export const FREEMIUM_LIST_LIMIT = 3; // This limit might apply to all users now
-export const FREEMIUM_CATEGORY_LIMIT = 5; // This limit might apply to all users now
+const LOCAL_STORAGE_KEY = 'neonShoppingState_v4_local'; // New key to ensure fresh start
+export const FREEMIUM_LIST_LIMIT = 3; // This might be used for UI display even without premium logic
 
-export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'uncategorized', name: 'Uncategorized', userId: null }, // userId null for global
-  { id: 'default-electronics', name: 'Electronics', userId: null },
-  { id: 'default-grocery', name: 'Grocery', userId: null },
-  { id: 'default-home', name: 'Home Appliances', userId: null },
-  { id: 'default-health', name: 'Health', userId: null },
-  { id: 'default-fashion', name: 'Fashion', userId: null },
-];
-
-// --- Types ---
 export interface ShoppingListItem {
   id: string;
-  listId: string;
-  userId: string; // Will be the app_user_id
+  listId: string; // Which list this item belongs to
+  userId: string; // To associate with a user (even anonymous)
   name: string;
   quantity: number;
   price: number;
-  category: string;
+  category: string; // Category ID
   checked: boolean;
-  dateAdded: number;
+  dateAdded: number; // Timestamp
+}
+
+export interface List {
+  id: string;
+  userId: string; // Which user this list belongs to
+  name: string;
+  budgetLimit: number;
+  defaultCategory?: string; // Optional default category for this list
 }
 
 export interface Category {
   id: string;
   name: string;
-  userId: string | null; // null for default, app_user_id for custom
+  userId?: string; // User who created it, or null/undefined for default
 }
 
-export interface List {
-  id: string;
-  userId: string; // Will be the app_user_id
-  name: string;
-  budgetLimit: number;
-  defaultCategory: string;
+export interface BudgetItem {
+  // This structure seems more related to overall budget, not list-specific
+  // If budget is per list, it should be part of the List interface.
+  // For now, keeping it simple for daily budget tracking if that's the intent
+  dailyLimit: number;
+  spentToday: number; // Calculated from checked items today
+  lastSetDate: string | null; // YYYY-MM-DD
 }
 
-interface AppState {
-  userId: string; // Now always the app_user_id
+export interface AppState {
+  userId: string | null; // Can be anonymous UUID or null if not set yet
   currency: Currency;
+  theme: string; // Theme ID
   lists: List[];
   selectedListId: string | null;
   shoppingListItems: ShoppingListItem[];
   categories: Category[];
-  isLoading: boolean;
-  isInitialDataLoaded: boolean;
-  theme: string; // Keep theme
+  budget: BudgetItem; // Overall daily budget (if this is the intent)
+  isPremium: boolean; // Keep for UI display, but no functional enforcement
 }
 
-interface AppContextProps {
-  state: AppState;
-  dispatch: React.Dispatch<Action>;
-  formatCurrency: (amount: number) => string;
-  isLoading: boolean;
-}
-
-const defaultCurrency: Currency = { code: 'USD', symbol: '$', name: 'US Dollar' };
-const defaultThemeId = 'cyberpunk-cyan'; // Default theme
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'grocery', name: 'Grocery' },
+  { id: 'home', name: 'Home Appliances' },
+  { id: 'health', name: 'Health' },
+  { id: 'electronics', name: 'Electronics' },
+  { id: 'fashion', name: 'Fashion' },
+  { id: 'uncategorized', name: 'Uncategorized' },
+];
 
 const initialState: AppState = {
-  userId: '', // Will be set to app_user_id on load
-  currency: defaultCurrency,
+  userId: null,
+  currency: defaultCurrency, // Default currency
+  theme: defaultThemeId,
   lists: [],
   selectedListId: null,
   shoppingListItems: [],
-  categories: [...DEFAULT_CATEGORIES],
-  isLoading: true,
-  isInitialDataLoaded: false,
-  theme: defaultThemeId,
+  categories: DEFAULT_CATEGORIES,
+  budget: { dailyLimit: 0, spentToday: 0, lastSetDate: null },
+  isPremium: false, // Default to false, UI might show premium features as locked
 };
 
 type Action =
-  | { type: 'LOAD_STATE'; payload: Partial<AppState> & { userId: string } }
+  | { type: 'LOAD_STATE'; payload: Partial<AppState> }
+  | { type: 'SET_USER_ID'; payload: string | null }
   | { type: 'SET_CURRENCY'; payload: Currency }
-  | { type: 'ADD_LIST'; payload: Omit<List, 'userId'> } // userId will be added in reducer
+  | { type: 'SET_THEME'; payload: string }
+  | { type: 'ADD_LIST'; payload: List }
   | { type: 'UPDATE_LIST'; payload: List }
-  | { type: 'DELETE_LIST'; payload: string }
-  | { type: 'SELECT_LIST'; payload: string | null }
-  | { type: 'ADD_SHOPPING_ITEM'; payload: Omit<ShoppingListItem, 'userId'> } // userId will be added
+  | { type: 'DELETE_LIST'; payload: string } // listId
+  | { type: 'SELECT_LIST'; payload: string | null } // listId or null
+  | { type: 'ADD_SHOPPING_ITEM'; payload: ShoppingListItem }
   | { type: 'UPDATE_SHOPPING_ITEM'; payload: ShoppingListItem }
-  | { type: 'REMOVE_SHOPPING_ITEM'; payload: string }
-  | { type: 'TOGGLE_SHOPPING_ITEM'; payload: string }
-  | { type: 'ADD_CATEGORY'; payload: { name: string } }
-  | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } }
-  | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_THEME'; payload: string };
-  // Removed SET_PREMIUM_STATUS and backend related actions
-
-
-const mergeCategories = (defaultCats: Category[], storedCats: Category[], currentUserId: string): Category[] => {
-  const categoryMap = new Map<string, Category>();
-  defaultCats.forEach(cat => categoryMap.set(cat.id, { ...cat, userId: null }));
-  storedCats.forEach(cat => {
-    // User-specific categories from storage should be associated with the current app_user_id
-    // Or if they were somehow stored with userId: null, keep them as global
-    categoryMap.set(cat.id, { ...cat, userId: cat.userId === null ? null : currentUserId });
-  });
-  return Array.from(categoryMap.values());
-};
+  | { type: 'DELETE_SHOPPING_ITEM'; payload: string } // itemId
+  | { type: 'TOGGLE_ITEM_CHECKED'; payload: string } // itemId
+  | { type: 'SET_BUDGET'; payload: { dailyLimit: number } }
+  | { type: 'ADD_CATEGORY'; payload: Category }
+  | { type: 'UPDATE_CATEGORY'; payload: Category }
+  | { type: 'DELETE_CATEGORY'; payload: string } // categoryId
+  | { type: 'SET_PREMIUM_STATUS'; payload: boolean };
 
 function appReducer(state: AppState, action: Action): AppState {
-  let newState = { ...state };
-
+  let newState = state;
   switch (action.type) {
-    case 'LOAD_STATE': {
-      const { userId: loadedUserId, ...restOfPayload } = action.payload;
-      newState = {
-        ...initialState, // Start from a clean default state
-        ...restOfPayload, // Overlay loaded data
-        userId: loadedUserId, // Crucial: use the provided userId
-        currency: restOfPayload.currency || initialState.currency,
-        categories: mergeCategories(DEFAULT_CATEGORIES, restOfPayload.categories || [], loadedUserId),
-        theme: restOfPayload.theme || initialState.theme,
-        isLoading: false,
-        isInitialDataLoaded: true,
-      };
-       // Ensure selectedListId is valid for the loaded lists and userId
-      if (newState.lists && newState.lists.length > 0) {
-        const userLists = newState.lists.filter(l => l.userId === loadedUserId);
-        if (userLists.length > 0) {
-            const currentSelectedListIsValid = userLists.some(l => l.id === newState.selectedListId);
-            newState.selectedListId = currentSelectedListIsValid ? newState.selectedListId : userLists[0].id;
-        } else {
-            newState.selectedListId = null;
-        }
-      } else {
-        newState.selectedListId = null;
-      }
+    case 'LOAD_STATE':
+      newState = { ...state, ...action.payload, userId: action.payload.userId || state.userId || `anon_${uuidv4()}` };
       break;
-    }
+    case 'SET_USER_ID':
+      newState = { ...state, userId: action.payload };
+      break;
     case 'SET_CURRENCY':
       newState = { ...state, currency: action.payload };
       break;
-    case 'ADD_LIST': {
-      const newList: List = { ...action.payload, id: uuidv4(), userId: state.userId };
-      newState.lists = [...state.lists, newList];
-      if (!state.selectedListId) {
-        newState.selectedListId = newList.id;
-      }
-      break;
-    }
-    case 'UPDATE_LIST':
-      newState.lists = state.lists.map(list =>
-        list.id === action.payload.id && list.userId === state.userId ? { ...action.payload, userId: state.userId } : list
-      );
-      break;
-    case 'DELETE_LIST':
-      newState.lists = state.lists.filter(list => !(list.id === action.payload && list.userId === state.userId));
-      newState.shoppingListItems = state.shoppingListItems.filter(item => item.listId !== action.payload || item.userId !== state.userId);
-      if (state.selectedListId === action.payload) {
-        const userListsRemaining = newState.lists.filter(l => l.userId === state.userId);
-        newState.selectedListId = userListsRemaining.length > 0 ? userListsRemaining[0].id : null;
-      }
-      break;
-    case 'SELECT_LIST':
-      // Ensure the selected list belongs to the current user
-      const listToSelect = state.lists.find(l => l.id === action.payload && l.userId === state.userId);
-      newState.selectedListId = listToSelect ? action.payload : state.selectedListId;
-      break;
-    case 'ADD_SHOPPING_ITEM': {
-      const newItem: ShoppingListItem = { ...action.payload, id: uuidv4(), dateAdded: Date.now(), checked: false, userId: state.userId };
-      newState.shoppingListItems = [...state.shoppingListItems, newItem];
-      break;
-    }
-    case 'UPDATE_SHOPPING_ITEM':
-      newState.shoppingListItems = state.shoppingListItems.map(item =>
-        item.id === action.payload.id && item.userId === state.userId ? { ...action.payload, userId: state.userId } : item
-      );
-      break;
-    case 'REMOVE_SHOPPING_ITEM':
-      newState.shoppingListItems = state.shoppingListItems.filter(item => !(item.id === action.payload && item.userId === state.userId));
-      break;
-    case 'TOGGLE_SHOPPING_ITEM':
-      newState.shoppingListItems = state.shoppingListItems.map(item =>
-        item.id === action.payload && item.userId === state.userId ? { ...item, checked: !item.checked, dateAdded: Date.now() } : item
-      );
-      break;
-    case 'ADD_CATEGORY': {
-      const newCategory: Category = { id: uuidv4(), name: action.payload.name, userId: state.userId };
-      newState.categories = [...state.categories, newCategory];
-      break;
-    }
-    case 'UPDATE_CATEGORY':
-       // Allow updating user-created categories or default categories (name only)
-      newState.categories = state.categories.map(cat => {
-        if (cat.id === action.payload.id) {
-          if (cat.userId === state.userId || cat.userId === null) { // User owns it or it's a global default
-            return { ...cat, name: action.payload.name };
-          }
-        }
-        return cat;
-      });
-      break;
-    case 'REMOVE_CATEGORY': {
-      const catToRemove = state.categories.find(c => c.id === action.payload.categoryId);
-      if (!catToRemove || catToRemove.id === 'uncategorized') break; // Cannot remove uncategorized
-      
-      // Allow deleting user-created categories or default categories
-      if (catToRemove.userId === state.userId || catToRemove.userId === null) {
-        newState.categories = state.categories.filter(cat => cat.id !== action.payload.categoryId);
-        const reassignTo = action.payload.reassignToId || 'uncategorized';
-        newState.shoppingListItems = state.shoppingListItems.map(item =>
-          item.category === action.payload.categoryId && item.userId === state.userId ? { ...item, category: reassignTo } : item
-        );
-        newState.lists = state.lists.map(list =>
-          list.defaultCategory === action.payload.categoryId && list.userId === state.userId ? { ...list, defaultCategory: reassignTo } : list
-        );
-      }
-      break;
-    }
-    case 'SET_LOADING':
-      newState = { ...state, isLoading: action.payload };
-      break;
     case 'SET_THEME':
       newState = { ...state, theme: action.payload };
+      break;
+    case 'ADD_LIST':
+      newState = { ...state, lists: [...state.lists, action.payload] };
+      break;
+    case 'UPDATE_LIST':
+      newState = {
+        ...state,
+        lists: state.lists.map(list =>
+          list.id === action.payload.id ? action.payload : list
+        ),
+      };
+      break;
+    case 'DELETE_LIST':
+      const listIdToDelete = action.payload;
+      const newLists = state.lists.filter(list => list.id !== listIdToDelete);
+      const newItems = state.shoppingListItems.filter(item => item.listId !== listIdToDelete);
+      let newSelectedListId = state.selectedListId;
+      if (state.selectedListId === listIdToDelete) {
+        newSelectedListId = newLists.length > 0 ? newLists[0].id : null;
+      }
+      newState = {
+        ...state,
+        lists: newLists,
+        shoppingListItems: newItems,
+        selectedListId: newSelectedListId,
+      };
+      break;
+    case 'SELECT_LIST':
+      newState = { ...state, selectedListId: action.payload };
+      break;
+    case 'ADD_SHOPPING_ITEM':
+      if (!action.payload.listId || !action.payload.userId) {
+         console.error("Attempted to add item without listId or userId. Item:", action.payload);
+        return state; // Prevent adding item without necessary IDs
+      }
+      newState = {
+        ...state,
+        shoppingListItems: [...state.shoppingListItems, action.payload],
+      };
+      break;
+    case 'UPDATE_SHOPPING_ITEM':
+      newState = {
+        ...state,
+        shoppingListItems: state.shoppingListItems.map(item =>
+          item.id === action.payload.id ? action.payload : item
+        ),
+      };
+      break;
+    case 'DELETE_SHOPPING_ITEM':
+      newState = {
+        ...state,
+        shoppingListItems: state.shoppingListItems.filter(
+          item => item.id !== action.payload
+        ),
+      };
+      break;
+    case 'TOGGLE_ITEM_CHECKED':
+      newState = {
+        ...state,
+        shoppingListItems: state.shoppingListItems.map(item =>
+          item.id === action.payload ? { ...item, checked: !item.checked } : item
+        ),
+      };
+      break;
+    case 'SET_BUDGET':
+      // This budget seems global daily, not per list.
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      newState = {
+        ...state,
+        budget: {
+          ...state.budget,
+          dailyLimit: action.payload.dailyLimit,
+          lastSetDate: todayStr,
+        },
+      };
+      break;
+    case 'ADD_CATEGORY':
+      newState = { ...state, categories: [...state.categories, action.payload] };
+      break;
+    case 'UPDATE_CATEGORY':
+      newState = {
+        ...state,
+        categories: state.categories.map(cat =>
+          cat.id === action.payload.id ? action.payload : cat
+        ),
+      };
+      break;
+    case 'DELETE_CATEGORY':
+      const categoryIdToDelete = action.payload;
+      // Reassign items from deleted category to 'uncategorized'
+      const updatedItems = state.shoppingListItems.map(item =>
+        item.category === categoryIdToDelete ? { ...item, category: 'uncategorized' } : item
+      );
+      newState = {
+        ...state,
+        categories: state.categories.filter(cat => cat.id !== categoryIdToDelete),
+        shoppingListItems: updatedItems,
+      };
+      break;
+    case 'SET_PREMIUM_STATUS': // Kept for UI consistency, but not enforced
+      newState = { ...state, isPremium: action.payload };
       break;
     default:
       newState = state;
   }
 
-  // Persist state to localStorage on every relevant action
-  if (newState.userId && typeof window !== 'undefined' && action.type !== 'LOAD_STATE' && action.type !== 'SET_LOADING') {
+  // Update budget.spentToday after any relevant item change
+  if (['ADD_SHOPPING_ITEM', 'UPDATE_SHOPPING_ITEM', 'DELETE_SHOPPING_ITEM', 'TOGGLE_ITEM_CHECKED', 'LOAD_STATE'].includes(action.type)) {
+    const today = startOfDay(new Date());
+    const spentToday = newState.shoppingListItems.reduce((total, item) => {
+      if (item.checked && item.dateAdded && isSameDay(new Date(item.dateAdded), today)) {
+        return total + item.price * item.quantity;
+      }
+      return total;
+    }, 0);
+    newState = { ...newState, budget: { ...newState.budget, spentToday } };
+  }
+  
+  // Save to localStorage on every state change except initial load
+  if (action.type !== 'LOAD_STATE' && typeof window !== 'undefined') {
     try {
-      const { isLoading: _omittedLoading, isInitialDataLoaded: _omittedInitial, ...stateToSave } = newState;
-      localStorage.setItem(`${LOCAL_STORAGE_KEY}_${newState.userId}`, JSON.stringify(stateToSave));
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newState));
     } catch (error) {
       console.error("Failed to save state to localStorage:", error);
     }
@@ -244,90 +241,92 @@ function appReducer(state: AppState, action: Action): AppState {
   return newState;
 }
 
-export const AppContext = createContext<AppContextProps | undefined>(undefined);
+interface AppContextType {
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
+  isLoading: boolean; // For initial data load
+  isInitialDataLoaded: boolean;
+}
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const [isLoading, setIsLoading] = useState(true); // Local loading state for initial setup
+  const [isLoading, setIsLoading] = useState(true); // Loading initial data
   const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
-
 
   useEffect(() => {
     const loadInitialData = async () => {
-      if (isInitialDataLoaded) return; // Prevent re-running if already loaded
-
+      if (isInitialDataLoaded) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
-      let userId = localStorage.getItem('app_user_id');
+      console.log("AppProvider: Loading initial data (localStorage)...");
+
+      let userId = localStorage.getItem('app_user_id'); // Use a distinct key for anonymous user
       if (!userId) {
         userId = `anon_${uuidv4()}`;
         localStorage.setItem('app_user_id', userId);
+        console.log("AppProvider: No user ID found, generated anonymous ID:", userId);
+      } else {
+        console.log("AppProvider: Found anonymous user ID:", userId);
       }
 
-      let loadedStateFromStorage: Partial<Omit<AppState, 'isLoading'|'isInitialDataLoaded'>> = {};
-      const storageKey = `${LOCAL_STORAGE_KEY}_${userId}`;
-      const storedStateRaw = localStorage.getItem(storageKey);
+      let loadedStateFromStorage: Partial<AppState> = { userId }; // Start with userId
 
-      if (storedStateRaw) {
-        try {
-          loadedStateFromStorage = JSON.parse(storedStateRaw);
-        } catch (e) {
-          console.error("Failed to parse stored state, resetting for user:", userId, e);
-          localStorage.removeItem(storageKey); // Clear corrupted state
+      try {
+        const savedStateRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedStateRaw) {
+          const parsedState = JSON.parse(savedStateRaw);
+          // Ensure the loaded state also gets the correct userId if it was just generated
+          loadedStateFromStorage = { ...parsedState, userId: parsedState.userId || userId }; 
+          console.log("AppProvider: Loaded state from localStorage:", loadedStateFromStorage);
+        } else {
+          console.log("AppProvider: No state found in localStorage, using defaults.");
         }
+      } catch (error) {
+        console.error("AppProvider: Failed to parse state from localStorage, using defaults.", error);
       }
       
-      let currencyToSet = loadedStateFromStorage.currency || defaultCurrency;
-      if (!loadedStateFromStorage.currency) { // Only detect if no currency is stored
+      // Auto-detect currency if not already set in loaded state
+      if (!loadedStateFromStorage.currency) {
         try {
+          console.log("AppProvider: Attempting to auto-detect currency...");
           const detectedCurrency = await getUserCurrency();
           if (detectedCurrency) {
-            currencyToSet = detectedCurrency;
+            loadedStateFromStorage.currency = detectedCurrency;
+            console.log("AppProvider: Currency auto-detected:", detectedCurrency.code);
+          } else {
+            loadedStateFromStorage.currency = defaultCurrency;
+            console.log("AppProvider: Currency auto-detection failed, using default:", defaultCurrency.code);
           }
-        } catch (e) {
-          console.error("Currency auto-detection failed:", e);
+        } catch (error) {
+          console.error("AppProvider: Error during currency auto-detection:", error);
+          loadedStateFromStorage.currency = defaultCurrency;
         }
+      } else {
+         console.log("AppProvider: Using currency from localStorage:", loadedStateFromStorage.currency.code);
       }
 
-      dispatch({
-        type: 'LOAD_STATE',
-        payload: {
-          ...initialState, // Start with defaults
-          ...loadedStateFromStorage, // Overlay stored state
-          userId: userId, // Ensure this is the current app_user_id
-          currency: currencyToSet,
-          theme: loadedStateFromStorage.theme || defaultThemeId,
-          // categories will be merged in the reducer
-        },
-      });
-      setIsInitialDataLoaded(true); // Mark initial data as loaded
-      setIsLoading(false); // Local loading done
+
+      dispatch({ type: 'LOAD_STATE', payload: loadedStateFromStorage });
+      setIsInitialDataLoaded(true);
+      setIsLoading(false);
+      console.log("AppProvider: Initial data processing finished. Current user ID in context:", (loadedStateFromStorage.userId || userId));
     };
 
     loadInitialData();
-  }, [isInitialDataLoaded]); // Depend on isInitialDataLoaded
-
-  const formatCurrency = useCallback((amount: number) => {
-    try {
-      return new Intl.NumberFormat(undefined, { // Use browser's default locale
-        style: 'currency',
-        currency: state.currency.code,
-      }).format(amount);
-    } catch (error) {
-      console.warn("Currency formatting error for code:", state.currency.code, error);
-      return `${state.currency.symbol || '$'}${amount.toFixed(2)}`;
-    }
-  }, [state.currency]);
-
-  const combinedIsLoading = isLoading || state.isLoading; // Combine local loading with context loading
+  }, [isInitialDataLoaded]); // Only run once on mount effectively
 
   return (
-    <AppContext.Provider value={{ state, dispatch, formatCurrency, isLoading: combinedIsLoading }}>
+    <AppContext.Provider value={{ state, dispatch, isLoading, isInitialDataLoaded }}>
       {children}
     </AppContext.Provider>
   );
 };
 
-export const useAppContext = (): AppContextProps => {
+export const useAppContext = () => {
   const context = useContext(AppContext);
   if (context === undefined) {
     throw new Error('useAppContext must be used within an AppProvider');

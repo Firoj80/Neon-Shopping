@@ -1,38 +1,35 @@
 // src/app/page.tsx
 "use client";
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Removed useAuth
-import { useAppContext } from '@/context/app-context'; // useAppContext is still needed for list checks
-import { useClientOnly } from '@/hooks/use-client-only';
-
+// Removed useAuth import
+import { useAppContext } from '@/context/app-context'; // Corrected to alias path
 
 export default function HomePage() {
   const router = useRouter();
-  // Removed authIsLoading and isAuthenticated
-  const { state: appState, isLoading: appIsLoading } = useAppContext();
-  const isClientMounted = useClientOnly();
+  const { state, isLoading, isInitialDataLoaded } = useAppContext();
+  // Removed authState and authLoading
 
   useEffect(() => {
-    if (!isClientMounted || appIsLoading) return; // Wait for client mount and app data to load
-
-    // AppLayoutContent will now primarily handle this redirection.
-    // This page can be a simple loading/entry point.
-    // If AppLayoutContent correctly redirects, this might become redundant or simplified further.
-    const userLists = appState.lists || []; // Ensure lists is an array
-    if (userLists.length === 0) {
-      router.replace('/list/create-first');
-    } else {
+    if (!isLoading && isInitialDataLoaded) { // Wait for initial data to load
+      // Logic is now primarily in AppLayout to decide where to redirect.
+      // This page can simply redirect to /list, and AppLayout will handle
+      // whether to show /list or /list/create-first.
+      console.log("HomePage: Attempting redirect to /list");
       router.replace('/list');
     }
-
-  }, [isClientMounted, appState.lists, appIsLoading, router]);
+  }, [isLoading, isInitialDataLoaded, router]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-background text-center p-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-      <p className="text-primary text-sm font-medium">Loading Neon Shopping...</p>
+    <div className="flex items-center justify-center h-screen bg-background text-primary">
+      <div className="flex flex-col items-center">
+        <svg className="animate-spin h-16 w-16 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p className="mt-4 text-lg font-semibold">Loading Neon Shopping...</p>
+      </div>
     </div>
   );
 }
