@@ -1,5 +1,6 @@
 // src/components/layout/app-layout.tsx
 "use client";
+
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -13,12 +14,11 @@ import {
   ShieldCheck as PolicyIcon, // Renamed for clarity
   FileText as ArticleIcon,   // Renamed for clarity
   Star,
-  AppWindow as AppsIcon,
-  Menu as MenuIcon,
+  AppWindow as AppsIcon, // Corrected: Use AppWindow for AppsIcon
+  Menu as MenuIcon, // Keep Menu as Menu
   X,
-  UserCircle2 as ProfileIcon,
-  LogOut as LogoutIcon, // Alias for clarity
-  Palette // For themes if re-added
+  Palette, // For Themes
+  LogOut as LogoutIcon, // Renamed LogOut
 } from 'lucide-react';
 
 import { Button } from '../ui/button';
@@ -31,7 +31,9 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import {
-  Sidebar,
+  // Removed SidebarProvider import as it's now in layout.tsx
+  // Removed useSidebar import as it's no longer used
+  Sidebar, // Main Sidebar component
   SidebarHeader,
   SidebarContent,
   SidebarMenu,
@@ -39,46 +41,33 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
-  SidebarSeparator,
-  SidebarSheetContent
+  SidebarSeparator, // Added SidebarSeparator
+  SidebarSheetContent // Use the custom SidebarSheetContent
 } from '@/components/ui/sidebar';
-import { useAppContext }  from '@/context/app-context';
-import { useAuth } from '@/context/auth-context';
+import { useAppContext } from '@/context/app-context';
+import { useAuth } from '@/context/auth-context'; // Import useAuth
 import ClientOnly from '@/components/client-only';
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useClientOnly } from '@/hooks/use-client-only'; // Corrected hook import
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { TooltipProvider } from "@/components/ui/tooltip"; // Added TooltipProvider
+import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
+
 
 // --- Constants for Routes ---
 const AUTH_ROUTE = '/auth';
 const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
 const DEFAULT_AUTHENTICATED_ROUTE = '/list';
 
-interface NavItem {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-  isPremium?: boolean; // To mark premium features
-  action?: () => void;
-}
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth(); // Added logout
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+      {/* Left Side: Hamburger Menu Trigger */}
        <Sheet open={isOpen} onOpenChange={setIsOpen}>
          <SheetTrigger asChild>
-           <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80 hover:bg-primary/10">
+           <Button variant="ghost" size="icon" /* onClick removed, Sheet handles it */ className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
             <AnimatePresence initial={false} mode="wait">
               <motion.div
                 key={isOpen ? "x" : "menu"}
@@ -98,6 +87,7 @@ const MobileHeader: React.FC = () => {
         </SidebarSheetContent>
       </Sheet>
 
+      {/* Centered App Title */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
           <ShoppingCart className="w-6 h-6" />
@@ -105,72 +95,14 @@ const MobileHeader: React.FC = () => {
         </Link>
       </div>
 
-      <div className="w-10 h-10 flex items-center justify-center">
-        {isAuthenticated && user ? (
-          <ProfileDropdown />
-        ) : (
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={AUTH_ROUTE} className="text-primary hover:text-primary/80">
-              <ProfileIcon className="h-5 w-5" />
-              <span className="sr-only">Login</span>
-            </Link>
-          </Button>
-        )}
+      {/* Right side: Placeholder for potential icons or actions if needed, ensures title stays centered */}
+      <div className="w-10 h-10">
+        {/* This div acts as a spacer. If you add icons here, ensure they balance the hamburger menu */}
       </div>
     </header>
   );
 };
 
-// --- Profile Dropdown Component ---
-const ProfileDropdown: React.FC = () => {
-  const { user, logout } = useAuth();
-  const router = useRouter();
-
-  const handleNavigation = (href: string) => {
-    router.push(href);
-    // Interstitial ad logic can be triggered here if needed
-  };
-
-  const profileMenuItems: NavItem[] = [
-    { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard, isPremium: true },
-    { href: '/history', label: 'History', icon: History, isPremium: true },
-    { href: '/settings', label: 'Settings', icon: Settings },
-    { href: '/themes', label: 'Themes', icon: Palette, isPremium: true }, // Example: Themes as premium
-  ];
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80">
-          <ProfileIcon className="h-5 w-5" />
-          <span className="sr-only">Open user menu</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-card border-secondary/50 shadow-neon glow-border-inner">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none text-neonText">{user?.name || 'User'}</p>
-            <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-border/50" />
-        {profileMenuItems.map((item) => (
-          <DropdownMenuItem key={item.href} onClick={() => handleNavigation(item.href)} className="text-neonText/90 hover:bg-primary/10 focus:bg-primary/20 cursor-pointer">
-            <item.icon className="mr-2 h-4 w-4" />
-            <span>{item.label}</span>
-            {item.isPremium && <Star className="ml-auto h-3 w-3 text-yellow-400" />}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator className="bg-border/50" />
-        <DropdownMenuItem onClick={logout} className="text-red-500 hover:bg-destructive/20 focus:bg-destructive/30 cursor-pointer">
-          <LogoutIcon className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 
 // --- Main Menu Content ---
 interface MainMenuContentProps {
@@ -180,21 +112,22 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, logout: authLogout, user } = useAuth();
+  const { isAuthenticated, logout } = useAuth(); // Correctly using logout from useAuth
   const { state: { isPremium } } = useAppContext();
 
   const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-    if (e) e.preventDefault();
+    if (e) e.preventDefault(); // Prevent default only if event is passed
     if (onLinkClick) onLinkClick();
     router.push(href);
   }, [onLinkClick, router]);
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();
-    await authLogout();
+    await logout(); // Call logout from AuthContext
   };
 
-  const mainDesktopNavItems: NavItem[] = [
+  // Define navigation items
+  const mainNavItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard, isPremium: true },
     { href: '/history', label: 'History', icon: History, isPremium: true },
@@ -202,9 +135,9 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/themes', label: 'Themes', icon: Palette, isPremium: true },
   ];
 
-  const secondaryMenuItems: NavItem[] = [
-    { href: '/premium', label: 'Premium', icon: Star },
-    { href: '/premium-plans', label: 'Plans', icon: Star }, // Example: reusing Star or specific icon
+  const secondaryMenuItems = [
+    { href: '/premium', label: 'Unlock Premium', icon: Star },
+    { href: '/premium-plans', label: 'Premium Plans', icon: Star },
     { href: '/about', label: 'About Us', icon: Info },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: PolicyIcon },
@@ -213,7 +146,8 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
   ];
 
-  const renderMenuItem = (item: NavItem) => {
+
+  const renderMenuItem = (item: typeof mainNavItems[0] | typeof secondaryMenuItems[0]) => {
     const isItemPremiumLocked = item.isPremium && !isPremium;
     const linkContent = (
       <>
@@ -222,6 +156,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
         {isItemPremiumLocked && <Star className="ml-auto h-3 w-3 text-yellow-400" />}
       </>
     );
+
     const commonButtonProps = {
       asChild: true,
       isActive: pathname === item.href && !isItemPremiumLocked,
@@ -238,14 +173,19 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
         {linkContent}
       </Link>
     );
+
+    // For mobile, wrap the link component in SheetClose
+    const interactiveElement = isMobile ? <SheetClose asChild>{linkComponent}</SheetClose> : linkComponent;
+
     return (
       <SidebarMenuItem key={item.href}>
         <SidebarMenuButton {...commonButtonProps}>
-          {isMobile ? <SheetClose asChild>{linkComponent}</SheetClose> : linkComponent}
+          {interactiveElement}
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
   };
+
 
   return (
     <Fragment>
@@ -257,10 +197,8 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       </SidebarHeader>
       <SidebarContent className="p-2 flex-grow flex flex-col">
         <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
-          {/* Render main desktop nav items only for desktop view */}
-          {!isMobile && mainDesktopNavItems.map(item => renderMenuItem(item))}
-          {!isMobile && <SidebarSeparator className="my-2" />}
-          {/* Secondary items are for both mobile (in sheet) and desktop */}
+          {mainNavItems.map(item => renderMenuItem(item))}
+          <SidebarSeparator className="my-2" />
           {secondaryMenuItems.map(item => renderMenuItem(item))}
         </SidebarMenu>
       </SidebarContent>
@@ -269,7 +207,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           <SidebarMenuButton
             variant="outline"
             className="w-full justify-start border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive/80 glow-border-inner"
-            onClick={handleLogout}
+            onClick={handleLogout} // Use the new handleLogout
           >
             <LogoutIcon className="mr-2 h-4 w-4" />
             Log Out
@@ -280,98 +218,109 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
   );
 };
 
-// --- AppLayoutContent Component ---
+
+// --- AppLayoutContent: Handles loading states and conditional rendering ---
 const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isLoading: authIsLoading, isAuthenticated, user } = useAuth();
-  const { state: appState, isLoading: appIsLoading } = useAppContext();
+  const authContext = useAuth();
+  const appContext = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
   const isClientMounted = useClientOnly();
 
+  const { isAuthenticated, isLoading: authIsLoading, user } = authContext;
+  const { state: appState, isLoading: appIsLoading } = appContext;
+
   const combinedIsLoading = authIsLoading || appIsLoading;
 
   useEffect(() => {
-    if (!isClientMounted) {
-        console.log("AppLayoutContent: Client not mounted, skipping redirect logic.");
-        return;
+    if (!isClientMounted || combinedIsLoading) {
+      return; // Wait for client mount and data loading
     }
+    
+    const userSpecificLists = appState.lists ? appState.lists.filter(list => list.userId === user?.id) : [];
+    const hasUserLists = userSpecificLists.length > 0;
 
-    // Wait for both authentication and app initial data to load before making redirect decisions
-    if (combinedIsLoading) {
-        console.log("AppLayoutContent: Auth or App data still loading, skipping redirect logic.", { authIsLoading, appIsLoading });
-        return;
-    }
+    console.log("AppLayoutContent Check:", { isAuthenticated, pathname, hasUserLists, combinedIsLoading });
 
-    console.log("AppLayoutContent: Ready for redirect logic.", { isAuthenticated, listsLength: appState.lists?.length, userSpecificLists: appState.lists?.filter(l => l.userId === user?.id).length, pathname, userId: user?.id });
 
-    if (isAuthenticated && user) {
-        // Filter lists for the currently authenticated user
-        const userLists = appState.lists ? appState.lists.filter(list => list.userId === user.id) : [];
-        const hasUserLists = userLists.length > 0;
-
-        console.log(`AppLayoutContent: Authenticated as user ${user.id}. Has lists: ${hasUserLists}. Pathname: ${pathname}`);
-
-        if (!hasUserLists) { // No lists for this specific user
-            if (pathname !== CREATE_FIRST_LIST_ROUTE && pathname !== AUTH_ROUTE) {
-                console.log(`AppLayoutContent: Authenticated, No lists for user ${user.id}, not on create/auth. Redirect to ${CREATE_FIRST_LIST_ROUTE} from ${pathname}.`);
-                router.replace(CREATE_FIRST_LIST_ROUTE);
-            }
-        } else { // User has lists
-            if (pathname === CREATE_FIRST_LIST_ROUTE) {
-                console.log(`AppLayoutContent: Authenticated, Has lists, on create-first. Redirect to ${DEFAULT_AUTHENTICATED_ROUTE}.`);
-                router.replace(DEFAULT_AUTHENTICATED_ROUTE);
-            } else if (pathname === AUTH_ROUTE) {
-                console.log(`AppLayoutContent: Authenticated, Has lists, on auth. Redirect to ${DEFAULT_AUTHENTICATED_ROUTE}.`);
-                router.replace(DEFAULT_AUTHENTICATED_ROUTE);
-            }
+    if (!isAuthenticated) {
+      if (pathname !== AUTH_ROUTE) {
+        console.log("AppLayoutContent: Not Authenticated. Redirecting to AUTH_ROUTE from:", pathname);
+        router.replace(AUTH_ROUTE);
+      }
+    } else { // Authenticated
+      if (pathname === AUTH_ROUTE) {
+        console.log("AppLayoutContent: Authenticated, on AUTH_ROUTE. Redirecting.");
+        router.replace(hasUserLists ? DEFAULT_AUTHENTICATED_ROUTE : CREATE_FIRST_LIST_ROUTE);
+      } else if (!hasUserLists) {
+        if (pathname !== CREATE_FIRST_LIST_ROUTE) {
+          console.log("AppLayoutContent: Authenticated, No lists. Redirecting to CREATE_FIRST_LIST_ROUTE from:", pathname);
+          router.replace(CREATE_FIRST_LIST_ROUTE);
         }
-    } else { // Not authenticated
-        if (pathname !== AUTH_ROUTE) {
-            console.log(`AppLayoutContent: Not Authenticated, not on auth. Redirect to ${AUTH_ROUTE} from ${pathname}.`);
-            router.replace(`${AUTH_ROUTE}?redirectedFrom=${pathname}`);
+      } else { // Authenticated and has lists
+        if (pathname === CREATE_FIRST_LIST_ROUTE) {
+          console.log("AppLayoutContent: Authenticated, Has lists, on CREATE_FIRST_LIST_ROUTE. Redirecting to DEFAULT_AUTHENTICATED_ROUTE.");
+          router.replace(DEFAULT_AUTHENTICATED_ROUTE);
         }
+      }
     }
-  }, [isClientMounted, combinedIsLoading, isAuthenticated, user, appState.lists, pathname, router, appIsLoading]); // Added appIsLoading, user
+  }, [isClientMounted, combinedIsLoading, isAuthenticated, user, appState.lists, pathname, router, appState.userId]);
+
 
   if (!isClientMounted || combinedIsLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-center p-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-        <p className="text-primary text-sm font-medium">Loading Neon Shopping...</p>
+        <p className="text-primary text-sm font-medium">Loading App...</p>
+      </div>
+    );
+  }
+  
+  // If on auth page and not authenticated (or auth still loading), render auth page
+  if (pathname === AUTH_ROUTE && !isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  // If authenticated, but no lists, and not on create-first page, render create-first or loader
+  if (isAuthenticated && appState.lists.filter(list => list.userId === user?.id).length === 0 && pathname !== CREATE_FIRST_LIST_ROUTE) {
+     // This state should ideally be handled by the useEffect redirect.
+     // If reached, it means user is auth'd, has no lists, but isn't on create-first.
+     // Could show specific "Create a list" prompt or a loader if redirect is pending.
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-center p-4">
+        <p className="text-muted-foreground">Redirecting to list creation...</p>
       </div>
     );
   }
 
-  if (pathname === AUTH_ROUTE) {
-    return <>{children}</>;
-  }
 
-  if (!isAuthenticated) {
-     return (
-          <div className="flex flex-col items-center justify-center h-screen bg-background text-center p-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-              <p className="text-muted-foreground">Redirecting to login...</p>
-          </div>
-      );
-  }
-
+  // --- Render full layout ---
   return (
-    <Fragment>
-      <MobileHeader />
-      <Sidebar className="hidden md:flex md:flex-col">
-        <MainMenuContent isMobile={false} />
-      </Sidebar>
-      <SidebarInset>
-        <main className="flex-1 flex flex-col md:px-6 lg:px-8 xl:px-10 md:py-4 bg-background overflow-y-auto max-w-full">
-          <div className="flex-grow pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            {children}
-          </div>
-        </main>
-      </SidebarInset>
-    </Fragment>
-  );
-};
+     <Fragment>
+       {/* Mobile Header */}
+       <MobileHeader />
 
+       {/* Desktop Sidebar */}
+       <Sidebar className="hidden md:flex md:flex-col">
+         <MainMenuContent isMobile={false} />
+       </Sidebar>
+
+       {/* Main Content Area */}
+       <SidebarInset>
+         <main className="flex-1 flex flex-col md:px-6 lg:px-8 xl:px-10 md:py-4 bg-background overflow-y-auto max-w-full">
+           <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom))]"> {/* Reduced bottom padding for list page fab */}
+             {children}
+           </div>
+         </main>
+       </SidebarInset>
+       {/* AdInitializer can be placed here if it's a global banner */}
+       {/* <AdInitializer /> */}
+     </Fragment>
+   );
+}
+
+
+// --- Main AppLayout component with TooltipProvider ---
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <TooltipProvider delayDuration={0}>

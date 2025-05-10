@@ -24,14 +24,16 @@ import {
   SelectGroup,
   SelectLabel,
   SelectValue
-} from '@/components/ui/select';
+} from '@/components/ui/select'; // Corrected import for Select components
 import type { List, Category } from '@/context/app-context';
-import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context';
+import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation'; // Added usePathname and useRouter
+import { useRouter } from 'next/navigation';
+import { fetchFromApi } from '@/lib/api';
+
 
 const listFormSchema = z.object({
   name: z.string().min(1, "List name is required").max(50, "List name too long"),
@@ -48,15 +50,17 @@ interface AddEditListModalProps {
   isOpen: boolean;
   onClose: () => void;
   listData?: List | null;
+  onListSaved?: () => void; // New callback prop
 }
 
-export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onClose, listData }) => {
+export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onClose, listData, onListSaved }) => {
   const { dispatch, state: appState } = useAppContext();
-  const { categories, currency, isPremium, lists } = appState;
-  const { user } = useAuth();
+  const { categories, currency, isPremium, lists, userId } = appState; // Get userId from appState
+  const { user: authUser } = useAuth(); // authUser might be null initially
   const { toast } = useToast();
-  const router = useRouter(); // Initialize router
-  const pathname = usePathname(); // Initialize pathname
+  const router = useRouter();
+
+  const currentUserId = authUser?.id || userId; // Prefer authUser.id, fallback to appState.userId
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ListFormData>({
     resolver: zodResolver(listFormSchema),
@@ -86,13 +90,15 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
   }, [isOpen, listData, reset]);
 
   const onSubmit = async (data: ListFormData) => {
-    if (!user || !user.id) {
+    if (!currentUserId) { // Use the combined currentUserId
       toast({ title: "Error", description: "You must be logged in to save a list.", variant: "destructive" });
       onClose();
       return;
     }
 
-    if (!isPremium && !listData && lists.filter(l => l.userId === user.id).length >= FREEMIUM_LIST_LIMIT) {
+    const userSpecificLists = lists.filter(l => l.userId === currentUserId);
+
+    if (!isPremium && !listData && userSpecificLists.length >= FREEMIUM_LIST_LIMIT) {
       toast({
         title: "List Limit Reached",
         description: (
@@ -110,8 +116,8 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
     }
 
     const payloadForApi = {
-      userId: user.id,
-      id: listData ? listData.id : undefined,
+      userId: currentUserId, // Ensure userId is from the authenticated user
+      id: listData ? listData.id : undefined, // Pass id only if editing
       name: data.name,
       budgetLimit: data.budgetLimit ?? 0,
       defaultCategory: data.defaultCategory && categories.some(c => c.id === data.defaultCategory) ? data.defaultCategory : 'uncategorized',
@@ -120,38 +126,25 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
     const endpoint = listData ? 'lists/update_list.php' : 'lists/create_list.php';
 
     try {
-      // Simulate API call for now since backend is not fully integrated
-      // const result = await fetchFromApi(endpoint, {
-      //   method: 'POST',
-      //   body: JSON.stringify(payloadForApi),
-      // });
-      // if (!result.success) {
-      //   throw new Error(result.message || 'Failed to save list');
-      // }
+      const result = await fetchFromApi(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payloadForApi),
+      });
 
-      // Simulated API response:
-      const simulatedResult = {
-        success: true,
-        list: {
-          ...payloadForApi,
-          id: listData ? listData.id : `list-${Date.now()}`, // Simulate ID generation
-          userId: user.id // Ensure userId is correctly set
-        } as List,
-        message: listData ? "List updated successfully." : "List created successfully."
-      };
-      // End of simulation
+      if (!result.success || !result.list) { // Ensure result.list exists
+        throw new Error(result.message || 'Failed to save list');
+      }
+      
+      const savedList = result.list as List;
 
       if (listData) {
-        dispatch({ type: 'UPDATE_LIST', payload: simulatedResult.list });
-        toast({ title: "Success", description: simulatedResult.message });
+        dispatch({ type: 'UPDATE_LIST', payload: savedList });
+        toast({ title: "Success", description: result.message || "List updated successfully." });
       } else {
-        dispatch({ type: 'ADD_LIST', payload: simulatedResult.list });
-        toast({ title: "Success", description: simulatedResult.message });
-        
-        // If a new list was created and we are on the create-first page, redirect
-        if (pathname === '/list/create-first') {
-          console.log("AddEditListModal: New list created, redirecting from /list/create-first to /list");
-          router.replace('/list'); // Redirect to the main list page
+        dispatch({ type: 'ADD_LIST', payload: savedList });
+        toast({ title: "Success", description: result.message || "List created successfully." });
+        if (onListSaved) {
+          onListSaved(); // Call the callback for new list creation
         }
       }
       onClose();
@@ -166,6 +159,16 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
       onClose();
     }
   };
+
+  const availableCategories = [
+    { id: 'uncategorized', name: '-- No Default --', userId: null }, // Explicit "no default" option
+    ...DEFAULT_CATEGORIES.filter(cat => cat.id !== 'uncategorized'), // Default global categories
+    ...categories.filter(cat => cat.userId === currentUserId) // User's custom categories
+  ];
+  // Deduplicate categories by ID, giving preference to user's custom categories if names match defaults
+  const uniqueCategories = Array.from(new Map(availableCategories.map(cat => [cat.id, cat])).values())
+                            .sort((a, b) => a.name.localeCompare(b.name));
+
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -241,22 +244,19 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
                     <ScrollArea className="h-[200px] w-full">
                       <SelectGroup>
                         <SelectLabel className="text-muted-foreground/80 text-xs px-2">Categories</SelectLabel>
-                        <SelectItem
-                            value="uncategorized"
-                            className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm text-muted-foreground"
-                        >
-                             -- No Default --
-                        </SelectItem>
-                        {categories.filter(cat => cat.id !== 'uncategorized').map((category) => (
+                        {uniqueCategories.map((category) => (
                           <SelectItem
                             key={category.id}
                             value={category.id}
-                            className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm"
+                            className={cn(
+                                "focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-sm",
+                                category.id === 'uncategorized' && "text-muted-foreground"
+                            )}
                           >
                             {category.name}
                           </SelectItem>
                         ))}
-                        {categories.filter(cat => cat.id !== 'uncategorized').length === 0 && <SelectItem value="no-cat-option" disabled className="text-center text-muted-foreground text-xs p-2">No custom categories defined.</SelectItem>}
+                        {uniqueCategories.filter(cat => cat.id !== 'uncategorized').length === 0 && <SelectItem value="no-custom-cat-option" disabled className="text-center text-muted-foreground text-xs p-2">No custom categories defined.</SelectItem>}
                       </SelectGroup>
                     </ScrollArea>
                   </SelectContent>

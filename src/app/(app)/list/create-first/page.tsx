@@ -16,7 +16,8 @@ export default function CreateFirstListPage() {
 
     const isLoading = authIsLoading || appLoading;
 
-    // Effect to redirect authenticated users with lists away from this page
+    // Effect to redirect authenticated users with lists away from this page (now primarily handled by AppLayoutContent)
+    // This acts as a secondary check if user lands here directly.
     useEffect(() => {
         if (!isLoading && isAuthenticated && user && Array.isArray(appState.lists)) {
             const userLists = appState.lists.filter(list => list.userId === user.id);
@@ -33,13 +34,19 @@ export default function CreateFirstListPage() {
             return;
         }
         if (isAuthenticated && user) {
-            // User is authenticated, open the modal to create a list
             setIsAddListModalOpen(true);
         } else {
-            // User is not authenticated, redirect to login/signup
-            console.log("CreateFirstListPage: User not authenticated, redirecting to /auth for list creation.");
-            router.push('/auth?redirect=/list/create-first'); // Redirect back here after auth
+            // This case should ideally be handled by middleware or AppLayout redirecting to /auth
+            console.log("CreateFirstListPage: User not authenticated. This page should not be reachable without auth.");
+            router.push('/auth?redirect=/list/create-first'); 
         }
+    };
+
+    const handleListCreated = () => {
+        setIsAddListModalOpen(false);
+        // AppContext will update lists, AppLayoutContent's useEffect will handle redirection to /list
+        // Or, more directly, redirect here:
+        router.replace('/list');
     };
 
     if (isLoading) {
@@ -51,7 +58,8 @@ export default function CreateFirstListPage() {
     }
     
     // If an authenticated user has lists, they will be redirected by the useEffect.
-    // This page is primarily for unauthenticated users or authenticated users without lists.
+    // This page is primarily for authenticated users without lists.
+    // If not authenticated, AppLayoutContent should redirect to /auth.
 
     return (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center py-10">
@@ -68,11 +76,11 @@ export default function CreateFirstListPage() {
                 <PlusCircle className="mr-2 h-5 w-5" /> Create New List
             </Button>
             
-            {/* Modal is rendered only if user is authenticated, to prevent issues if auth state changes while modal is open */}
             {isAuthenticated && user && (
                  <AddEditListModal
                      isOpen={isAddListModalOpen}
                      onClose={() => setIsAddListModalOpen(false)}
+                     onListSaved={handleListCreated} // Add this prop to handle successful save
                      // listData is null for creating a new list
                  />
             )}
