@@ -1,12 +1,14 @@
+
 "use client";
 
-import React, { Fragment, useState, useEffect } from 'react';
+import React, { Fragment, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Sheet,
   SheetTrigger,
   SheetClose,
+  SheetContent as ShadSheetContent, // Renamed to avoid conflict if SidebarSheetContent is used
 } from "@/components/ui/sheet";
 import {
   Sidebar,
@@ -15,6 +17,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarFooter,
+  SidebarInset,
   SidebarSeparator,
   SidebarSheetContent, // Use the custom SidebarSheetContent
 } from '@/components/ui/sidebar';
@@ -32,6 +36,7 @@ import {
   Star,
   AppWindow as AppsIcon, 
   X,
+  DollarSign, // For currency settings
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -41,6 +46,8 @@ import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useClientOnly } from '@/hooks/use-client-only';
 
+
+// --- Mobile Header Component ---
 const MobileHeader: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
@@ -85,6 +92,7 @@ const MobileHeader: React.FC = () => {
              <span className="sr-only">Toggle Sidebar</span>
            </Button>
          </SheetTrigger>
+         {/* Using the custom SidebarSheetContent from sidebar.tsx */}
          <SidebarSheetContent side="left" className="p-0 flex flex-col">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary" onClick={handleLinkClick}>
@@ -92,7 +100,7 @@ const MobileHeader: React.FC = () => {
                 <ClientOnly><span>Neon Shopping</span></ClientOnly>
               </Link>
             </SidebarHeader>
-            <SidebarContent className="flex-grow p-2 overflow-y-auto">
+            <SidebarContent className="flex-grow p-2 overflow-y-auto"> {/* Ensure this can scroll */}
               <SidebarMenu>
                 {mainNavItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
@@ -146,6 +154,7 @@ const MobileHeader: React.FC = () => {
                 ))}
               </SidebarMenu>
             </SidebarContent>
+            {/* Removed SidebarFooter for simplicity, can be re-added if needed */}
          </SidebarSheetContent>
        </Sheet>
 
@@ -155,31 +164,44 @@ const MobileHeader: React.FC = () => {
           <ClientOnly><span>Neon Shopping</span></ClientOnly>
         </Link>
       </div>
-      <div className="w-[52px]" />
+      <div className="w-[52px]" /> {/* Placeholder to balance the header */}
     </header>
   );
 };
 
+
+// --- Main AppLayoutContent Component ---
 const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const appContext = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
-  const { isLoading, state } = appContext; 
+  
   const isClientMounted = useClientOnly();
+  // Use context's isLoading and isInitialDataLoaded directly
+  const { isLoading: contextIsLoading, state: appState } = appContext;
+  const { isInitialDataLoaded, lists } = appState;
 
+  // --- Redirect Logic ---
   useEffect(() => {
-    if (isClientMounted && !isLoading && state.isInitialDataLoaded) {
-      const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+    // Ensure this effect only runs client-side and after initial data load attempt
+    if (isClientMounted && !contextIsLoading && isInitialDataLoaded) {
+      const hasLists = Array.isArray(lists) && lists.length > 0;
       
-      if (!hasLists && pathname !== '/list/create-first') { 
+      console.log("AppLayoutContent Redirect Check:", { hasLists, pathname, contextIsLoading, isInitialDataLoaded });
+
+      if (!hasLists && pathname !== '/list/create-first') {
+        console.log("AppLayout: No lists, redirecting to /list/create-first from", pathname);
         router.replace('/list/create-first');
       } else if (hasLists && pathname === '/list/create-first') {
+        console.log("AppLayout: Lists exist, redirecting to /list from /list/create-first");
         router.replace('/list');
       }
     }
-  }, [isClientMounted, isLoading, state.isInitialDataLoaded, appContext.state.lists, pathname, router]);
+  }, [isClientMounted, contextIsLoading, isInitialDataLoaded, lists, pathname, router]);
 
-  if (!isClientMounted || isLoading || !state.isInitialDataLoaded) {
+
+  // Primary loading state: wait for client mount and initial data load from context
+  if (!isClientMounted || contextIsLoading || !isInitialDataLoaded) {
     return (
       <div className="flex items-center justify-center h-screen bg-background text-primary">
         <div className="flex flex-col items-center">
@@ -207,7 +229,8 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon, target: '_blank', rel: 'noopener noreferrer', isExternal: true, url: 'https://play.google.com/store/apps/developer?id=Featured+Cool+Apps' },
   ];
   
-  if (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname !== '/list/create-first') {
+  // Fallback if redirects in useEffect haven't fired yet or if on create-first and lists just got created
+  if (Array.isArray(lists) && lists.length === 0 && pathname !== '/list/create-first') {
      return (
       <div className="flex items-center justify-center h-screen bg-background text-primary">
          <div className="flex flex-col items-center">
@@ -220,7 +243,10 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
 
   return (
     <Fragment>
+      {/* Mobile Header */}
       <MobileHeader />
+
+      {/* Desktop Sidebar */}
       <Sidebar className="hidden md:flex md:flex-col">
         <SidebarHeader className="p-4 border-b border-sidebar-border shrink-0">
           <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
@@ -228,7 +254,7 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
             <ClientOnly><span>Neon Shopping</span></ClientOnly>
           </Link>
         </SidebarHeader>
-        <SidebarContent className="flex-grow p-2 overflow-y-auto">
+        <SidebarContent className="flex-grow p-2 overflow-y-auto"> {/* Ensure this can scroll */}
           <SidebarMenu>
             {mainNavItems.map((item) => (
               <SidebarMenuItem key={item.href}>
@@ -277,9 +303,13 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
               ))}
             </SidebarMenu>
         </SidebarContent>
+        {/* Removed SidebarFooter for simplicity */}
       </Sidebar>
+
+      {/* Main Content Area */}
+      {/* Ensure main content area allows for scrolling if children overflow */}
       <main className="flex flex-1 flex-col md:ml-64 bg-background text-foreground overflow-y-auto">
-         <div className="flex-grow p-4 sm:p-6 md:p-8">
+         <div className="flex-grow p-4 sm:p-6 md:p-8"> {/* Standard padding */}
             {children}
          </div>
       </main>
@@ -287,6 +317,7 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
   );
 };
 
+// Wrapper component to include TooltipProvider
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <TooltipProvider delayDuration={0}>
