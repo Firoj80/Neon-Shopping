@@ -4,48 +4,39 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ListPlus, PlusCircle } from 'lucide-react';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
-import { useAuth } from '@/context/auth-context';
+// Removed useAuth
 import { useRouter } from 'next/navigation';
-import { useAppContext } from '@/context/app-context'; // For checking list count if needed
+import { useAppContext } from '@/context/app-context'; 
 
 export default function CreateFirstListPage() {
     const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
-    const { isAuthenticated, isLoading: authIsLoading, user } = useAuth();
+    // Removed isAuthenticated, authIsLoading, user from useAuth
     const { state: appState, isLoading: appLoading } = useAppContext();
     const router = useRouter();
 
-    const isLoading = authIsLoading || appLoading;
+    const isLoading = appLoading; // Only appLoading matters now
 
-    // Effect to redirect authenticated users with lists away from this page (now primarily handled by AppLayoutContent)
-    // This acts as a secondary check if user lands here directly.
+    // Effect to redirect users with lists away from this page (now primarily handled by AppLayoutContent)
     useEffect(() => {
-        if (!isLoading && isAuthenticated && user && Array.isArray(appState.lists)) {
-            const userLists = appState.lists.filter(list => list.userId === user.id);
-            if (userLists.length > 0) {
-                console.log("CreateFirstListPage: Authenticated and has lists, redirecting to /list");
+        if (!isLoading && Array.isArray(appState.lists)) {
+            if (appState.lists.length > 0) {
+                console.log("CreateFirstListPage: Has lists, redirecting to /list");
                 router.replace('/list');
             }
         }
-    }, [isLoading, isAuthenticated, user, appState.lists, router]);
+    }, [isLoading, appState.lists, router]);
 
     const handleCreateListClick = () => {
         if (isLoading) {
-            console.log("Auth/App still loading, please wait...");
+            console.log("App still loading, please wait...");
             return;
         }
-        if (isAuthenticated && user) {
-            setIsAddListModalOpen(true);
-        } else {
-            // This case should ideally be handled by middleware or AppLayout redirecting to /auth
-            console.log("CreateFirstListPage: User not authenticated. This page should not be reachable without auth.");
-            router.push('/auth?redirect=/list/create-first'); 
-        }
+        // No authentication check needed
+        setIsAddListModalOpen(true);
     };
 
     const handleListCreated = () => {
         setIsAddListModalOpen(false);
-        // AppContext will update lists, AppLayoutContent's useEffect will handle redirection to /list
-        // Or, more directly, redirect here:
         router.replace('/list');
     };
 
@@ -57,10 +48,6 @@ export default function CreateFirstListPage() {
         );
     }
     
-    // If an authenticated user has lists, they will be redirected by the useEffect.
-    // This page is primarily for authenticated users without lists.
-    // If not authenticated, AppLayoutContent should redirect to /auth.
-
     return (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center py-10">
             <ListPlus className="h-16 w-16 text-primary/50 mb-4" />
@@ -76,14 +63,12 @@ export default function CreateFirstListPage() {
                 <PlusCircle className="mr-2 h-5 w-5" /> Create New List
             </Button>
             
-            {isAuthenticated && user && (
-                 <AddEditListModal
-                     isOpen={isAddListModalOpen}
-                     onClose={() => setIsAddListModalOpen(false)}
-                     onListSaved={handleListCreated} // Add this prop to handle successful save
-                     // listData is null for creating a new list
-                 />
-            )}
+            {/* userId will be passed from AppContext if AddEditListModal needs it */}
+             <AddEditListModal
+                 isOpen={isAddListModalOpen}
+                 onClose={() => setIsAddListModalOpen(false)}
+                 onListSaved={handleListCreated}
+             />
         </div>
     );
 }

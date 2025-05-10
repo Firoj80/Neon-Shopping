@@ -1,3 +1,4 @@
+// src/app/(app)/history/page.tsx
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useAppContext } from '@/context/app-context';
 import type { ShoppingListItem, Category, List } from '@/context/app-context';
-import { subDays, format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { subDays, format, isWithinInterval, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards, Download, Lock } from 'lucide-react';
+import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards, Download } from 'lucide-react'; // Removed Lock
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
@@ -21,23 +22,25 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import Link from 'next/link'; // For linking to premium page
+// Removed Link import
 
 type CategoryFilter = string; 
 type SortOption = 'dateDesc' | 'dateAsc' | 'priceDesc' | 'priceAsc';
 type ListFilter = string | null; 
+type TimePeriodPreset = '7d' | '30d' | '90d' | 'custom'; // Added for consistency
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDFWithAutoTable;
 }
 
 export default function HistoryPage() {
-    const { state, dispatch, formatCurrency, isLoading } = useAppContext();
-    const { isPremium } = state; // Get premium status
+    const { state, dispatch, formatCurrency, isLoading: appContextIsLoading } = useAppContext();
+    const { shoppingListItems, categories: appCategories, lists: appLists, userId } = state;
+    // Removed isPremium
 
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
     const [sortOption, setSortOption] = useState<SortOption>('dateDesc');
@@ -48,9 +51,30 @@ export default function HistoryPage() {
         return { from: startDate, to: endDate };
     });
     const [selectedListId, setSelectedListId] = useState<ListFilter>(null); 
+    const [timePeriodPreset, setTimePeriodPreset] = useState<TimePeriodPreset>('30d'); // For date preset dropdown
+
+    const isLoading = appContextIsLoading;
+
+     useEffect(() => {
+        if (timePeriodPreset === 'custom' || !dateRange) return;
+        const now = new Date();
+        let newStartDate: Date;
+        const newEndDate = endOfDay(now);
+        switch (timePeriodPreset) {
+            case '7d': newStartDate = startOfDay(subDays(now, 6)); break;
+            case '90d': newStartDate = startOfDay(subDays(now, 89)); break;
+            case '30d':
+            default: newStartDate = startOfDay(subDays(now, 29)); break;
+        }
+        if (!isSameDay(dateRange.from!, newStartDate) || !isSameDay(dateRange.to!, newEndDate)) {
+            setDateRange({ from: newStartDate, to: newEndDate });
+        }
+    }, [timePeriodPreset, dateRange]);
 
     const historyItems = useMemo(() => {
-        let items = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : [];
+        if (!Array.isArray(shoppingListItems)) return [];
+        let items = shoppingListItems.filter(item => item.checked && item.userId === userId); // Filter by current user
+
         if (selectedListId !== null) {
             items = items.filter(item => item.listId === selectedListId); 
         }
@@ -75,10 +99,13 @@ export default function HistoryPage() {
             }
         });
         return items;
-    }, [state.shoppingListItems, dateRange, selectedCategory, sortOption, selectedListId]);
+    }, [shoppingListItems, dateRange, selectedCategory, sortOption, selectedListId, userId]);
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
+         if (newRange?.from && newRange?.to) {
+           setTimePeriodPreset('custom');
+        }
     };
 
      const handleDeleteItem = (id: string) => {
@@ -87,42 +114,87 @@ export default function HistoryPage() {
 
      const confirmDelete = () => {
         if (itemToDelete) {
-          dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete });
+          dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete }); // Assuming local storage removal
           setItemToDelete(null);
         }
      };
 
     const getCategoryName = (categoryId: string): string => {
-      return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
+      return appCategories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
     };
 
      const getFilterLabel = () => {
        let dateLabel = 'All Time';
-        if (dateRange?.from && dateRange?.to) {
-            dateLabel = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`;
-        }
+        if (timePeriodPreset !== 'custom' && dateRange?.from && dateRange?.to) {
+             switch (timePeriodPreset) {
+                case '7d': dateLabel = 'Last 7d'; break;
+                case '30d': dateLabel = 'Last 30d'; break;
+                case '90d': dateLabel = 'Last 90d'; break;
+             }
+         } else if (dateRange?.from && dateRange?.to) {
+             dateLabel = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`;
+         } else {
+             dateLabel = 'Select Dates';
+         }
        const categoryLabel = selectedCategory === 'all' ? '' : ` (${getCategoryName(selectedCategory)})`;
-       const listName = selectedListId === null ? 'All Lists' : state.lists.find(list => list.id === selectedListId)?.name || 'Unknown List';
+       const listName = selectedListId === null ? 'All Lists' : appLists.find(list => list.id === selectedListId && list.userId === userId)?.name || 'Unknown List';
        return `${listName} | ${dateLabel}${categoryLabel}`;
      };
 
      const handleExportPDF = () => {
-        if (!isPremium) return; // Premium check
          const doc = new jsPDF() as jsPDFWithAutoTable;
-         // ... (rest of PDF export logic)
+         doc.text("Purchase History Report", 14, 16);
+         doc.setFontSize(10);
+         doc.text(`Filters: ${getFilterLabel()}`, 14, 22);
+
+         const tableColumn = ["Item Name", "Quantity", "Price", "Total", "Category", "Date Purchased"];
+         const tableRows: (string | number)[][] = [];
+
+         historyItems.forEach(item => {
+             const itemData = [
+                 item.name,
+                 item.quantity,
+                 formatCurrency(item.price),
+                 formatCurrency(item.price * item.quantity),
+                 getCategoryName(item.category),
+                 format(new Date(item.dateAdded), "MMM d, yyyy")
+             ];
+             tableRows.push(itemData);
+         });
+
+         doc.autoTable({
+             startY: 30,
+             head: [tableColumn],
+             body: tableRows,
+             theme: 'grid',
+             styles: { fontSize: 8, cellPadding: 1.5, halign: 'left' },
+             headStyles: { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold'},
+             alternateRowStyles: { fillColor: [245, 245, 245] },
+         });
          doc.save('purchase_history_report.pdf');
      };
 
      const downloadCSV = (csvContent: string, fileName: string) => {
-        if (!isPremium) return; // Premium check
          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-         // ... (rest of CSV download logic)
+         const link = document.createElement("a");
+         if (link.download !== undefined) {
+             const url = URL.createObjectURL(blob);
+             link.setAttribute("href", url);
+             link.setAttribute("download", fileName);
+             link.style.visibility = 'hidden';
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+         }
      };
 
      const handleExportCSV = () => {
-        if (!isPremium) return; // Premium check
-         let csvContent = "";
-         // ... (rest of CSV content generation logic)
+         let csvContent = "Item Name,Quantity,Price,Total,Category,Date Purchased\r\n";
+         historyItems.forEach(item => {
+             const safeName = `"${item.name.replace(/"/g, '""')}"`;
+             const safeCategory = `"${getCategoryName(item.category).replace(/"/g, '""')}"`;
+             csvContent += `${safeName},${item.quantity},${item.price},${item.price * item.quantity},${safeCategory},"${format(new Date(item.dateAdded), "yyyy-MM-dd")}"\r\n`;
+         });
          downloadCSV(csvContent, 'purchase_history_report.csv');
      };
 
@@ -130,48 +202,30 @@ export default function HistoryPage() {
         return <HistoryPageSkeleton />;
     }
 
-    if (!isPremium) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <Lock className="h-16 w-16 text-primary mb-4" />
-                <h2 className="text-2xl font-semibold text-neonText mb-2">Purchase History Locked</h2>
-                <p className="text-muted-foreground mb-6 max-w-md">
-                    Access to your detailed purchase history and export features is a Premium benefit.
-                    Upgrade to keep track of all your past expenses!
-                </p>
-                <Button asChild className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon glow-border">
-                    <Link href="/premium">Upgrade to Premium</Link>
-                </Button>
-            </div>
-        );
-    }
-
+    // No premium check needed, all users can access history
     return (
         <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full">
-             {/* Header */}
              <div className="flex justify-between items-center">
                  <h1 className="text-xl sm:text-2xl font-bold text-primary flex items-center gap-2">
                      <History className="h-6 w-6" /> Purchase History
                  </h1>
                  <div className="flex gap-2">
-                     <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3" disabled={!isPremium}>
-                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF {!isPremium && <Lock className="h-3 w-3 ml-1" />}
+                     <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF
                      </Button>
-                     <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3" disabled={!isPremium}>
-                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV {!isPremium && <Lock className="h-3 w-3 ml-1" />}
+                     <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV
                      </Button>
                  </div>
              </div>
 
-              {/* Filter & Sort Section */}
-              <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border-inner">
+              <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border">
                   <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                        <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2 mb-2 sm:mb-0">
                              <Filter className="h-4 w-4" /> Filters &amp; Sort
                        </CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
-                      {/* List Filter */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                            <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
                                <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
@@ -182,15 +236,28 @@ export default function HistoryPage() {
                                   <SelectGroup>
                                       <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Shopping List</SelectLabel>
                                       <SelectItem value="all" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">All Lists</SelectItem>
-                                      {state.lists.map((list) => (
+                                      {appLists.filter(list => list.userId === userId).map((list) => (
                                           <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
                                       ))}
-                                       {state.lists.length === 0 && <SelectItem value="no-lists" disabled>No lists available</SelectItem>}
+                                       {appLists.filter(list => list.userId === userId).length === 0 && <SelectItem value="no-lists" disabled>No lists available</SelectItem>}
                                   </SelectGroup>
                               </SelectContent>
                           </Select>
                       </div>
-                      {/* Date Range Picker */}
+                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
+                          <Select value={timePeriodPreset} onValueChange={(value: TimePeriodPreset) => setTimePeriodPreset(value)}>
+                              <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary [&[data-state=open]]:border-primary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
+                                 <CalendarDays className="h-4 w-4 mr-2 opacity-70" />
+                                 <SelectValue placeholder="Select time period" />
+                             </SelectTrigger>
+                             <SelectContent className="bg-card border-secondary/80 text-neonText glow-border-inner">
+                                 <SelectItem value="7d" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">Last 7 Days</SelectItem>
+                                 <SelectItem value="30d" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">Last 30 Days</SelectItem>
+                                 <SelectItem value="90d" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">Last 90 Days</SelectItem>
+                                 <SelectItem value="custom" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">Custom Range</SelectItem>
+                             </SelectContent>
+                         </Select>
+                     </div>
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
                           <DateRangePicker
                               range={dateRange}
@@ -199,7 +266,6 @@ export default function HistoryPage() {
                               align="start"
                           />
                       </div>
-                      {/* Category Filter */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
@@ -211,18 +277,17 @@ export default function HistoryPage() {
                                       <SelectGroup>
                                           <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Category</SelectLabel>
                                           <SelectItem value="all" className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">All Categories</SelectItem>
-                                          {state.categories.map((category) => (
+                                          {appCategories.filter(c => c.userId === userId || c.userId === null).map((category) => (
                                               <SelectItem key={category.id} value={category.id} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
                                                   {category.name}
                                               </SelectItem>
                                           ))}
-                                          {state.categories.length === 0 && <SelectItem value="none" disabled>No categories defined</SelectItem>}
+                                          {appCategories.filter(c => c.userId === userId || c.userId === null).length === 0 && <SelectItem value="none" disabled>No categories defined</SelectItem>}
                                       </SelectGroup>
                                   </ScrollArea>
                               </SelectContent>
                           </Select>
                       </div>
-                       {/* Sort Select */}
                        <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
                               <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary text-xs sm:text-sm glow-border-inner">
@@ -243,7 +308,6 @@ export default function HistoryPage() {
                   </CardContent>
               </Card>
 
-            {/* History Items List */}
             <div className="flex-grow overflow-y-auto mt-4">
                 <ScrollArea className="h-full pr-1">
                     {historyItems.length > 0 ? (
@@ -260,7 +324,6 @@ export default function HistoryPage() {
                 </ScrollArea>
             </div>
 
-            {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
                 <AlertDialogContent className="glow-border">
                     <AlertDialogHeader>
@@ -277,11 +340,10 @@ export default function HistoryPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
         </div>
     );
 }
-// ... (HistoryItemCard and HistoryPageSkeleton remain the same)
+
 interface HistoryItemCardProps {
     item: ShoppingListItem;
     formatCurrency: (amount: number) => string;
@@ -297,7 +359,6 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
   return (
     <Card className="rounded-lg shadow-sm p-3 w-full border-secondary/20 bg-card/70 hover:border-secondary/40 transition-colors duration-200 glow-border-inner">
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-        {/* Item Details */}
         <div className="flex-grow min-w-0">
           <p className="text-sm font-medium leading-tight text-neonText/90">{item.name}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
@@ -310,7 +371,6 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
           </div>
         </div>
 
-        {/* Date and Delete Button */}
          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 mt-2 sm:mt-0">
              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <CalendarDays className="h-3 w-3" /> {purchaseDate}
@@ -325,17 +385,13 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
                 <Trash2 className="h-4 w-4" />
             </Button>
          </div>
-
       </div>
     </Card>
   );
 };
 
-
-// --- Skeleton Loader Component ---
 const HistoryPageSkeleton: React.FC = () => (
     <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">
-        {/* Header Skeleton */}
         <div className="flex justify-between items-center">
             <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" />
             <div className="flex gap-2">
@@ -344,10 +400,9 @@ const HistoryPageSkeleton: React.FC = () => (
              </div>
         </div>
 
-        {/* Filter Section Skeleton */}
         <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border-inner">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                 <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
+                 <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" />
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
@@ -357,7 +412,6 @@ const HistoryPageSkeleton: React.FC = () => (
             </CardContent>
         </Card>
 
-         {/* List Area Skeleton */}
          <div className="flex-grow overflow-y-auto mt-4">
             <ScrollArea className="h-full pr-1">
                 <div className="flex flex-col gap-2 pb-4">
@@ -380,7 +434,7 @@ const HistoryPageSkeleton: React.FC = () => (
                           </div>
                         </Card>
                     ))}
-                </div>
+                </ul>
             </ScrollArea>
          </div>
     </div>

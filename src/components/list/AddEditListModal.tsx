@@ -24,16 +24,14 @@ import {
   SelectGroup,
   SelectLabel,
   SelectValue
-} from '@/components/ui/select';
+} from '@/components/ui/select'; // Ensure Select components are imported
 import type { List, Category } from '@/context/app-context';
-import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context';
+import { useAppContext, DEFAULT_CATEGORIES } from '@/context/app-context'; // Removed FREEMIUM_LIST_LIMIT
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { fetchFromApi } from '@/lib/api';
-import { cn } from '@/lib/utils'; // Added import for cn
+// Removed Link import
+import { useRouter } from 'next/navigation'; // For potential redirection
+import { cn } from '@/lib/utils';
 
 const listFormSchema = z.object({
   name: z.string().min(1, "List name is required").max(50, "List name too long"),
@@ -55,12 +53,9 @@ interface AddEditListModalProps {
 
 export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onClose, listData, onListSaved }) => {
   const { dispatch, state: appState } = useAppContext();
-  const { categories, currency, isPremium, lists } = appState;
-  const { user: authUser } = useAuth();
+  const { categories, currency, userId } = appState; // Removed isPremium and lists (userId is enough)
   const { toast } = useToast();
   const router = useRouter();
-
-  const currentUserId = authUser?.id;
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ListFormData>({
     resolver: zodResolver(listFormSchema),
@@ -89,72 +84,35 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
     }
   }, [isOpen, listData, reset]);
 
-  const onSubmit = async (data: ListFormData) => {
-    if (!currentUserId) {
-      toast({ title: "Error", description: "You must be logged in to save a list.", variant: "destructive" });
+  const onSubmit = (data: ListFormData) => { // No async needed if only local storage
+    if (!userId) {
+      toast({ title: "Error", description: "User not identified. Cannot save list.", variant: "destructive" });
       onClose();
       return;
     }
 
-    const userSpecificLists = lists.filter(l => l.userId === currentUserId);
-
-    if (!isPremium && !listData && userSpecificLists.length >= FREEMIUM_LIST_LIMIT) {
-      toast({
-        title: "List Limit Reached",
-        description: (
-          <div className="flex flex-col gap-2">
-            <span>You've reached the freemium limit of {FREEMIUM_LIST_LIMIT} lists.</span>
-            <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-              <Link href="/premium">Upgrade to Premium</Link>
-            </Button>
-          </div>
-        ),
-        variant: "default",
-      });
-      onClose();
-      return;
-    }
-
-    const payloadForApi = {
-      userId: currentUserId,
-      id: listData ? listData.id : undefined,
-      name: data.name,
-      budgetLimit: data.budgetLimit ?? 0,
-      defaultCategory: data.defaultCategory && categories.some(c => c.id === data.defaultCategory) ? data.defaultCategory : 'uncategorized',
+    // No premium check for list limit
+    const listPayload = {
+        id: listData ? listData.id : undefined, // Keep ID if editing
+        name: data.name,
+        budgetLimit: data.budgetLimit ?? 0,
+        defaultCategory: data.defaultCategory && categories.some(c => c.id === data.defaultCategory) ? data.defaultCategory : 'uncategorized',
     };
 
-    const endpoint = listData ? 'lists/update_list.php' : 'lists/create_list.php';
 
-    try {
-      const result = await fetchFromApi(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(payloadForApi),
-      });
-
-      if (!result.success || !result.list) {
-        throw new Error(result.message || 'Failed to save list');
-      }
-      
-      const savedList = result.list as List;
-
-      if (listData) {
-        dispatch({ type: 'UPDATE_LIST', payload: savedList });
-        toast({ title: "Success", description: result.message || "List updated successfully." });
+    if (listData) {
+      dispatch({ type: 'UPDATE_LIST', payload: { ...listPayload, id: listData.id, userId: listData.userId } as List }); // Cast to ensure all props
+      toast({ title: "Success", description: "List updated successfully." });
+    } else {
+      dispatch({ type: 'ADD_LIST', payload: listPayload }); // ADD_LIST reducer will add userId
+      toast({ title: "Success", description: "List created successfully." });
+      if (onListSaved) {
+        onListSaved();
       } else {
-        dispatch({ type: 'ADD_LIST', payload: savedList });
-        toast({ title: "Success", description: result.message || "List created successfully." });
-        if (onListSaved) {
-          onListSaved();
-        } else {
-          // Fallback redirect if onListSaved is not provided from CreateFirstListPage
-           router.replace('/list');
-        }
+        router.replace('/list'); // Default redirect if not on create-first page
       }
-      onClose();
-    } catch (error: any) {
-      console.error("Error saving list:", error);
-      toast({ title: "Error", description: error.message || 'Could not save list.', variant: "destructive" });
     }
+    onClose();
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -163,11 +121,11 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
     }
   };
 
-  const availableCategories = [
+  const availableCategories = useMemo(() => [
     { id: 'uncategorized', name: '-- No Default --', userId: null },
     ...DEFAULT_CATEGORIES.filter(cat => cat.id !== 'uncategorized'),
-    ...(currentUserId ? categories.filter(cat => cat.userId === currentUserId) : [])
-  ];
+    ...categories.filter(cat => cat.userId === userId) // User's custom categories
+  ], [categories, userId]);
   
   const uniqueCategories = Array.from(new Map(availableCategories.map(cat => [cat.id, cat])).values())
                             .sort((a, b) => {
@@ -216,7 +174,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
                       field.onChange(value === '' ? null : Math.max(0, parseFloat(value) || 0));
                   }}
                   value={field.value === null || field.value === undefined ? '' : String(field.value)}
-                  placeholder="0.00"
+                  placeholder="0.00 (Optional)"
                   className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary text-sm glow-border-inner"
                   min="0"
                   aria-invalid={errors.budgetLimit ? "true" : "false"}

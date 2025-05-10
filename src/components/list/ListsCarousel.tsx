@@ -1,14 +1,15 @@
+// src/components/list/ListsCarousel.tsx
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context';
+import { useAppContext } from '@/context/app-context'; // Removed FREEMIUM_LIST_LIMIT
 import type { List } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Trash2, Lock } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react'; // Removed Lock
 import { cn } from '@/lib/utils';
 import { AddEditListModal } from './AddEditListModal';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
+// Removed Link import
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +23,8 @@ import {
 
 export const ListsCarousel: React.FC = () => {
   const { state, dispatch } = useAppContext();
-  const { lists, selectedListId, isPremium } = state; // Added isPremium
-  const { toast } = useToast(); // For showing premium messages
+  const { lists, selectedListId, userId } = state; // Removed isPremium
+  const { toast } = useToast(); 
 
   const [isAddEditListModalOpen, setIsAddEditListModalOpen] = useState(false);
   const [editingList, setEditingList] = useState<List | null>(null);
@@ -52,21 +53,7 @@ export const ListsCarousel: React.FC = () => {
   };
 
   const handleAddNewList = () => {
-    if (!isPremium && lists.length >= FREEMIUM_LIST_LIMIT) {
-      toast({
-        title: "List Limit Reached",
-        description: (
-          <div className="flex flex-col gap-2">
-            <span>You've reached the freemium limit of {FREEMIUM_LIST_LIMIT} lists.</span>
-            <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-              <Link href="/premium">Upgrade to Premium</Link>
-            </Button>
-          </div>
-        ),
-        variant: "default", // Using default, can be destructive for more alert-like
-      });
-      return;
-    }
+    // No premium check needed, all users can create unlimited lists
     setEditingList(null);
     setIsAddEditListModalOpen(true);
   };
@@ -83,7 +70,7 @@ export const ListsCarousel: React.FC = () => {
     }
   };
 
-  const canCreateMoreLists = isPremium || lists.length < FREEMIUM_LIST_LIMIT;
+  const userSpecificLists = lists.filter(list => list.userId === userId);
 
   return (
     <div className="mb-2">
@@ -92,7 +79,7 @@ export const ListsCarousel: React.FC = () => {
         className="flex overflow-x-auto space-x-2 pb-1 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent"
         style={{ scrollbarWidth: 'thin' }}
       >
-        {lists.map((list) => {
+        {userSpecificLists.map((list) => {
           const isSelected = list.id === selectedListId;
           return (
             <Card
@@ -136,9 +123,9 @@ export const ListsCarousel: React.FC = () => {
             "border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 text-primary glow-border-inner"
           )}
           onClick={handleAddNewList}
-          disabled={!canCreateMoreLists && !isPremium} // Disable if limit reached for freemium
+          // No disabled state related to premium
         >
-          {canCreateMoreLists ? <PlusCircle className="h-4 w-4 mr-1" /> : <Lock className="h-4 w-4 mr-1" />}
+          <PlusCircle className="h-4 w-4 mr-1" />
           <span className="text-xs">New List</span>
         </Button>
       </div>

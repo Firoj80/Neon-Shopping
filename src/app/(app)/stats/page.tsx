@@ -1,3 +1,4 @@
+// src/app/(app)/stats/page.tsx
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,28 +12,29 @@ import { useAppContext } from '@/context/app-context';
 import type { Category, List, ShoppingListItem } from '@/context/app-context';
 import { subDays, format, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, Download, Lock } from 'lucide-react';
+import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, Download } from 'lucide-react'; // Removed Lock
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 import { ChartConfig } from '@/components/ui/chart';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Extends jsPDF
-import Link from 'next/link'; // For linking to premium page
+import 'jspdf-autotable'; 
+// Removed Link import
 
 type TrendChartType = 'line' | 'bar';
 type CategoryChartType = 'pie' | 'bar';
 type TimePeriodPreset = '7d' | '30d' | '90d' | 'custom';
-type CategoryFilter = string; // 'all' or specific category ID
-type ListFilter = string | null; // 'all' represented by null
+type CategoryFilter = string; 
+type ListFilter = string | null; 
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDFWithAutoTable;
 }
 
 export default function StatsPage() {
-    const { state, formatCurrency, isLoading } = useAppContext();
-    const { isPremium } = state; // Get premium status
+    const { state, formatCurrency, isLoading: appContextIsLoading } = useAppContext();
+    // Removed isPremium from state, all features are available
+    const { shoppingListItems, categories: appCategories, lists: appLists, userId } = state;
 
     const [trendChartType, setTrendChartType] = useState<TrendChartType>('line');
     const [categoryChartType, setCategoryChartType] = useState<CategoryChartType>('pie');
@@ -45,10 +47,11 @@ export default function StatsPage() {
     });
     const [selectedListId, setSelectedListId] = useState<ListFilter>(null);
 
+    const isLoading = appContextIsLoading;
+
+
     useEffect(() => {
-        if (timePeriodPreset === 'custom') {
-            return;
-        }
+        if (timePeriodPreset === 'custom' || !dateRange) return; 
         const now = new Date();
         let newStartDate: Date;
         const newEndDate = endOfDay(now);
@@ -58,8 +61,10 @@ export default function StatsPage() {
             case '30d':
             default: newStartDate = startOfDay(subDays(now, 29)); break;
         }
-        setDateRange({ from: newStartDate, to: newEndDate });
-    }, [timePeriodPreset]);
+         if (!isSameDay(dateRange.from!, newStartDate) || !isSameDay(dateRange.to!, newEndDate)) {
+            setDateRange({ from: newStartDate, to: newEndDate });
+        }
+    }, [timePeriodPreset, dateRange]); // Added dateRange to dependency to avoid stale closure
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
@@ -69,19 +74,19 @@ export default function StatsPage() {
     };
 
     const filteredItems = useMemo(() => {
-        if (!dateRange?.from || !dateRange?.to || !Array.isArray(state.shoppingListItems)) return [];
+        if (!dateRange?.from || !dateRange?.to || !Array.isArray(shoppingListItems)) return [];
         const startDate = startOfDay(dateRange.from);
         const endDate = endOfDay(dateRange.to);
-        const allShoppingItems = state.shoppingListItems;
-        return allShoppingItems.filter(item => {
-            if (!item.checked) return false;
+
+        return shoppingListItems.filter(item => {
+            if (!item.checked || item.userId !== userId) return false; // Filter by current user
             if (selectedListId !== null && item.listId !== selectedListId) return false;
             const itemDate = new Date(item.dateAdded);
             const isWithinDate = isWithinInterval(itemDate, { start: startDate, end: endDate });
             const isMatchingCategory = selectedCategory === 'all' || item.category === selectedCategory;
             return isWithinDate && isMatchingCategory;
         });
-    }, [state.shoppingListItems, dateRange, selectedCategory, selectedListId]);
+    }, [shoppingListItems, dateRange, selectedCategory, selectedListId, userId]);
 
     const processedTrendData = useMemo(() => {
         if (!dateRange?.from || !dateRange?.to) return [];
@@ -89,32 +94,37 @@ export default function StatsPage() {
         const endDate = endOfDay(dateRange.to);
         const dailyTotals: Record<string, number> = {};
         const datesInRange = eachDayOfInterval({ start: startDate, end: endDate });
+        
         datesInRange.forEach(date => {
             const formattedDate = format(date, 'yyyy-MM-dd');
             dailyTotals[formattedDate] = 0;
         });
+
         filteredItems.forEach(item => {
             const itemDate = format(new Date(item.dateAdded), 'yyyy-MM-dd');
              if (dailyTotals.hasOwnProperty(itemDate)) {
                 dailyTotals[itemDate] += item.quantity * item.price;
              }
         });
+
         const durationDays = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24);
-        let dateFormat = 'MMM dd';
-        if (durationDays <= 7) dateFormat = 'eee';
-        else if (durationDays > 90) dateFormat = 'MMM yy';
+        let dateFormatVal = 'MMM dd';
+        if (durationDays <= 7) dateFormatVal = 'eee';
+        else if (durationDays > 90) dateFormatVal = 'MMM yy';
+
         const dateMap = new Map<string, Date>();
         Object.keys(dailyTotals).forEach(dateStr => {
-             dateMap.set(dateStr, parseISO(dateStr + 'T00:00:00Z'));
+             dateMap.set(dateStr, parseISO(dateStr + 'T00:00:00Z')); // Ensure correct parsing
         });
+
         const formattedData: ProcessedExpenseData[] = Object.entries(dailyTotals)
           .map(([dateStr, total]) => ({
-             date: format(dateMap.get(dateStr)!, dateFormat),
+             date: format(dateMap.get(dateStr)!, dateFormatVal),
              total,
            }))
           .sort((a, b) => {
-              const dateAStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === a.date)?.[0];
-              const dateBStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === b.date)?.[0];
+              const dateAStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormatVal) === a.date)?.[0];
+              const dateBStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormatVal) === b.date)?.[0];
               if (!dateAStr || !dateBStr) return 0;
               return dateMap.get(dateAStr)!.getTime() - dateMap.get(dateBStr)!.getTime();
           });
@@ -125,22 +135,22 @@ export default function StatsPage() {
          const categoryTotals: Record<string, { total: number; name: string }> = {};
          filteredItems.forEach(item => {
              const categoryId = item.category;
-             const categoryName = state.categories.find(c => c.id === categoryId)?.name || 'Uncategorized';
+             const categoryName = appCategories.find(c => c.id === categoryId)?.name || 'Uncategorized';
              if (!categoryTotals[categoryId]) {
                  categoryTotals[categoryId] = { total: 0, name: categoryName };
              }
              categoryTotals[categoryId].total += item.quantity * item.price;
          });
-         const totalSpent = Object.values(categoryTotals).reduce((sum, catData) => sum + catData.total, 0);
-         if (totalSpent === 0) return [];
+         const totalSpentVal = Object.values(categoryTotals).reduce((sum, catData) => sum + catData.total, 0);
+         if (totalSpentVal === 0) return []; // Return empty if nothing spent
          const categoryData: CategoryData[] = Object.entries(categoryTotals)
              .map(([_, catData]) => ({
                  category: catData.name,
                  total: catData.total,
              }))
-             .sort((a, b) => b.total - a.total);
+             .sort((a, b) => b.total - a.total); // Sort by total descending
          return categoryData;
-     }, [filteredItems, state.categories]);
+     }, [filteredItems, appCategories]);
 
      const dynamicChartConfig = useMemo(() => {
         const config: ChartConfig = { total: { label: "Total Spend", color: "hsl(var(--primary))" } };
@@ -151,42 +161,44 @@ export default function StatsPage() {
             "hsl(210 100% 60%)", "hsl(330 100% 60%)"
         ];
         let colorIndex = 0;
-        state.categories.forEach(cat => {
-          config[cat.name] = {
-            label: cat.name,
-            color: availableColors[colorIndex % availableColors.length],
-          };
-          colorIndex++;
+        appCategories.forEach(cat => {
+          if (cat.name) { // Ensure name exists
+            config[cat.name] = {
+              label: cat.name,
+              color: availableColors[colorIndex % availableColors.length],
+            };
+            colorIndex++;
+          }
         });
-        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" };
+        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" }; // A neutral color
         return config;
-     }, [state.categories]);
+     }, [appCategories]);
 
      const summaryStats = useMemo(() => {
         if (!dateRange?.from || !dateRange?.to) return { totalSpent: 0, averagePerDayInRange: 0, averagePerSpendingDay: 0, highestSpendDay: null, totalItems: 0 };
         const totalSpent = filteredItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
         const daysWithSpending = new Set(filteredItems.map(item => format(new Date(item.dateAdded), 'yyyy-MM-dd')));
-        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size);
+        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size); // Avoid division by zero
          const start = startOfDay(dateRange.from);
          const end = endOfDay(dateRange.to);
          const numberOfDaysInRange = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 3600 * 24) + 1);
          const averagePerDayInRange = totalSpent / numberOfDaysInRange;
          const averagePerSpendingDay = totalSpent / numberOfDaysWithSpending;
-         const highestSpendDay = processedTrendData.reduce(
+         const highestSpendDayData = processedTrendData.reduce(
             (max, day) => (day.total > max.total ? day : max),
-            { date: '', total: -1 }
+            { date: '', total: -Infinity } // Initialize with -Infinity for correct comparison
           );
          const totalItems = filteredItems.length;
-        return { totalSpent, averagePerDayInRange, averagePerSpendingDay, highestSpendDay: highestSpendDay.total >= 0 ? highestSpendDay : null, totalItems };
+        return { totalSpent, averagePerDayInRange, averagePerSpendingDay, highestSpendDay: highestSpendDayData.total > -Infinity ? highestSpendDayData : null, totalItems };
     }, [filteredItems, processedTrendData, dateRange]);
 
      const getCategoryName = (categoryId: string): string => {
-        return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
+        return appCategories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
      };
 
     const getFilterLabel = () => {
         let dateLabel = '';
-        const listName = selectedListId === null ? 'All Lists' : state.lists.find(list => list.id === selectedListId)?.name || 'Unknown List';
+        const listName = selectedListId === null ? 'All Lists' : appLists.find(list => list.id === selectedListId && list.userId === userId)?.name || 'Unknown List';
          if (timePeriodPreset !== 'custom' && dateRange?.from && dateRange?.to) {
              switch (timePeriodPreset) {
                 case '7d': dateLabel = 'Last 7d'; break;
@@ -203,61 +215,126 @@ export default function StatsPage() {
     };
 
     const handleExportPDF = () => {
-        if (!isPremium) return; // Premium check
         const doc = new jsPDF() as jsPDFWithAutoTable;
-        // ... (rest of PDF export logic)
+        doc.text("Expense Dashboard Report", 14, 16);
+        doc.setFontSize(10);
+        doc.text(`Filters: ${getFilterLabel()}`, 14, 22);
+
+        const summaryData = [
+            ["Metric", "Value"],
+            ["Total Spent", formatCurrency(summaryStats.totalSpent)],
+            ["Total Items Purchased", String(summaryStats.totalItems)],
+            ["Avg. Spend / Day (in range)", formatCurrency(summaryStats.averagePerDayInRange)],
+            ["Avg. Spend / Day (spending days)", formatCurrency(summaryStats.averagePerSpendingDay)],
+            ["Highest Spend Day", summaryStats.highestSpendDay ? `${summaryStats.highestSpendDay.date}: ${formatCurrency(summaryStats.highestSpendDay.total)}` : "N/A"],
+        ];
+        doc.autoTable({
+            startY: 30,
+            head: [summaryData[0]],
+            body: summaryData.slice(1),
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 1.5, halign: 'left' },
+            headStyles: { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' }, // Themed head
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+        });
+
+        let lastY = (doc as any).lastAutoTable.finalY || 30;
+
+        if (processedTrendData.length > 0) {
+            doc.text("Expense Trend", 14, lastY + 10);
+            const trendTableData = processedTrendData.map(item => [item.date, formatCurrency(item.total)]);
+            doc.autoTable({
+                startY: lastY + 15,
+                head: [["Date", "Total Spent"]],
+                body: trendTableData,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 1.5 },
+                headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            });
+            lastY = (doc as any).lastAutoTable.finalY;
+        }
+
+        if (processedCategoryData.length > 0) {
+            doc.text("Category Breakdown", 14, lastY + 10);
+            const categoryTableData = processedCategoryData.map(item => [item.category, formatCurrency(item.total)]);
+            doc.autoTable({
+                startY: lastY + 15,
+                head: [["Category", "Total Spent"]],
+                body: categoryTableData,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 1.5 },
+                headStyles: { fillColor: [230, 126, 34], textColor: 255, fontStyle: 'bold' },
+            });
+        }
         doc.save('expense_dashboard_report.pdf');
     };
 
     const downloadCSV = (csvContent: string, fileName: string) => {
-        if (!isPremium) return; // Premium check
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        // ... (rest of CSV download logic)
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
     const handleExportCSV = () => {
-        if (!isPremium) return; // Premium check
         let csvContent = "Data Type,Value 1,Value 2\r\n";
-        // ... (rest of CSV content generation logic)
+        // Summary Stats
+        csvContent += "Summary Statistics,\r\n";
+        csvContent += `"Metric","Value"\r\n`;
+        csvContent += `"Total Spent","${summaryStats.totalSpent}"\r\n`; // Raw number for CSV
+        csvContent += `"Total Items Purchased","${summaryStats.totalItems}"\r\n`;
+        csvContent += `"Avg. Spend / Day (in range)","${summaryStats.averagePerDayInRange}"\r\n`;
+        csvContent += `"Avg. Spend / Day (spending days)","${summaryStats.averagePerSpendingDay}"\r\n`;
+        csvContent += `"Highest Spend Day Date","${summaryStats.highestSpendDay?.date || 'N/A'}"\r\n`;
+        csvContent += `"Highest Spend Amount","${summaryStats.highestSpendDay?.total || 'N/A'}"\r\n`;
+        csvContent += "\r\n";
+
+        // Trend Data
+        csvContent += "Expense Trend Data,\r\n";
+        csvContent += `"Date","Total Spent"\r\n`;
+        processedTrendData.forEach(item => {
+            csvContent += `"${item.date}","${item.total}"\r\n`; // Raw number
+        });
+        csvContent += "\r\n";
+
+        // Category Data
+        csvContent += "Category Breakdown Data,\r\n";
+        csvContent += `"Category","Total Spent"\r\n`;
+        processedCategoryData.forEach(item => {
+            const safeCategory = `"${item.category.replace(/"/g, '""')}"`; // Escape double quotes
+            csvContent += `${safeCategory},"${item.total}"\r\n`;
+        });
+
         downloadCSV(csvContent, 'expense_dashboard_report.csv');
     };
+
 
     if (isLoading) {
         return <StatsPageSkeleton />;
     }
 
-    if (!isPremium) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <Lock className="h-16 w-16 text-primary mb-4" />
-                <h2 className="text-2xl font-semibold text-neonText mb-2">Dashboard Locked</h2>
-                <p className="text-muted-foreground mb-6 max-w-md">
-                    Access to detailed statistics and financial analytics is a Premium feature.
-                    Upgrade to unlock the full power of your expense dashboard!
-                </p>
-                <Button asChild className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon glow-border">
-                    <Link href="/premium">Upgrade to Premium</Link>
-                </Button>
-            </div>
-        );
-    }
-
+    // No premium check needed
     return (
          <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full">
-             {/* Header */}
              <div className="flex justify-between items-center">
                  <h1 className="text-xl sm:text-2xl font-bold text-primary">Expense Dashboard</h1>
                 <div className="flex gap-2">
-                    <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3" disabled={!isPremium}>
-                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF {!isPremium && <Lock className="h-3 w-3 ml-1" />}
+                    <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF
                     </Button>
-                    <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3" disabled={!isPremium}>
-                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV {!isPremium && <Lock className="h-3 w-3 ml-1" />}
+                    <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV
                     </Button>
                 </div>
              </div>
 
-             {/* Filter Section */}
              <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border">
                  <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                       <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2 mb-2 sm:mb-0">
@@ -265,10 +342,9 @@ export default function StatsPage() {
                       </CardTitle>
                  </CardHeader>
                   <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
-                     {/* List Filter */}
                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={selectedListId === null ? 'all' : selectedListId} onValueChange={(value: string) => setSelectedListId(value === 'all' ? null : value)}>
-                              <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
+                              <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
                                  <WalletCards className="h-4 w-4 mr-2 opacity-70" />
                                  <SelectValue placeholder="Select Shopping List" />
                              </SelectTrigger>
@@ -276,15 +352,14 @@ export default function StatsPage() {
                                  <SelectGroup>
                                      <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Shopping List</SelectLabel>
                                      <SelectItem value="all" className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">All Lists</SelectItem>
-                                     {state.lists.map((list) => (
+                                     {appLists.filter(list => list.userId === userId).map((list) => ( // Filter lists by current user
                                          <SelectItem key={list.id} value={list.id} className="focus:bg-primary/30 focus:text-primary data-[state=checked]:font-semibold data-[state=checked]:text-secondary text-xs sm:text-sm">{list.name}</SelectItem>
                                      ))}
-                                      {state.lists.length === 0 && <SelectItem value="no-lists" disabled>No lists available</SelectItem>}
+                                      {appLists.filter(list => list.userId === userId).length === 0 && <SelectItem value="no-lists" disabled>No lists available</SelectItem>}
                                  </SelectGroup>
                              </SelectContent>
                          </Select>
                      </div>
-                     {/* Time Period Preset */}
                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
                           <Select value={timePeriodPreset} onValueChange={(value: TimePeriodPreset) => setTimePeriodPreset(value)}>
                               <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary [&[data-state=open]]:border-primary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
@@ -299,7 +374,6 @@ export default function StatsPage() {
                              </SelectContent>
                          </Select>
                      </div>
-                     {/* Date Range Picker */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
                           <DateRangePicker
                              range={dateRange}
@@ -308,7 +382,6 @@ export default function StatsPage() {
                               align="start"
                           />
                       </div>
-                      {/* Category Filter */}
                        <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
                           <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
@@ -318,17 +391,17 @@ export default function StatsPage() {
                               <SelectContent
                                  className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner"
                                  position="popper"
-                              >
+                               >
                                   <ScrollArea className="h-full">
                                      <SelectGroup>
                                          <SelectLabel className="text-muted-foreground/80 px-2 text-xs">Category</SelectLabel>
                                          <SelectItem value="all" className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">All Categories</SelectItem>
-                                         {state.categories.map((category) => (
+                                         {appCategories.filter(c => c.userId === userId || c.userId === null).map((category) => ( // Show user's and global categories
                                              <SelectItem key={category.id} value={category.id} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary cursor-pointer py-2 text-xs sm:text-sm">
                                                  {category.name}
                                              </SelectItem>
                                          ))}
-                                         {state.categories.length === 0 && <SelectItem value="none" disabled>No categories defined</SelectItem>}
+                                         {appCategories.filter(c => c.userId === userId || c.userId === null).length === 0 && <SelectItem value="none" disabled>No categories defined</SelectItem>}
                                      </SelectGroup>
                                   </ScrollArea>
                              </SelectContent>
@@ -337,10 +410,8 @@ export default function StatsPage() {
                  </CardContent>
              </Card>
 
-             {/* Main Content Area (Scrollable) */}
              <div className="flex-grow overflow-y-auto mt-4">
                  <div className="space-y-4 sm:space-y-6 pb-6">
-                     {/* Summary Cards */}
                      <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                          <Card className="bg-card border-primary/30 shadow-neon glow-border-inner">
                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4 sm:pb-2 sm:pt-4 sm:px-5">
@@ -390,7 +461,6 @@ export default function StatsPage() {
                          </Card>
                      </div>
 
-                     {/* Charts */}
                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                          <Card className="bg-card border-primary/30 shadow-neon lg:col-span-1 glow-border-inner">
                              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
@@ -471,11 +541,9 @@ export default function StatsPage() {
          </div>
     );
 }
-// ... (StatsPageSkeleton remains the same)
 
 const StatsPageSkeleton: React.FC = () => (
     <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">
-         {/* Header Skeleton */}
          <div className="flex justify-between items-center">
              <Skeleton className="h-7 w-2/5 sm:h-8 sm:w-1/3" />
              <div className="flex gap-2">
@@ -484,10 +552,9 @@ const StatsPageSkeleton: React.FC = () => (
              </div>
          </div>
 
-        {/* Filter Section Skeleton */}
         <Card className="bg-card/80 border-border/20 shadow-sm sticky top-0 z-10 glow-border">
             <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
-                 <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
+                 <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" />
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
                  <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
@@ -497,10 +564,8 @@ const StatsPageSkeleton: React.FC = () => (
             </CardContent>
         </Card>
 
-        {/* Main Content Area Skeleton */}
          <div className="flex-grow overflow-y-auto mt-4">
             <div className="space-y-4 sm:space-y-6 pb-6">
-                {/* Summary Cards Skeleton */}
                 <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                     {[1, 2, 3, 4].map((i) => (
                         <Card key={i} className="bg-card border-border/20 shadow-md glow-border-inner">
@@ -516,7 +581,6 @@ const StatsPageSkeleton: React.FC = () => (
                     ))}
                 </div>
 
-                {/* Charts Skeleton */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <Card className="bg-card border-border/20 shadow-md lg:col-span-1 glow-border-inner">
                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 sm:p-5 pb-3 sm:pb-4">
