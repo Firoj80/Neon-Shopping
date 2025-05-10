@@ -10,19 +10,18 @@ import { ShoppingCart, PlusCircle } from 'lucide-react';
 import { useClientOnly } from '@/hooks/use-client-only';
 
 export default function CreateFirstListPage() {
-  const { state, dispatch, isLoading, isInitialDataLoaded } = useAppContext();
+  const { state, isLoading } = useAppContext(); // Removed dispatch and isInitialDataLoaded, now use state.isInitialDataLoaded
   const router = useRouter();
   const [showAddListModal, setShowAddListModal] = useState(false);
   const isClient = useClientOnly();
 
-
   useEffect(() => {
-    // Redirect if lists already exist (and not loading, and client mounted)
-    if (isClient && !isLoading && isInitialDataLoaded && state.lists && state.lists.length > 0) {
-      console.log("CreateFirstListPage: Lists exist, redirecting to /list");
-      router.replace('/list');
+    if (isClient && !isLoading && state.isInitialDataLoaded && state.lists && state.lists.length > 0) {
+      console.log("CreateFirstListPage: Lists exist, AppLayout should redirect to /list");
+      // AppLayout will handle the redirect to /list, no explicit router.replace here
+      // to prevent potential conflicts if AppLayout's redirect is slightly delayed.
     }
-  }, [state.lists, isLoading, isInitialDataLoaded, router, isClient]);
+  }, [state.lists, isLoading, state.isInitialDataLoaded, router, isClient]);
 
   const handleOpenAddListModal = () => {
     if (!state.userId) {
@@ -33,7 +32,7 @@ export default function CreateFirstListPage() {
     setShowAddListModal(true);
   };
 
-  if (!isClient || isLoading || !isInitialDataLoaded) {
+  if (!isClient || isLoading || !state.isInitialDataLoaded) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-background text-center">
         <ShoppingCart className="w-24 h-24 text-primary mb-6 animate-pulse" />
@@ -43,11 +42,14 @@ export default function CreateFirstListPage() {
     );
   }
   
-  // If lists exist after loading, redirect (this is a fallback, AppLayout should also handle this)
+  // If lists exist after loading, AppLayout should handle the primary redirect.
+  // This is a fallback visual state while that redirect might be processing.
   if (state.lists && state.lists.length > 0) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-background text-center">
-            <p className="text-muted-foreground">Redirecting to your lists...</p>
+            <ShoppingCart className="w-24 h-24 text-primary mb-6 animate-pulse" />
+            <h1 className="text-3xl font-bold text-primary mb-4">Loading Your Lists...</h1>
+            <p className="text-muted-foreground">Redirecting shortly...</p>
         </div>
     );
   }
@@ -63,6 +65,7 @@ export default function CreateFirstListPage() {
         <Button
           onClick={handleOpenAddListModal}
           className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-8 py-3 rounded-lg shadow-md hover:shadow-neon transition-all duration-300 ease-in-out transform hover:scale-105 group"
+          disabled={!state.userId} // Disable if userId not yet available
         >
           <PlusCircle className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
           Create First List
@@ -73,15 +76,14 @@ export default function CreateFirstListPage() {
         <AddEditListModal
           isOpen={showAddListModal}
           onClose={() => setShowAddListModal(false)}
-          userId={state.userId}
+          userId={state.userId} // Pass anonymous user ID
           onListCreated={() => {
-            // The useEffect in AppLayout or this page should handle redirect
-            // No explicit redirect here to avoid conflicts if AppLayout handles it.
-            console.log("CreateFirstListPage: List created, modal closed.");
+            // AppLayout will handle redirect to /list
+            console.log("CreateFirstListPage: List created, modal closed. AppLayout handles redirect.");
           }}
         />
       )}
-       {!state.userId && !isLoading && isClient && (
+       {!state.userId && !isLoading && isClient && ( // Show if userId is missing after loading
          <p className="mt-4 text-sm text-destructive">Error: User session not properly initialized. Please refresh.</p>
        )}
     </div>

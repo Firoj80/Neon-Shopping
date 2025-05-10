@@ -1,20 +1,21 @@
 import { Inter } from 'next/font/google';
 import type { Metadata } from 'next';
 import './globals.css';
-import { Providers } from './providers'; // Providers includes AppProvider
-import { AppLayout } from '@/components/layout/app-layout'; // Corrected import path
+import { Providers } from './providers'; 
+import { AppLayout } from '@/components/layout/AppLayout'; // Ensure this path is correct
 import { Toaster } from "@/components/ui/toaster";
-import ClientOnly from '@/components/client-only'; // Import ClientOnly
+import ClientOnly from '@/components/client-only';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { ThemeWatcher } from '@/context/theme-watcher';
 import { cn } from '@/lib/utils';
-
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
 });
 
+// Metadata should be defined in a server component or at the page level if layout is client component
+// For now, keeping it here, but if 'use client' is added to this file, it needs to move.
 export const metadata: Metadata = {
   title: 'Neon Shopping',
   description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
@@ -36,8 +37,8 @@ export default function RootLayout({
       >
         <Providers> {/* AppProvider is wrapped inside Providers */}
           <ThemeWatcher>
-            <ClientOnly> {/* Ensures client-side only rendering for components using browser APIs */}
-              <SidebarProvider> {/* SidebarProvider for sidebar state */}
+            <ClientOnly>
+              <SidebarProvider>
                 <AppLayout>
                   {children}
                 </AppLayout>

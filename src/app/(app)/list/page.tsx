@@ -19,19 +19,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Keep Label for potential future use
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemCard } from '@/components/shopping/item-card';
 import { PlusCircle, Search, LayoutList, ShoppingCart } from 'lucide-react';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
-// Removed CreateFirstListPage import, as AppLayout handles the redirect to the route.
-
+// Removed CreateFirstListPage import
 
 export default function ShoppingListPage() {
-  const { state, dispatch, isLoading, isInitialDataLoaded } = useAppContext();
-  const { lists, selectedListId, shoppingListItems, currency, categories, budget, isPremium } = state;
+  const { state, dispatch, isLoading } = useAppContext(); // Removed isInitialDataLoaded, isLoading from AppContext is sufficient
+  const { lists, selectedListId, shoppingListItems, currency, categories, userId } = state;
 
   const [showAddEditItemModal, setShowAddEditItemModal] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<AppShoppingListItem | null>(null);
@@ -40,7 +39,7 @@ export default function ShoppingListPage() {
   const [itemToDelete, setItemToDelete] = useState<AppShoppingListItem | null>(null);
   const [showAddEditListModal, setShowAddEditListModal] = useState(false);
   const [listToEdit, setListToEdit] = useState<List | null>(null);
-
+  
   const isClient = useClientOnly();
 
   const selectedList = useMemo(() => {
@@ -58,15 +57,12 @@ export default function ShoppingListPage() {
 
   const purchasedItems = useMemo(() => {
     return itemsForSelectedList.filter(item => item.checked && item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [itemsForSelectedList, searchTerm]);
+  }, [shoppingListItems, searchTerm]);
 
 
   const handleAddItemClick = () => {
-    if (!selectedListId) {
-      // Optionally, prompt to select or create a list first
-      // For now, let's assume a list must be selected to add items.
-      // This case should ideally be handled by disabling the button if no list is selected.
-      // Or, if FREEMIUM_LIST_LIMIT is reached and not premium.
+    if (!selectedListId || !userId) { // Ensure userId is available
+      console.error("Cannot add item: No list selected or user ID missing.");
       return;
     }
     setItemToEdit(null);
@@ -96,7 +92,11 @@ export default function ShoppingListPage() {
   };
 
   const handleCreateNewList = () => {
-    setListToEdit(null); // Ensure it's for a new list
+    if (!userId) {
+      console.error("Cannot create new list: User ID missing.");
+      return;
+    }
+    setListToEdit(null);
     setShowAddEditListModal(true);
   };
   
@@ -104,11 +104,8 @@ export default function ShoppingListPage() {
     setListToEdit(list);
     setShowAddEditListModal(true);
   };
-
-
-  // This page should only render if lists exist or if loading.
-  // The redirect to /list/create-first is handled by AppLayout.
-  if (!isClient || isLoading || !isInitialDataLoaded) {
+  
+  if (!isClient || isLoading || !state.isInitialDataLoaded) { // Use state.isInitialDataLoaded
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center">
@@ -119,58 +116,62 @@ export default function ShoppingListPage() {
     );
   }
   
-  // This check is a fallback, AppLayout should handle the primary redirect.
+  // AppLayout now handles redirection to /list/create-first if no lists exist.
+  // This page should only render if lists DO exist or if there was an issue with redirect.
   if (lists.length === 0 && !isLoading) {
-     // This indicates AppLayout's redirect should have occurred.
-     // Showing a simpler loader or message here.
      return (
         <div className="flex items-center justify-center h-screen">
-            <p>No lists found. Redirecting...</p>
+            <p>No lists found. You should be redirected to create one.</p>
         </div>
      );
   }
 
-
   return (
-    <div className="flex flex-col h-full space-y-4">
-      <BudgetCard
-        list={selectedList}
-        items={itemsForSelectedList}
-        currency={currency}
-        onEditBudget={() => selectedList && handleEditList(selectedList)}
-      />
-
-      <ListsCarousel
-        lists={lists}
-        selectedListId={selectedListId}
-        onSelectList={handleSelectList}
-        onAddNewList={handleCreateNewList}
-        onEditList={handleEditList}
-        isPremium={isPremium}
-      />
-      
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Search items..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 rounded-lg border border-border/30 focus:border-primary focus:shadow-neon"
+    <div className="flex flex-col h-full">
+      <div className="sticky top-0 z-10 bg-background pt-4"> {/* Sticky container for Budget and Tabs */}
+        <BudgetCard
+          list={selectedList}
+          items={itemsForSelectedList}
+          currency={currency}
+          onEditBudget={() => selectedList && handleEditList(selectedList)}
         />
-      </div>
 
-      <Tabs defaultValue="current" className="flex-grow flex flex-col min-h-0"> {/* Ensure Tabs can shrink */}
-        <TabsList className="grid w-full grid-cols-2 mb-4 bg-card border border-primary/20 shadow-sm">
-          <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
-            Current ({currentItems.length})
-          </TabsTrigger>
-          <TabsTrigger value="purchased" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
-            Purchased ({purchasedItems.length})
-          </TabsTrigger>
-        </TabsList>
+        <ListsCarousel
+            lists={lists}
+            selectedListId={selectedListId}
+            onSelectList={handleSelectList}
+            onAddNewList={handleCreateNewList}
+            onEditList={handleEditList}
+            isPremium={state.isPremium} // Will be false, but kept for prop consistency
+        />
         
-        <ScrollArea className="flex-grow h-0 pr-1"> {/* ScrollArea takes up remaining space and allows content to scroll */}
+        <div className="relative mt-2 mb-2"> {/* Reduced margin */}
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+            type="search"
+            placeholder="Search items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-border/30 focus:border-primary focus:shadow-neon"
+            />
+        </div>
+
+        <Tabs defaultValue="current" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-2 bg-card border border-primary/20 shadow-sm"> {/* Reduced margin */}
+            <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
+                Current ({currentItems.length})
+            </TabsTrigger>
+            <TabsTrigger value="purchased" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
+                Purchased ({purchasedItems.length})
+            </TabsTrigger>
+            </TabsList>
+        </Tabs>
+      </div>
+      
+      {/* Scrollable Item Area */}
+      <ScrollArea className="flex-grow mt-1"> {/* ScrollArea takes up remaining space */}
+        <Tabs defaultValue="current" className="w-full">
+          {/* TabsList is part of the sticky section above, so it's not repeated here */}
           <TabsContent value="current" className="mt-0">
             {currentItems.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
@@ -178,7 +179,7 @@ export default function ShoppingListPage() {
                 No current items. Add some!
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 pb-20"> {/* Added padding-bottom */}
                 {currentItems.map(item => (
                   <ItemCard
                     key={item.id}
@@ -200,7 +201,7 @@ export default function ShoppingListPage() {
                  No items purchased yet.
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 pb-20"> {/* Added padding-bottom */}
                 {purchasedItems.map(item => (
                   <ItemCard
                     key={item.id}
@@ -215,37 +216,37 @@ export default function ShoppingListPage() {
               </div>
             )}
           </TabsContent>
-        </ScrollArea>
-      </Tabs>
+        </Tabs>
+      </ScrollArea>
 
       {selectedListId && (
         <Button
             onClick={handleAddItemClick}
-            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 sm:bottom-8 sm:right-8 z-10 rounded-full h-14 w-14 p-0 shadow-neon-lg bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 transition-transform"
+            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 sm:bottom-6 sm:right-6 z-20 rounded-full h-14 w-14 p-0 shadow-neon-lg bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 transition-transform"
             aria-label="Add new item"
-            disabled={!selectedListId || (!isPremium && lists.find(l => l.id === selectedListId) && itemsForSelectedList.length >= 1000)} // Example limit for non-premium
+            disabled={!selectedListId} 
         >
             <PlusCircle className="h-7 w-7" />
         </Button>
       )}
 
-      {showAddEditItemModal && selectedList && (
+      {showAddEditItemModal && selectedList && userId && (
         <AddEditItemModal
           isOpen={showAddEditItemModal}
           onClose={() => setShowAddEditItemModal(false)}
           itemToEdit={itemToEdit}
-          listId={selectedList.id} // Pass selected list ID
-          defaultCategoryId={selectedList.defaultCategory} // Pass default category from list
-          userId={state.userId!} // userId will be set by AppProvider
+          listId={selectedList.id} 
+          defaultCategoryId={selectedList.defaultCategory} 
+          userId={userId} 
         />
       )}
       
-      {showAddEditListModal && (
+      {showAddEditListModal && userId && (
          <AddEditListModal
            isOpen={showAddEditListModal}
            onClose={() => setShowAddEditListModal(false)}
            listToEdit={listToEdit}
-           userId={state.userId!}
+           userId={userId}
          />
        )}
 

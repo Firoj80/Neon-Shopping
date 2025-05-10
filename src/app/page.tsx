@@ -3,23 +3,20 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Removed useAuth import
-import { useAppContext } from '@/context/app-context'; // Corrected to alias path
+import { useAppContext } from '@/context/app-context';
 
 export default function HomePage() {
   const router = useRouter();
-  const { state, isLoading, isInitialDataLoaded } = useAppContext();
-  // Removed authState and authLoading
+  const { isLoading, state } = useAppContext(); // Use state.isInitialDataLoaded
 
   useEffect(() => {
-    if (!isLoading && isInitialDataLoaded) { // Wait for initial data to load
-      // Logic is now primarily in AppLayout to decide where to redirect.
-      // This page can simply redirect to /list, and AppLayout will handle
-      // whether to show /list or /list/create-first.
-      console.log("HomePage: Attempting redirect to /list");
+    // Wait for initial data to load (including anonymous userId and localStorage state)
+    if (!isLoading && state.isInitialDataLoaded) {
+      // AppLayout will handle the logic to show /list or /list/create-first
+      console.log("HomePage: Attempting redirect to /list. AppLayout will manage final destination.");
       router.replace('/list');
     }
-  }, [isLoading, isInitialDataLoaded, router]);
+  }, [isLoading, state.isInitialDataLoaded, router]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-background text-primary">
