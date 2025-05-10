@@ -1,12 +1,34 @@
 
 "use client";
 
-// No useEffect needed here for redirection, AppLayout will handle it
-// based on AppContext state (isLoading, isInitialDataLoaded, lists.length)
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-context';
+import { useAppContext } from '@/context/app-context';
 
 export default function HomePage() {
-  // This page will briefly show while AppContext initializes.
-  // AppLayout will then take over and redirect or show appropriate content.
+  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { state: appState, isLoading: appLoading } = useAppContext();
+
+  useEffect(() => {
+    // This effect will run once the component mounts and auth/app state is available
+    if (!authLoading && !appLoading) {
+      if (isAuthenticated) {
+        // User is authenticated
+        if (appState.lists && appState.lists.length > 0) {
+          router.replace('/list'); // User has lists, go to list page
+        } else {
+          router.replace('/list/create-first'); // User has no lists, go to create first list page
+        }
+      } else {
+        // User is not authenticated
+        router.replace('/auth'); // Go to login/signup page
+      }
+    }
+  }, [isAuthenticated, authLoading, appState.lists, appLoading, router]);
+
+  // Show a loading spinner while determining the redirect
   return (
     <div className="flex items-center justify-center h-screen bg-background text-primary">
       <div className="flex flex-col items-center">

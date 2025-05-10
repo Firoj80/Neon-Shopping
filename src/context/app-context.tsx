@@ -6,19 +6,21 @@ import { format, startOfDay, isSameDay } from 'date-fns';
 import { themes, defaultThemeId } from '@/config/themes';
 import { v4 as uuidv4 } from 'uuid';
 import { getUserCurrency, type Currency, defaultCurrency } from '@/services/currency';
+import { fetchFromApi } from '@/lib/api'; // For fetching data for authenticated users
+import { useAuth } from './auth-context'; // Import useAuth
 
-const LOCAL_STORAGE_KEY = 'neonShoppingState_vLocal'; // Key for local storage
+const LOCAL_STORAGE_KEY_PREFIX = 'neonShoppingState_anon_'; // Prefix for anonymous user data
 export const FREEMIUM_LIST_LIMIT = 3;
 
 // --- Types ---
 export interface ShoppingListItem {
   id: string;
   listId: string;
-  userId: string;
+  userId: string; // This will be the app_user_id for anon, or actual user_id for logged-in
   name: string;
   quantity: number;
   price: number;
-  category: string;
+  category: string; // Category ID
   checked: boolean;
   dateAdded: number; // Timestamp
 }
@@ -28,29 +30,29 @@ export interface List {
   userId: string;
   name: string;
   budgetLimit: number;
-  defaultCategory?: string; // ID of a category
+  defaultCategory?: string; 
 }
 
 export interface Category {
   id: string;
+  userId?: string; // User-specific if not default, or app_user_id for anon custom categories
   name: string;
-  userId?: string; // User-specific if not default
+  isDefault?: boolean; // Flag to indicate if it's a predefined default category
 }
 
-// Define default categories - these are not user-specific initially
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'grocery', name: 'Grocery' },
-  { id: 'home', name: 'Home Appliances' },
-  { id: 'health', name: 'Health' },
-  { id: 'electronics', name: 'Electronics' },
-  { id: 'fashion', name: 'Fashion' },
-  { id: 'sports', name: 'Sports'},
-  { id: 'uncategorized', name: 'Uncategorized' },
+  { id: 'grocery', name: 'Grocery', isDefault: true },
+  { id: 'home', name: 'Home Appliances', isDefault: true },
+  { id: 'health', name: 'Health', isDefault: true },
+  { id: 'electronics', name: 'Electronics', isDefault: true },
+  { id: 'fashion', name: 'Fashion', isDefault: true },
+  { id: 'sports', name: 'Sports', isDefault: true },
+  { id: 'uncategorized', name: 'Uncategorized', isDefault: true },
 ];
 
 
 export interface AppState {
-  userId: string | null;
+  userId: string | null; // Can be app_user_id (for anon) or actual user_id
   currency: Currency;
   theme: string;
   lists: List[];
@@ -62,21 +64,22 @@ export interface AppState {
 }
 
 const initialState: AppState = {
-  userId: null, // Will be loaded or generated
+  userId: null, 
   currency: defaultCurrency,
   theme: defaultThemeId,
   lists: [],
   selectedListId: null,
   shoppingListItems: [],
-  categories: DEFAULT_CATEGORIES,
-  isPremium: false, // Default to non-premium
+  categories: DEFAULT_CATEGORIES.map(cat => ({ ...cat })), // Ensure defaults are copied
+  isPremium: false, 
   isInitialDataLoaded: false,
 };
 
 // --- Actions ---
 export type Action =
-  | { type: 'LOAD_STATE'; payload: Partial<AppState> & { userId: string } } // Ensure userId is part of payload
-  | { type: 'SET_USER_ID'; payload: string | null }
+  | { type: 'LOAD_STATE'; payload: Partial<AppState> } // For loading from localStorage (anon) or initial setup
+  | { type: 'LOAD_STATE_FROM_API'; payload: Partial<AppState> } // For loading data for authenticated user
+  | { type: 'SET_USER_ID'; payload: string | null } // Sets the current operational userId (anon or auth)
   | { type: 'SET_CURRENCY'; payload: Currency }
   | { type: 'SET_THEME'; payload: string }
   | { type: 'ADD_LIST'; payload: List }
@@ -91,7 +94,8 @@ export type Action =
   | { type: 'UPDATE_CATEGORY'; payload: Category }
   | { type: 'DELETE_CATEGORY'; payload: string }
   | { type: 'SET_PREMIUM_STATUS'; payload: boolean }
-  | { type: 'SET_INITIAL_DATA_LOADED'; payload: boolean };
+  | { type: 'SET_INITIAL_DATA_LOADED'; payload: boolean }
+  | { type: 'RESET_STATE_FOR_NEW_USER' }; // New action to reset state
 
 
 // --- Reducer ---
@@ -100,25 +104,24 @@ function appReducer(state: AppState, action: Action): AppState {
 
   switch (action.type) {
     case 'LOAD_STATE':
-      console.log("Reducer: LOAD_STATE", action.payload);
+    case 'LOAD_STATE_FROM_API':
+      console.log(`Reducer: ${action.type}`, action.payload);
       newState = {
-        ...state,
-        ...action.payload,
-        userId: action.payload.userId, // Ensure userId from payload is used
-        // Keep other specific initializations if necessary
+        ...state, // Keep existing state like theme if not in payload
+        ...action.payload, // Override with new data
+        userId: action.payload.userId || state.userId, // Ensure userId is maintained or set
         currency: action.payload.currency || state.currency || defaultCurrency,
         theme: action.payload.theme || state.theme || defaultThemeId,
         lists: action.payload.lists || [],
         selectedListId: action.payload.selectedListId || (action.payload.lists && action.payload.lists.length > 0 ? action.payload.lists[0].id : null),
         shoppingListItems: action.payload.shoppingListItems || [],
-        categories: action.payload.categories && action.payload.categories.length > 0 ? action.payload.categories : DEFAULT_CATEGORIES,
-        isPremium: action.payload.isPremium !== undefined ? action.payload.isPremium : false,
-        // isInitialDataLoaded is typically handled by a separate useState in AppProvider
+        // Ensure categories are correctly merged or defaulted
+        categories: action.payload.categories && action.payload.categories.length > 0 
+                    ? action.payload.categories 
+                    : DEFAULT_CATEGORIES.map(cat => ({...cat, userId: action.payload.userId || undefined })),
+        isPremium: action.payload.isPremium !== undefined ? action.payload.isPremium : state.isPremium,
+        isInitialDataLoaded: true, // Mark as loaded once state is processed
       };
-      // If userId was generated because it wasn't in localStorage or payload, save it.
-      if (action.payload.userId && typeof window !== "undefined" && localStorage.getItem('user_id') !== action.payload.userId) {
-        localStorage.setItem('user_id', action.payload.userId);
-      }
       break;
     case 'SET_USER_ID':
       newState = { ...state, userId: action.payload };
@@ -130,13 +133,15 @@ function appReducer(state: AppState, action: Action): AppState {
       newState = { ...state, theme: action.payload };
       break;
     case 'ADD_LIST':
-      // Freemium check: Only allow adding if not exceeding limit or if premium
+      if (!state.userId) {
+        console.error("Cannot add list: User ID is missing.");
+        return state;
+      }
       if (!state.isPremium && state.lists.length >= FREEMIUM_LIST_LIMIT) {
         alert(`Free users can only create up to ${FREEMIUM_LIST_LIMIT} lists. Upgrade to premium for unlimited lists.`);
-        return state; // Return current state if limit reached
+        return state; 
       }
       newState = { ...state, lists: [...state.lists, action.payload] };
-      // If it's the first list being added, select it.
       if (state.lists.length === 0) {
         newState.selectedListId = action.payload.id;
       }
@@ -170,18 +175,6 @@ function appReducer(state: AppState, action: Action): AppState {
         console.error("Attempted to add item without listId or userId", action.payload);
         return state;
       }
-      // Check if item with same name already exists in the list for the current user
-      const existingItem = state.shoppingListItems.find(
-        item => item.listId === action.payload.listId &&
-                item.name.toLowerCase() === action.payload.name.toLowerCase() &&
-                !item.checked // Only consider non-checked items for duplication warning
-      );
-      if (existingItem) {
-        // Optionally: alert user or handle as an update (e.g., increment quantity)
-        // For now, let's just log and add it as a new item to avoid complex merge logic.
-        // You might want to show a toast to the user: "Item already exists. Updated quantity?"
-        console.warn("Adding item that already exists in the list:", action.payload.name);
-      }
       const newItem: ShoppingListItem = { ...action.payload, dateAdded: Date.now() };
       newState = { ...state, shoppingListItems: [...state.shoppingListItems, newItem] };
       break;
@@ -209,20 +202,19 @@ function appReducer(state: AppState, action: Action): AppState {
       };
       break;
     case 'ADD_CATEGORY':
-      if (!state.userId) { // Categories are user-specific now
+      if (!state.userId) { 
         console.error("Cannot add category: User ID is missing.");
         return state;
       }
-      // Freemium check: only allow adding if premium
       if (!state.isPremium) {
          alert("Creating custom categories is a premium feature.");
          return state;
       }
-      // Check for duplicates (case-insensitive) for the current user
-      if (!state.categories.find(cat => cat.userId === state.userId && cat.name.toLowerCase() === action.payload.name.toLowerCase())) {
-        newState = { ...state, categories: [...state.categories, { ...action.payload, userId: state.userId }] };
+      const categoryToAdd = { ...action.payload, userId: state.userId, isDefault: false };
+      if (!state.categories.find(cat => cat.userId === state.userId && cat.name.toLowerCase() === categoryToAdd.name.toLowerCase())) {
+        newState = { ...state, categories: [...state.categories, categoryToAdd] };
       } else {
-        alert(`Category "${action.payload.name}" already exists.`);
+        alert(`Category "${categoryToAdd.name}" already exists.`);
       }
       break;
     case 'UPDATE_CATEGORY':
@@ -230,15 +222,19 @@ function appReducer(state: AppState, action: Action): AppState {
         console.error("Cannot update category: User ID is missing.");
         return state;
       }
-      // Freemium check: only allow editing if premium
       if (!state.isPremium) {
          alert("Editing categories is a premium feature.");
          return state;
       }
+      const categoryToUpdate = state.categories.find(cat => cat.id === action.payload.id);
+      if (categoryToUpdate?.isDefault && !state.isPremium) {
+          alert("Default categories cannot be edited by free users.");
+          return state;
+      }
       newState = {
         ...state,
         categories: state.categories.map(cat =>
-          cat.id === action.payload.id && cat.userId === state.userId ? { ...action.payload, userId: state.userId } : cat
+          cat.id === action.payload.id && cat.userId === state.userId ? { ...action.payload, userId: state.userId, isDefault: cat.isDefault } : cat
         ),
       };
       break;
@@ -248,20 +244,20 @@ function appReducer(state: AppState, action: Action): AppState {
         console.error("Cannot delete category: User ID is missing.");
         return state;
       }
-       // Freemium check: only allow deleting if premium
-      if (!state.isPremium) {
-         alert("Deleting categories is a premium feature.");
-         return state;
-      }
-      // Prevent deleting default categories if not premium (or handle differently)
-      const isDefaultCategory = DEFAULT_CATEGORIES.some(dc => dc.id === categoryIdToDelete);
-      if (isDefaultCategory && !state.isPremium) {
+      const catToDelete = state.categories.find(c => c.id === categoryIdToDelete && c.userId === state.userId);
+      if (!catToDelete) return state; // Category not found or not user's
+
+      if (catToDelete.isDefault && !state.isPremium) {
         alert("Default categories cannot be deleted by free users.");
         return state;
       }
-
-      const uncategorizedUser = state.categories.find(c => c.userId === state.userId && (c.id === 'uncategorized' || c.name.toLowerCase() === 'uncategorized'));
-      const targetCategoryId = uncategorizedUser ? uncategorizedUser.id : (state.categories.find(c => c.id !== categoryIdToDelete && c.userId === state.userId)?.id || 'uncategorized'); // Fallback to string 'uncategorized' if no user-specific uncategorized exists
+      if (!catToDelete.isDefault && !state.isPremium) { // Non-default can only be deleted by premium
+          alert("Deleting custom categories is a premium feature.");
+          return state;
+      }
+      
+      const uncategorizedUserCategory = state.categories.find(c => c.userId === state.userId && (c.id === 'uncategorized' || c.name.toLowerCase() === 'uncategorized')) || DEFAULT_CATEGORIES.find(c => c.id === 'uncategorized');
+      const targetCategoryId = uncategorizedUserCategory!.id;
 
       newState = {
         ...state,
@@ -272,34 +268,53 @@ function appReducer(state: AppState, action: Action): AppState {
             : item
         ),
       };
-      // Update defaultCategory in lists if it was the deleted category
       newState.lists = newState.lists.map(list =>
         list.userId === state.userId && list.defaultCategory === categoryIdToDelete
-        ? { ...list, defaultCategory: targetCategoryId === 'uncategorized' && !uncategorizedUser ? undefined : targetCategoryId } // if target is generic uncategorized, make it undefined
+        ? { ...list, defaultCategory: targetCategoryId } 
         : list
       );
       break;
     case 'SET_PREMIUM_STATUS':
       newState = { ...state, isPremium: action.payload };
       break;
-    case 'SET_INITIAL_DATA_LOADED':
+    case 'SET_INITIAL_DATA_LOADED': // This action might be redundant if LOAD_STATE handles it
       newState = { ...state, isInitialDataLoaded: action.payload };
       break;
+    case 'RESET_STATE_FOR_NEW_USER':
+      console.log("Reducer: RESET_STATE_FOR_NEW_USER");
+      // Generate a new anonymous ID
+      const newAnonUserId = `anon_${uuidv4()}`;
+      localStorage.setItem('app_user_id', newAnonUserId); // Persist new anon ID
+
+      newState = {
+        ...initialState, // Reset to initial state
+        userId: newAnonUserId, // Set the new anonymous user ID
+        currency: state.currency, // Keep potentially detected currency
+        theme: state.theme, // Keep current theme
+        isInitialDataLoaded: true, // Mark as loaded
+      };
+      // Clear data associated with the old anonymous user from localStorage
+      // This assumes you use a dynamic key based on userId or a single key for all anon data
+      // If using a single key:
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}${state.userId}`); 
+      // Or, if using a generic key for anon users that gets overwritten:
+      // localStorage.removeItem(LOCAL_STORAGE_ANON_USER_DATA_KEY); // A hypothetical key
+      break;
     default:
-      // newState = state; // Removed to avoid ESLint error, as all paths should return/assign newState
+      // newState = state; // Removed to avoid ESLint error
       break;
   }
 
-  // Persist state to localStorage for relevant actions
-  if (action.type !== 'LOAD_STATE' && action.type !== 'SET_INITIAL_DATA_LOADED' && typeof window !== 'undefined') {
-    try {
-      // Only save relevant parts, no need to save isInitialDataLoaded to localStorage
-      const { isInitialDataLoaded, ...stateToSave } = newState;
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
-    } catch (error) {
-      console.error("Failed to save state to localStorage:", error);
-    }
+  // Persist state to localStorage for relevant actions, specific to the current userId
+  if (action.type !== 'LOAD_STATE' && action.type !== 'LOAD_STATE_FROM_API' && action.type !== 'SET_INITIAL_DATA_LOADED' && typeof window !== 'undefined' && newState.userId && !newState.userId.startsWith('anon_')) {
+    // Only save to general LOCAL_STORAGE_KEY if it's NOT an anonymous user's data.
+    // Authenticated user data is saved under a generic key, assuming backend sync is the source of truth.
+    // localStorage.setItem(LOCAL_STORAGE_KEY_PREFIX + "auth_user_data", JSON.stringify(newState));
+  } else if (newState.userId && newState.userId.startsWith('anon_') && typeof window !== 'undefined') {
+     // Save anonymous user data under a key specific to their anonymous ID
+    localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${newState.userId}`, JSON.stringify(newState));
   }
+  
   return newState;
 }
 
@@ -307,104 +322,164 @@ function appReducer(state: AppState, action: Action): AppState {
 interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<Action>;
-  isLoading: boolean; // This will be managed by AppProvider's local state
+  isLoading: boolean; 
+  loadDataForAuthenticatedUser: (userId: string, token: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const [isLoading, setIsLoading] = useState(true); // Manages loading state for initial data fetch
-  const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user: authUser, token, isLoading: authIsLoading, isAuthenticated } = useAuth(); // Get auth context
 
+  const loadDataForAuthenticatedUser = useCallback(async (userId: string, authToken: string) => {
+    console.log("AppProvider: Attempting to load data for authenticated user:", userId);
+    setIsLoading(true);
+    try {
+      // Example: Fetch lists, items, categories for the authenticated user
+      // Adjust API endpoints and data structure as per your backend
+      const [listsData, itemsData, categoriesData, userPrefsData] = await Promise.all([
+        fetchFromApi(`/users/${userId}/lists`, authToken),
+        fetchFromApi(`/users/${userId}/items`, authToken),
+        fetchFromApi(`/users/${userId}/categories`, authToken),
+        fetchFromApi(`/users/${userId}/preferences`, authToken), // e.g., currency, theme, premium_status
+      ]);
+
+      dispatch({
+        type: 'LOAD_STATE_FROM_API',
+        payload: {
+          userId: userId,
+          lists: listsData.lists || [],
+          shoppingListItems: itemsData.items || [],
+          categories: categoriesData.categories && categoriesData.categories.length > 0 
+                      ? categoriesData.categories 
+                      : DEFAULT_CATEGORIES.map(cat => ({...cat, userId: userId})),
+          selectedListId: listsData.lists && listsData.lists.length > 0 ? listsData.lists[0].id : null,
+          currency: userPrefsData.currency || state.currency || defaultCurrency, // Prioritize API, then current, then default
+          theme: userPrefsData.theme || state.theme || defaultThemeId,
+          isPremium: userPrefsData.is_premium || false,
+          isInitialDataLoaded: true,
+        },
+      });
+      console.log("AppProvider: Data loaded for authenticated user:", userId);
+    } catch (error) {
+      console.error("AppProvider: Failed to load data for authenticated user:", error);
+      // Fallback to anonymous state or handle error appropriately
+      // Potentially dispatch RESET_STATE_FOR_NEW_USER or a specific error state
+      dispatch({ type: 'SET_INITIAL_DATA_LOADED', payload: true }); // Still mark as loaded to avoid blocking UI
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dispatch, state.currency, state.theme]); // Added dependencies
 
   useEffect(() => {
     const loadInitialData = async () => {
-      console.log("AppProvider: Initiating initial data load...");
-      setIsLoading(true); // Set loading true at the start
+      console.log("AppProvider: Loading initial data...");
+      setIsLoading(true);
 
-      let userId = localStorage.getItem('user_id');
-      if (!userId) {
-        userId = `anon_${uuidv4()}`;
-        localStorage.setItem('user_id', userId);
-        console.log("AppProvider: Generated new anonymous user ID:", userId);
+      if (isAuthenticated && authUser && token) {
+        // Authenticated user: data will be loaded by loadDataForAuthenticatedUser
+        // This useEffect in AppProvider might not need to do much more for auth users
+        // as loadDataForAuthenticatedUser is called from AuthProvider or page components
+        console.log("AppProvider: Authenticated user detected. Data load will be triggered by auth flow.");
+        // We can still set the userId here for consistency before API data arrives
+        dispatch({ type: 'SET_USER_ID', payload: authUser.id });
+        // It's important that loadDataForAuthenticatedUser is called elsewhere (e.g. after login, or on initial auth check)
+        // For now, let's assume it is, and just set initial loaded to true after a small delay if no data comes.
+        // This path needs careful orchestration with AuthProvider.
+        // If loadDataForAuthenticatedUser isn't called, we might get stuck here.
+        // A simple approach:
+        if(!state.isInitialDataLoaded){ // If API data hasn't loaded it yet
+             await loadDataForAuthenticatedUser(authUser.id, token);
+        }
+         setIsLoading(false); // Auth loading is separate, this is for app data.
+
       } else {
-        console.log("AppProvider: Found existing user ID:", userId);
-      }
-
-      let loadedStateFromStorage: Partial<AppState> = {};
-      try {
-        const savedStateRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedStateRaw) {
-          const parsedState = JSON.parse(savedStateRaw);
-           // Critical: Ensure parsedState.userId is not overriding the one from localStorage if they differ
-           // This scenario (differing userId in LOCAL_STORAGE_KEY vs 'user_id') should ideally not happen
-           // if saving logic is correct. We prioritize 'user_id' from localStorage.
-          loadedStateFromStorage = { ...parsedState, userId: userId };
-          console.log("AppProvider: Loaded state from localStorage for user:", userId, parsedState);
+        // Anonymous user
+        console.log("AppProvider: No authenticated user, setting up for anonymous user.");
+        let anonUserId = localStorage.getItem('app_user_id');
+        if (!anonUserId) {
+          anonUserId = `anon_${uuidv4()}`;
+          localStorage.setItem('app_user_id', anonUserId);
+          console.log("AppProvider: Generated new anonymous user ID:", anonUserId);
         } else {
-          loadedStateFromStorage.userId = userId; // Ensure userId is set even if no other state
-          console.log("AppProvider: No saved state found in localStorage for key:", LOCAL_STORAGE_KEY, "Using user ID:", userId);
+          console.log("AppProvider: Found existing anonymous user ID:", anonUserId);
         }
-      } catch (error) {
-        console.error("AppProvider: Failed to parse state from localStorage, using defaults with user ID:", userId, error);
-        loadedStateFromStorage.userId = userId; // Ensure userId is set on error
-      }
-      
-      // Auto-detect currency if not already set
-      if (!loadedStateFromStorage.currency) {
+
+        let loadedStateFromStorage: Partial<AppState> = {};
+        const anonymousUserStorageKey = `${LOCAL_STORAGE_KEY_PREFIX}${anonUserId}`;
         try {
-          console.log("AppProvider: No currency in saved state, attempting auto-detection...");
-          const detectedCurrency = await getUserCurrency();
-          loadedStateFromStorage.currency = detectedCurrency || defaultCurrency;
-          console.log("AppProvider: Currency set to:", loadedStateFromStorage.currency?.code);
+          const savedStateRaw = localStorage.getItem(anonymousUserStorageKey);
+          if (savedStateRaw) {
+            loadedStateFromStorage = JSON.parse(savedStateRaw);
+            console.log("AppProvider: Loaded state from localStorage for anonymous user:", anonUserId);
+          } else {
+            console.log("AppProvider: No saved state in localStorage for anonymous user:", anonUserId);
+          }
         } catch (error) {
-          console.error("AppProvider: Error during currency auto-detection, using default:", error);
-          loadedStateFromStorage.currency = defaultCurrency;
+          console.error("AppProvider: Failed to parse state from localStorage for anonymous user:", error);
         }
-      } else {
-         console.log("AppProvider: Using currency from saved state:", loadedStateFromStorage.currency.code);
-      }
-      
-      // Ensure categories are present, defaulting if necessary
-      const finalCategories = (loadedStateFromStorage.categories && loadedStateFromStorage.categories.length > 0)
-        ? loadedStateFromStorage.categories
-        : DEFAULT_CATEGORIES.map(cat => ({...cat, userId: cat.userId ? userId : undefined })); // Assign userId to default categories if they are user-specific by design
-      loadedStateFromStorage.categories = finalCategories;
+        
+        let finalCurrency = loadedStateFromStorage.currency || defaultCurrency;
+        if (!loadedStateFromStorage.currency) {
+          try {
+            const detectedCurrency = await getUserCurrency();
+            finalCurrency = detectedCurrency || defaultCurrency;
+            console.log("AppProvider: Currency auto-detected for anonymous user:", finalCurrency.code);
+          } catch (error) {
+            console.error("AppProvider: Currency auto-detection failed for anonymous user:", error);
+          }
+        }
+        
+        const categoriesForAnon = (loadedStateFromStorage.categories && loadedStateFromStorage.categories.length > 0)
+          ? loadedStateFromStorage.categories
+          : DEFAULT_CATEGORIES.map(cat => ({ ...cat, userId: anonUserId }));
 
-      // Ensure lists and items are at least empty arrays
-      if (!loadedStateFromStorage.lists) loadedStateFromStorage.lists = [];
-      if (!loadedStateFromStorage.shoppingListItems) loadedStateFromStorage.shoppingListItems = [];
-      
-      // Select first list if none selected and lists exist
-      if (!loadedStateFromStorage.selectedListId && loadedStateFromStorage.lists.length > 0) {
-        loadedStateFromStorage.selectedListId = loadedStateFromStorage.lists[0].id;
+        dispatch({
+          type: 'LOAD_STATE',
+          payload: {
+            ...initialState, // Start with a clean slate for anon user structure
+            ...loadedStateFromStorage, // Override with any saved anon data
+            userId: anonUserId,
+            currency: finalCurrency,
+            categories: categoriesForAnon,
+            isInitialDataLoaded: true,
+          },
+        });
+        setIsLoading(false);
+        console.log("AppProvider: Initial data processing finished for anonymous user. Current user ID in context:", anonUserId);
       }
-      
-      // Ensure the payload for LOAD_STATE has a userId
-      const finalPayload: Partial<AppState> & { userId: string } = {
-        ...initialState, // Start with initialState to ensure all AppState fields are present
-        ...loadedStateFromStorage, // Override with loaded data
-        userId: userId, // Explicitly ensure userId is set
-      };
-
-      dispatch({ type: 'LOAD_STATE', payload: finalPayload });
-      setIsInitialDataLoaded(true); // Mark initial load as complete
-      setIsLoading(false); // Set loading to false after all processing
-      console.log("AppProvider: Initial data processing finished. Current user ID in context:", userId);
     };
 
-    // Only run if initial data hasn't been loaded yet.
-    if (!isInitialDataLoaded) {
+    // We only want to run this complex initial load logic once, or if the auth state fundamentally changes.
+    // authIsLoading ensures we wait for auth state to settle.
+    // state.isInitialDataLoaded prevents re-running if data is already loaded.
+    if (!authIsLoading && !state.isInitialDataLoaded) {
        loadInitialData();
+    } else if (!authIsLoading && isAuthenticated && authUser && state.userId !== authUser.id) {
+      // This case handles if user logs in *after* anonymous state was set up.
+      // We need to switch to authenticated user's data.
+      console.log("AppProvider: User authenticated, but AppContext has different/anon ID. Reloading data for auth user.");
+      loadDataForAuthenticatedUser(authUser.id, token!); // token should be available if isAuthenticated
+    } else if (!authIsLoading && !isAuthenticated && state.userId && !state.userId.startsWith('anon_')) {
+        // This case handles if user logs out. Reset to new anonymous state.
+        console.log("AppProvider: User logged out. Resetting to new anonymous state.");
+        dispatch({ type: 'RESET_STATE_FOR_NEW_USER' });
+        setIsLoading(false); // Reset loading after state reset
+    } else if (!authIsLoading && state.isInitialDataLoaded) {
+        // Auth state is settled, app data is loaded. No further action needed here for initial load.
+        setIsLoading(false); // Ensure loading is false
     }
-  }, [isInitialDataLoaded]); // Depend on isInitialDataLoaded to prevent re-runs after load.
 
-  // Provide a context value that includes the AppProvider's local isLoading state
+  }, [authIsLoading, isAuthenticated, authUser, token, state.isInitialDataLoaded, state.userId, dispatch, loadDataForAuthenticatedUser]);
+
+
   const contextValue = {
-    state: { ...state, isInitialDataLoaded }, // Combine reducer state with local isInitialDataLoaded
+    state, 
     dispatch,
-    isLoading, // This is the AppProvider's own loading state for initial data
+    isLoading: isLoading || authIsLoading, // Combine loading states
+    loadDataForAuthenticatedUser,
   };
 
   return (
@@ -421,4 +496,3 @@ export const useAppContext = () => {
   }
   return context;
 };
-
