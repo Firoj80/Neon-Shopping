@@ -24,7 +24,7 @@ import {
   SelectGroup,
   SelectLabel,
   SelectValue
-} from '@/components/ui/select'; // Corrected import for Select components
+} from '@/components/ui/select';
 import type { List, Category } from '@/context/app-context';
 import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { fetchFromApi } from '@/lib/api';
-
+import { cn } from '@/lib/utils'; // Added import for cn
 
 const listFormSchema = z.object({
   name: z.string().min(1, "List name is required").max(50, "List name too long"),
@@ -50,17 +50,17 @@ interface AddEditListModalProps {
   isOpen: boolean;
   onClose: () => void;
   listData?: List | null;
-  onListSaved?: () => void; // New callback prop
+  onListSaved?: () => void;
 }
 
 export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onClose, listData, onListSaved }) => {
   const { dispatch, state: appState } = useAppContext();
-  const { categories, currency, isPremium, lists, userId } = appState; // Get userId from appState
-  const { user: authUser } = useAuth(); // authUser might be null initially
+  const { categories, currency, isPremium, lists } = appState;
+  const { user: authUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  const currentUserId = authUser?.id || userId; // Prefer authUser.id, fallback to appState.userId
+  const currentUserId = authUser?.id;
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ListFormData>({
     resolver: zodResolver(listFormSchema),
@@ -90,7 +90,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
   }, [isOpen, listData, reset]);
 
   const onSubmit = async (data: ListFormData) => {
-    if (!currentUserId) { // Use the combined currentUserId
+    if (!currentUserId) {
       toast({ title: "Error", description: "You must be logged in to save a list.", variant: "destructive" });
       onClose();
       return;
@@ -116,8 +116,8 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
     }
 
     const payloadForApi = {
-      userId: currentUserId, // Ensure userId is from the authenticated user
-      id: listData ? listData.id : undefined, // Pass id only if editing
+      userId: currentUserId,
+      id: listData ? listData.id : undefined,
       name: data.name,
       budgetLimit: data.budgetLimit ?? 0,
       defaultCategory: data.defaultCategory && categories.some(c => c.id === data.defaultCategory) ? data.defaultCategory : 'uncategorized',
@@ -131,7 +131,7 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
         body: JSON.stringify(payloadForApi),
       });
 
-      if (!result.success || !result.list) { // Ensure result.list exists
+      if (!result.success || !result.list) {
         throw new Error(result.message || 'Failed to save list');
       }
       
@@ -144,7 +144,10 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
         dispatch({ type: 'ADD_LIST', payload: savedList });
         toast({ title: "Success", description: result.message || "List created successfully." });
         if (onListSaved) {
-          onListSaved(); // Call the callback for new list creation
+          onListSaved();
+        } else {
+          // Fallback redirect if onListSaved is not provided from CreateFirstListPage
+           router.replace('/list');
         }
       }
       onClose();
@@ -161,13 +164,17 @@ export const AddEditListModal: React.FC<AddEditListModalProps> = ({ isOpen, onCl
   };
 
   const availableCategories = [
-    { id: 'uncategorized', name: '-- No Default --', userId: null }, // Explicit "no default" option
-    ...DEFAULT_CATEGORIES.filter(cat => cat.id !== 'uncategorized'), // Default global categories
-    ...categories.filter(cat => cat.userId === currentUserId) // User's custom categories
+    { id: 'uncategorized', name: '-- No Default --', userId: null },
+    ...DEFAULT_CATEGORIES.filter(cat => cat.id !== 'uncategorized'),
+    ...(currentUserId ? categories.filter(cat => cat.userId === currentUserId) : [])
   ];
-  // Deduplicate categories by ID, giving preference to user's custom categories if names match defaults
+  
   const uniqueCategories = Array.from(new Map(availableCategories.map(cat => [cat.id, cat])).values())
-                            .sort((a, b) => a.name.localeCompare(b.name));
+                            .sort((a, b) => {
+                              if (a.id === 'uncategorized') return -1;
+                              if (b.id === 'uncategorized') return 1;
+                              return a.name.localeCompare(b.name);
+                            });
 
 
   return (
