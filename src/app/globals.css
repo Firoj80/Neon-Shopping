@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 3.9%; /* Near black for cyberpunk */
+    --foreground: 0 0% 98%; /* Near white */
+    --card: 0 0% 5.5%; /* Slightly lighter black for cards */
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 180 100% 50%; /* Neon Cyan */
+    --primary-foreground: 180 100% 10%; /* Dark Cyan for text on primary */
+    --secondary: 260 100% 60%; /* Neon Purple / Magenta */
+    --secondary-foreground: 260 100% 15%; /* Dark Purple for text on secondary */
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 180 100% 40%; /* Darker Cyan as accent */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%; /* Red */
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 180 100% 50%; /* Neon Cyan for focus rings */
+    --radius: 0.75rem;
+
+    /* Sidebar specific variables - can be same as main or different */
+    --sidebar-background: 0 0% 5.5%;
+    --sidebar-foreground: 0 0% 75%;
+    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 260 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 14.9%;
+    --sidebar-ring: 180 100% 50%;
+
+     /* Chart specific variables */
+    --chart-1: 180 70% 60%; /* Cyan */
+    --chart-2: 260 70% 70%; /* Purple */
+    --chart-3: 330 70% 65%; /* Pinkish */
+    --chart-4: 120 60% 60%; /* Green */
+    --chart-5: 45 80% 60%;  /* Orange */
+
+    /* Neon Text Color - for specific neon glowing text if needed */
+    --neon-text: hsl(var(--primary)); /* Default to primary neon color */
+  }
+
+  .dark {
+    /* All variables are already defined for a dark theme by default */
+  }
+
+  /* General body styling */
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Glowing border effect for cards */
+  .card-glow {
+    position: relative;
+    border: 1px solid hsl(var(--primary) / 0.3); /* Subtle base border */
+  }
+
+  .card-glow::before,
+  .card-glow::after {
+    content: "";
+    position: absolute;
+    left: -2px;
+    top: -2px;
+    background: linear-gradient(
+      45deg,
+      hsl(var(--primary)),
+      hsl(var(--secondary)),
+      hsl(var(--primary)),
+      hsl(var(--secondary)),
+      hsl(var(--primary))
+    );
+    background-size: 400%;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    z-index: -1;
+    animation: steam 20s linear infinite;
+    border-radius: calc(var(--radius) + 2px); /* Slightly larger radius for the glow */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  
+  .card-glow:hover::before,
+  .card-glow:hover::after {
+    opacity: 1;
+  }
+
+  @keyframes steam {
+    0% {
+      background-position: 0 0;
+    }
+    50% {
+      background-position: 400% 0;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+
+  /* Enhanced glow for specific interactions or primary cards */
+  .card-glow-intense {
+    border: 1px solid hsl(var(--primary) / 0.5);
+  }
+  .card-glow-intense::before,
+  .card-glow-intense::after {
+    opacity: 0.3; /* Initial opacity for intense glow */
+  }
+  .card-glow-intense:hover::before,
+  .card-glow-intense:hover::after {
+    opacity: 0.8; /* Stronger glow on hover */
+  }
+}

@@ -2,9 +2,8 @@
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppProvider } from '@/context/app-context'; // Use alias
-
-// Removed AuthProvider import, it's not used in this simpler version
+import { AppProvider } from '@/context/app-context';
+import { AuthProvider } from '@/context/auth-context';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,10 +17,11 @@ const queryClient = new QueryClient({
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        {/* AuthProvider removed from here, AppLayout will handle auth context if needed by individual pages */}
-        {children}
-      </AppProvider>
+      <AuthProvider> {/* AuthProvider should wrap AppProvider if AppContext depends on AuthContext */}
+        <AppProvider>
+          {children}
+        </AppProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

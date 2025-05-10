@@ -8,6 +8,8 @@ import ClientOnly from '@/components/client-only';
 import { SidebarProvider } from '@/components/ui/sidebar'; 
 import { ThemeWatcher } from '@/context/theme-watcher';
 import { cn } from '@/lib/utils';
+import { AuthProvider } from '@/context/auth-context';
+
 
 const inter = Inter({
   subsets: ['latin'],
@@ -33,7 +35,7 @@ export default function RootLayout({
           'font-sans antialiased min-h-screen flex flex-col bg-background'
         )}
       >
-        <Providers> {/* AppProvider is wrapped inside Providers */}
+        <Providers> {/* AppProvider & AuthProvider are wrapped inside Providers */}
           <ThemeWatcher>
             <ClientOnly>
               <SidebarProvider>

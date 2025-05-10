@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: 'export', // Often used for simpler, pure Next.js static deployments
+  output: 'export',
 };
 
 export default nextConfig;

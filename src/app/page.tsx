@@ -2,18 +2,27 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-context';
 import { useAppContext } from '@/context/app-context';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isLoading, state } = useAppContext(); 
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { state: appState, isLoading: appLoading } = useAppContext();
 
   useEffect(() => {
-    if (!isLoading && state.isInitialDataLoaded) {
-      console.log("HomePage: Attempting redirect. AppLayout will manage final destination.");
-      router.replace('/list');
+    if (!authLoading && !appLoading) {
+      if (isAuthenticated) {
+        if (appState.lists && appState.lists.length > 0) {
+          router.replace('/list');
+        } else {
+          router.replace('/list/create-first');
+        }
+      } else {
+        router.replace('/auth');
+      }
     }
-  }, [isLoading, state.isInitialDataLoaded, router]);
+  }, [isAuthenticated, authLoading, appState.lists, appLoading, router]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-background text-primary">
