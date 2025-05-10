@@ -1,9 +1,10 @@
+// src/app/providers.tsx
 "use client";
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppProvider } from '@/context/app-context'; // Ensure alias resolves correctly
-import { AuthProvider } from '@/context/auth-context'; // Keep AuthProvider separate
+import { AppProvider } from '../context/app-context'; // Changed to relative path
+import { AuthProvider } from '../context/auth-context'; // Changed to relative path
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,11 +17,11 @@ const queryClient = new QueryClient({
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppProvider> {/* AppProvider now wraps AuthProvider */}
-        <AuthProvider>
+      <AuthProvider> {/* AuthProvider is outer */}
+        <AppProvider> {/* AppProvider is inner and can consume AuthContext */}
           {children}
-        </AuthProvider>
-      </AppProvider>
+        </AppProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
