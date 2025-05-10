@@ -1,4 +1,3 @@
-// src/app/page.tsx
 "use client";
 
 import { useEffect } from 'react';
@@ -7,13 +6,11 @@ import { useAppContext } from '@/context/app-context';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isLoading, state } = useAppContext(); // Use state.isInitialDataLoaded
+  const { isLoading, state } = useAppContext(); 
 
   useEffect(() => {
-    // Wait for initial data to load (including anonymous userId and localStorage state)
     if (!isLoading && state.isInitialDataLoaded) {
-      // AppLayout will handle the logic to show /list or /list/create-first
-      console.log("HomePage: Attempting redirect to /list. AppLayout will manage final destination.");
+      console.log("HomePage: Attempting redirect. AppLayout will manage final destination.");
       router.replace('/list');
     }
   }, [isLoading, state.isInitialDataLoaded, router]);

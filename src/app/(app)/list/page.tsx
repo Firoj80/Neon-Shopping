@@ -1,4 +1,3 @@
-// src/app/(app)/list/page.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -19,17 +18,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Keep Label for potential future use
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemCard } from '@/components/shopping/item-card';
 import { PlusCircle, Search, LayoutList, ShoppingCart } from 'lucide-react';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
-// Removed CreateFirstListPage import
 
 export default function ShoppingListPage() {
-  const { state, dispatch, isLoading } = useAppContext(); // Removed isInitialDataLoaded, isLoading from AppContext is sufficient
+  const { state, dispatch, isLoading } = useAppContext();
   const { lists, selectedListId, shoppingListItems, currency, categories, userId } = state;
 
   const [showAddEditItemModal, setShowAddEditItemModal] = useState(false);
@@ -57,11 +54,11 @@ export default function ShoppingListPage() {
 
   const purchasedItems = useMemo(() => {
     return itemsForSelectedList.filter(item => item.checked && item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [shoppingListItems, searchTerm]);
+  }, [shoppingListItems, searchTerm, selectedListId]); // Added selectedListId dependency
 
 
   const handleAddItemClick = () => {
-    if (!selectedListId || !userId) { // Ensure userId is available
+    if (!selectedListId || !userId) {
       console.error("Cannot add item: No list selected or user ID missing.");
       return;
     }
@@ -105,7 +102,7 @@ export default function ShoppingListPage() {
     setShowAddEditListModal(true);
   };
   
-  if (!isClient || isLoading || !state.isInitialDataLoaded) { // Use state.isInitialDataLoaded
+  if (!isClient || isLoading || !state.isInitialDataLoaded) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center">
@@ -116,8 +113,6 @@ export default function ShoppingListPage() {
     );
   }
   
-  // AppLayout now handles redirection to /list/create-first if no lists exist.
-  // This page should only render if lists DO exist or if there was an issue with redirect.
   if (lists.length === 0 && !isLoading) {
      return (
         <div className="flex items-center justify-center h-screen">
@@ -128,50 +123,50 @@ export default function ShoppingListPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="sticky top-0 z-10 bg-background pt-4"> {/* Sticky container for Budget and Tabs */}
-        <BudgetCard
-          list={selectedList}
-          items={itemsForSelectedList}
-          currency={currency}
-          onEditBudget={() => selectedList && handleEditList(selectedList)}
-        />
+      <div className="sticky top-0 z-10 bg-background pt-4 shadow-sm">
+        <div className="px-4 sm:px-6 md:px-8">
+          <BudgetCard
+            list={selectedList}
+            items={itemsForSelectedList}
+            currency={currency}
+            onEditBudget={() => selectedList && handleEditList(selectedList)}
+          />
 
-        <ListsCarousel
-            lists={lists}
-            selectedListId={selectedListId}
-            onSelectList={handleSelectList}
-            onAddNewList={handleCreateNewList}
-            onEditList={handleEditList}
-            isPremium={state.isPremium} // Will be false, but kept for prop consistency
-        />
-        
-        <div className="relative mt-2 mb-2"> {/* Reduced margin */}
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-            type="search"
-            placeholder="Search items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-border/30 focus:border-primary focus:shadow-neon"
-            />
+          <ListsCarousel
+              lists={lists}
+              selectedListId={selectedListId}
+              onSelectList={handleSelectList}
+              onAddNewList={handleCreateNewList}
+              onEditList={handleEditList}
+              isPremium={state.isPremium}
+          />
+          
+          <div className="relative mt-2 mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+              type="search"
+              placeholder="Search items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-border/30 focus:border-primary focus:shadow-neon"
+              />
+          </div>
+
+          <Tabs defaultValue="current" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-2 bg-card border border-primary/20 shadow-sm">
+              <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
+                  Current ({currentItems.length})
+              </TabsTrigger>
+              <TabsTrigger value="purchased" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
+                  Purchased ({purchasedItems.length})
+              </TabsTrigger>
+              </TabsList>
+          </Tabs>
         </div>
-
-        <Tabs defaultValue="current" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-2 bg-card border border-primary/20 shadow-sm"> {/* Reduced margin */}
-            <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
-                Current ({currentItems.length})
-            </TabsTrigger>
-            <TabsTrigger value="purchased" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
-                Purchased ({purchasedItems.length})
-            </TabsTrigger>
-            </TabsList>
-        </Tabs>
       </div>
       
-      {/* Scrollable Item Area */}
-      <ScrollArea className="flex-grow mt-1"> {/* ScrollArea takes up remaining space */}
+      <ScrollArea className="flex-grow mt-1 px-4 sm:px-6 md:px-8">
         <Tabs defaultValue="current" className="w-full">
-          {/* TabsList is part of the sticky section above, so it's not repeated here */}
           <TabsContent value="current" className="mt-0">
             {currentItems.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground">
@@ -179,7 +174,7 @@ export default function ShoppingListPage() {
                 No current items. Add some!
               </div>
             ) : (
-              <div className="space-y-2 pb-20"> {/* Added padding-bottom */}
+              <div className="space-y-2 pb-20">
                 {currentItems.map(item => (
                   <ItemCard
                     key={item.id}
@@ -201,7 +196,7 @@ export default function ShoppingListPage() {
                  No items purchased yet.
               </div>
             ) : (
-              <div className="space-y-2 pb-20"> {/* Added padding-bottom */}
+              <div className="space-y-2 pb-20">
                 {purchasedItems.map(item => (
                   <ItemCard
                     key={item.id}
@@ -222,7 +217,7 @@ export default function ShoppingListPage() {
       {selectedListId && (
         <Button
             onClick={handleAddItemClick}
-            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 sm:bottom-6 sm:right-6 z-20 rounded-full h-14 w-14 p-0 shadow-neon-lg bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 transition-transform"
+            className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] right-4 sm:bottom-6 sm:right-6 z-20 rounded-full h-14 w-14 p-0 shadow-neon-lg bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 transition-transform"
             aria-label="Add new item"
             disabled={!selectedListId} 
         >

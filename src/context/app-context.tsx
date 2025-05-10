@@ -54,7 +54,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'health', name: 'Health' },
   { id: 'electronics', name: 'Electronics' },
   { id: 'fashion', name: 'Fashion' },
-  { id: 'sports', name: 'Sports'}, // Added Sports as per new requirement
+  { id: 'sports', name: 'Sports'},
   { id: 'uncategorized', name: 'Uncategorized' },
 ];
 
@@ -162,7 +162,6 @@ function appReducer(state: AppState, action: Action): AppState {
       };
       break;
     case 'ADD_CATEGORY':
-       // Prevent adding duplicate category names (case-insensitive)
       if (!state.categories.find(cat => cat.name.toLowerCase() === action.payload.name.toLowerCase())) {
         newState = { ...state, categories: [...state.categories, action.payload] };
       }
@@ -185,11 +184,10 @@ function appReducer(state: AppState, action: Action): AppState {
         categories: state.categories.filter(cat => cat.id !== categoryIdToDelete),
         shoppingListItems: state.shoppingListItems.map(item =>
           item.category === categoryIdToDelete
-            ? { ...item, category: targetCategoryId || 'uncategorized' } // Fallback if all else fails
+            ? { ...item, category: targetCategoryId || 'uncategorized' } 
             : item
         ),
       };
-      // Ensure defaultCategory on lists is updated if it pointed to the deleted category
       newState.lists = newState.lists.map(list => 
         list.defaultCategory === categoryIdToDelete 
         ? { ...list, defaultCategory: targetCategoryId || undefined } 
@@ -206,7 +204,6 @@ function appReducer(state: AppState, action: Action): AppState {
       break;
   }
 
-  // Save to localStorage on every state change except initial load actions
   if (action.type !== 'LOAD_STATE' && action.type !== 'SET_INITIAL_DATA_LOADED' && typeof window !== 'undefined') {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newState));
@@ -217,36 +214,32 @@ function appReducer(state: AppState, action: Action): AppState {
   return newState;
 }
 
-// --- Context Provider ---
 interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<Action>;
-  isLoading: boolean; // For initial data load from localStorage
+  isLoading: boolean; 
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const [isLoading, setIsLoading] = useState(true); // Manages loading state for localStorage
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadInitialData = async () => {
       if (state.isInitialDataLoaded) {
-         setIsLoading(false); // Already loaded
+         setIsLoading(false);
          return;
       }
       
       console.log("AppProvider: Loading initial data (localStorage)...");
       setIsLoading(true);
 
-      let userId = localStorage.getItem('app_user_id'); // Distinct key for anonymous user ID
+      let userId = localStorage.getItem('app_user_id'); 
       if (!userId) {
         userId = `anon_${uuidv4()}`;
         localStorage.setItem('app_user_id', userId);
-        console.log("AppProvider: No anonymous user ID found, generated:", userId);
-      } else {
-        console.log("AppProvider: Found anonymous user ID:", userId);
       }
 
       let loadedStateFromStorage: Partial<AppState> = { userId };
@@ -255,11 +248,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const savedStateRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (savedStateRaw) {
           const parsedState = JSON.parse(savedStateRaw);
-          // Ensure the loaded state also gets the correct userId if it was just generated or from storage
           loadedStateFromStorage = { ...parsedState, userId: parsedState.userId || userId };
-          console.log("AppProvider: Loaded state from localStorage:", loadedStateFromStorage);
-        } else {
-          console.log("AppProvider: No state found in localStorage, using defaults with generated/found userId.");
         }
       } catch (error) {
         console.error("AppProvider: Failed to parse state from localStorage, using defaults.", error);
@@ -267,41 +256,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!loadedStateFromStorage.currency) {
         try {
-          console.log("AppProvider: Attempting to auto-detect currency...");
           const detectedCurrency = await getUserCurrency();
-          if (detectedCurrency) {
-            loadedStateFromStorage.currency = detectedCurrency;
-            console.log("AppProvider: Currency auto-detected:", detectedCurrency.code);
-          } else {
-            loadedStateFromStorage.currency = defaultCurrency;
-            console.log("AppProvider: Currency auto-detection failed, using default:", defaultCurrency.code);
-          }
+          loadedStateFromStorage.currency = detectedCurrency || defaultCurrency;
         } catch (error) {
           console.error("AppProvider: Error during currency auto-detection:", error);
           loadedStateFromStorage.currency = defaultCurrency;
         }
-      } else {
-         console.log("AppProvider: Using currency from localStorage:", loadedStateFromStorage.currency?.code);
       }
       
-      // Merge categories, ensuring defaults are present if none in storage
       const finalCategories = (loadedStateFromStorage.categories && loadedStateFromStorage.categories.length > 0)
         ? loadedStateFromStorage.categories
         : DEFAULT_CATEGORIES;
       loadedStateFromStorage.categories = finalCategories;
 
-
-      // Ensure lists array is initialized if not present in loaded state
-      if (!loadedStateFromStorage.lists) {
-        loadedStateFromStorage.lists = [];
-      }
-      if (!loadedStateFromStorage.shoppingListItems) {
-        loadedStateFromStorage.shoppingListItems = [];
-      }
+      if (!loadedStateFromStorage.lists) loadedStateFromStorage.lists = [];
+      if (!loadedStateFromStorage.shoppingListItems) loadedStateFromStorage.shoppingListItems = [];
       if (!loadedStateFromStorage.selectedListId && loadedStateFromStorage.lists.length > 0) {
         loadedStateFromStorage.selectedListId = loadedStateFromStorage.lists[0].id;
       }
-
 
       dispatch({ type: 'LOAD_STATE', payload: loadedStateFromStorage });
       dispatch({ type: 'SET_INITIAL_DATA_LOADED', payload: true });
@@ -310,7 +282,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     loadInitialData();
-  }, [state.isInitialDataLoaded]); // Depend on isInitialDataLoaded to prevent re-runs
+  }, [state.isInitialDataLoaded]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, isLoading }}>
