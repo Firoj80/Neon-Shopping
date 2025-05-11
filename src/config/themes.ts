@@ -1,41 +1,6 @@
 export interface Theme {
   id: string;
   name: string;
-  colors: {
-    '--background': string;
-    '--foreground': string;
-    '--card': string;
-    '--card-foreground': string;
-    '--popover': string;
-    '--popover-foreground': string;
-    '--primary': string;
-    '--primary-foreground': string;
-    '--secondary': string;
-    '--secondary-foreground': string;
-    '--muted': string;
-    '--muted-foreground': string;
-    '--accent': string;
-    '--accent-foreground': string;
-    '--destructive': string;
-    '--destructive-foreground': string;
-    '--border': string;
-    '--input': string;
-    '--ring': string;
-    '--radius': string;
-    '--sidebar-background': string;
-    '--sidebar-foreground': string;
-    '--sidebar-primary': string;
-    '--sidebar-primary-foreground': string;
-    '--sidebar-accent': string;
-    '--sidebar-accent-foreground': string;
-    '--sidebar-border': string;
-    '--sidebar-ring': string;
-    '--chart-1': string;
-    '--chart-2': string;
-    '--chart-3': string;
-    '--chart-4': string;
-    '--chart-5': string;
-  };
 }
 
 export const defaultThemeId = 'cyberpunk-cyan';
@@ -43,42 +8,213 @@ export const defaultThemeId = 'cyberpunk-cyan';
 export const themes: Theme[] = [
   {
     id: 'cyberpunk-cyan',
-    name: 'Cyberpunk Cyan (Default)',
-    colors: {
-      '--background': '0 0% 3.9%', // Near black
-      '--foreground': '0 0% 98%', // Near white
-      '--card': '0 0% 5.5%', // Slightly lighter black
-      '--card-foreground': '0 0% 98%',
-      '--popover': '0 0% 3.9%',
-      '--popover-foreground': '0 0% 98%',
-      '--primary': '180 100% 50%', // Neon Cyan
-      '--primary-foreground': '180 100% 10%', // Dark Cyan for text on primary
-      '--secondary': '260 100% 60%', // Neon Purple / Magenta
-      '--secondary-foreground': '260 100% 15%', // Dark Purple for text on secondary
-      '--muted': '0 0% 14.9%',
-      '--muted-foreground': '0 0% 63.9%',
-      '--accent': '180 100% 40%', // Darker Cyan
-      '--accent-foreground': '0 0% 98%',
-      '--destructive': '0 84.2% 60.2%', // Red
-      '--destructive-foreground': '0 0% 98%',
-      '--border': '0 0% 14.9%',
-      '--input': '0 0% 14.9%',
-      '--ring': '180 100% 50%', // Neon Cyan for focus rings
-      '--radius': '0.75rem',
-      '--sidebar-background': '0 0% 5.5%',
-      '--sidebar-foreground': '0 0% 75%',
-      '--sidebar-primary': '180 100% 50%',
-      '--sidebar-primary-foreground': '0 0% 98%',
-      '--sidebar-accent': '260 100% 60%',
-      '--sidebar-accent-foreground': '0 0% 98%',
-      '--sidebar-border': '0 0% 14.9%',
-      '--sidebar-ring': '180 100% 50%',
-      '--chart-1': '180 70% 60%', // Cyan
-      '--chart-2': '260 70% 70%', // Purple
-      '--chart-3': '330 70% 65%', // Pinkish
-      '--chart-4': '120 60% 60%', // Green
-      '--chart-5': '45 80% 60%',  // Orange
-    },
+    name: 'Cyberpunk Cyan',
   },
-  // Add more themes here if they were part of a5b0e2a0
+  {
+    id: 'neon-magenta',
+    name: 'Neon Magenta',
+  },
+  {
+    id: 'electric-blue',
+    name: 'Electric Blue',
+  },
+  {
+    id: 'acid-green',
+    name: 'Acid Green',
+  },
+  {
+    id: 'radioactive-orange',
+    name: 'Radioactive Orange',
+  },
+  {
+    id: 'synthwave-purple',
+    name: 'Synthwave Purple',
+  },
+  {
+    id: 'glitch-red',
+    name: 'Glitch Red',
+  },
+  {
+    id: 'tron-blue',
+    name: 'Tron Blue',
+  },
 ];
+
+export const themeColors: Record<string, Record<string, string>> = {
+  'cyberpunk-cyan': {
+    '--background': '0 0% 0%',
+    '--foreground': '0 0% 95%',
+    '--card': '0 0% 7%',
+    '--card-foreground': '0 0% 95%',
+    '--popover': '0 0% 7%',
+    '--popover-foreground': '0 0% 95%',
+    '--primary': '180 100% 50%',
+    '--primary-foreground': '180 100% 10%',
+    '--secondary': '300 100% 50%',
+    '--secondary-foreground': '300 100% 10%',
+    '--muted': '0 0% 15%',
+    '--muted-foreground': '0 0% 60%',
+    '--accent': '300 100% 70%',
+    '--accent-foreground': '0 0% 5%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '180 100% 30%',
+    '--input': '0 0% 15%',
+    '--ring': '180 100% 50%',
+    '--neon-text': '0 0% 90%',
+  },
+  'neon-magenta': {
+    '--background': '0 0% 0%',
+    '--foreground': '0 0% 95%',
+    '--card': '0 0% 7%',
+    '--card-foreground': '0 0% 95%',
+    '--popover': '0 0% 7%',
+    '--popover-foreground': '0 0% 95%',
+    '--primary': '300 100% 50%',
+    '--primary-foreground': '300 100% 10%',
+    '--secondary': '60 100% 50%',
+    '--secondary-foreground': '60 100% 10%',
+    '--muted': '0 0% 15%',
+    '--muted-foreground': '0 0% 60%',
+    '--accent': '60 100% 70%',
+    '--accent-foreground': '0 0% 5%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '300 100% 30%',
+    '--input': '0 0% 15%',
+    '--ring': '300 100% 50%',
+    '--neon-text': '0 0% 90%',
+  },
+  'electric-blue': {
+    '--background': '220 20% 12%',
+    '--foreground': '220 10% 85%',
+    '--card': '220 20% 7%',
+    '--card-foreground': '220 10% 85%',
+    '--popover': '220 20% 7%',
+    '--popover-foreground': '220 10% 85%',
+    '--primary': '210 100% 70%',
+    '--primary-foreground': '210 100% 10%',
+    '--secondary': '270 50% 60%',
+    '--secondary-foreground': '270 50% 10%',
+    '--muted': '220 10% 20%',
+    '--muted-foreground': '220 10% 60%',
+    '--accent': '270 50% 70%',
+    '--accent-foreground': '220 10% 5%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '210 100% 40%',
+    '--input': '220 20% 15%',
+    '--ring': '210 100% 70%',
+    '--neon-text': '220 10% 90%',
+  },
+  'acid-green': {
+    '--background': '0 0% 0%',
+    '--foreground': '0 0% 95%',
+    '--card': '0 0% 7%',
+    '--card-foreground': '0 0% 95%',
+    '--popover': '0 0% 7%',
+    '--popover-foreground': '0 0% 95%',
+    '--primary': '120 100% 50%',
+    '--primary-foreground': '0 0% 10%',
+    '--secondary': '300 100% 50%',
+    '--secondary-foreground': '0 0% 10%',
+    '--muted': '0 0% 15%',
+    '--muted-foreground': '0 0% 60%',
+    '--accent': '300 100% 70%',
+    '--accent-foreground': '0 0% 5%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '120 100% 30%',
+    '--input': '0 0% 15%',
+    '--ring': '120 100% 50%',
+    '--neon-text': '0 0% 90%',
+  },
+  'radioactive-orange': {
+    '--background': '0 0% 0%',
+    '--foreground': '0 0% 95%',
+    '--card': '0 0% 7%',
+    '--card-foreground': '0 0% 95%',
+    '--popover': '0 0% 7%',
+    '--popover-foreground': '0 0% 95%',
+    '--primary': '30 100% 50%',
+    '--primary-foreground': '0 0% 10%',
+    '--secondary': '180 100% 50%',
+    '--secondary-foreground': '0 0% 10%',
+    '--muted': '0 0% 15%',
+    '--muted-foreground': '0 0% 60%',
+    '--accent': '180 100% 70%',
+    '--accent-foreground': '0 0% 5%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '30 100% 30%',
+    '--input': '0 0% 15%',
+    '--ring': '30 100% 50%',
+    '--neon-text': '0 0% 90%',
+  },
+  'synthwave-purple': {
+    '--background': '0 0% 0%',
+    '--foreground': '0 0% 95%',
+    '--card': '0 0% 7%',
+    '--card-foreground': '0 0% 95%',
+    '--popover': '0 0% 7%',
+    '--popover-foreground': '0 0% 95%',
+    '--primary': '270 100% 50%',
+    '--primary-foreground': '0 0% 10%',
+    '--secondary': '180 100% 50%',
+    '--secondary-foreground': '0 0% 10%',
+    '--muted': '0 0% 15%',
+    '--muted-foreground': '0 0% 60%',
+    '--accent': '180 100% 70%',
+    '--accent-foreground': '0 0% 5%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '270 100% 30%',
+    '--input': '0 0% 15%',
+    '--ring': '270 100% 50%',
+    '--neon-text': '0 0% 90%',
+  },
+    'glitch-red': {
+    '--background': '0 0% 0%',
+    '--foreground': '0 0% 95%',
+    '--card': '0 0% 7%',
+    '--card-foreground': '0 0% 95%',
+    '--popover': '0 0% 7%',
+    '--popover-foreground': '0 0% 95%',
+    '--primary': '0 100% 50%',
+    '--primary-foreground': '0 0% 10%',
+    '--secondary': '180 100% 50%',
+    '--secondary-foreground': '0 0% 10%',
+    '--muted': '0 0% 15%',
+    '--muted-foreground': '0 0% 60%',
+    '--accent': '180 100% 70%',
+    '--accent-foreground': '0 0% 5%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '0 100% 30%',
+    '--input': '0 0% 15%',
+    '--ring': '0 100% 50%',
+    '--neon-text': '0 0% 90%',
+  },
+   'tron-blue': {
+    '--background': '240 10% 5%',
+    '--foreground': '240 10% 90%',
+    '--card': '240 10% 10%',
+    '--card-foreground': '240 10% 90%',
+    '--popover': '240 10% 10%',
+    '--popover-foreground': '240 10% 90%',
+    '--primary': '210 100% 60%',
+    '--primary-foreground': '240 10% 10%',
+    '--secondary': '270 50% 50%',
+    '--secondary-foreground': '240 10% 10%',
+    '--muted': '240 10% 15%',
+    '--muted-foreground': '240 10% 60%',
+    '--accent': '270 50% 70%',
+    '--accent-foreground': '240 10% 5%',
+    '--destructive': '0 84.2% 60.2%',
+    '--destructive-foreground': '0 0% 98%',
+    '--border': '210 100% 30%',
+    '--input': '240 10% 15%',
+    '--ring': '210 100% 60%',
+    '--neon-text': '240 10% 85%',
+  },
+};

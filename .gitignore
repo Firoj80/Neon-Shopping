@@ -1,2 +1,60 @@
-node_modules
-node_modules
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Next.js build output and cache
+/.next/
+/out/
+
+# Optional contracts folder from Hardhat (if applicable)
+contracts/artifacts/
+contracts/cache/
+contracts/typechain/
+contracts/coverage/
+contracts/coverage.json
+
+# Production Folders
+/build
+
+# Misc
+.DS_Store
+*.pem
+report.html
+
+# Debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+
+# dotenv environment variables file
+.env
+.env*.local
+.env.*.local
+
+# Log files
+*.log
+
+# Firebase files
+*.firebase.*
+firebase-debug.log
+# Ignore firebase emulators secret file
+.secret.local
+
+# Capacitor generated folders and files
+/android/
+/ios/
+/electron/
+capacitor.config.*.json

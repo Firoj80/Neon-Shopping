@@ -1,33 +1,49 @@
-
+// src/app/page.tsx
 "use client";
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppContext } from '@/context/app-context';
-import { ShoppingCart } from 'lucide-react';
+import { useAuth } from '@/context/auth-context'; // Assuming path is correct
+import { useAppContext } from '@/context/app-context'; // Assuming path is correct
+import { useClientOnly } from '@/hooks/use-client-only';
 
+
+// This page now acts primarily as an entry point.
+// The core redirection logic is handled by AppLayoutContent and middleware.
 export default function HomePage() {
   const router = useRouter();
-  const { state: appState, isLoading: appLoading } = useAppContext();
+  const { isAuthenticated, isLoading: authIsLoading } = useAuth();
+  const { state: appState, isLoading: appIsLoading } = useAppContext();
+  const isClientMounted = useClientOnly();
 
   useEffect(() => {
-    // This effect will run once the component mounts and app state is available
-    if (!appLoading && appState.isInitialDataLoaded) { // Check if initial data is loaded
-      if (appState.lists && appState.lists.length > 0) {
-        router.replace('/list'); // User has lists, go to list page
+    if (!isClientMounted) return;
+
+    const combinedIsLoading = authIsLoading || appIsLoading;
+    if (combinedIsLoading) return; // Wait for auth and app data to load
+
+    // Redirection logic is now primarily in AppLayoutContent
+    // This useEffect can act as a final fallback or be simplified further
+    // if AppLayoutContent robustly handles all scenarios.
+
+    if (!isAuthenticated) {
+      router.replace('/auth');
+    } else {
+      const userLists = appState.lists.filter(list => list.userId === appState.userId);
+      if (userLists.length === 0) {
+        router.replace('/list/create-first');
       } else {
-        router.replace('/list/create-first'); // User has no lists, go to create first list page
+        router.replace('/list');
       }
     }
-  }, [appState.isInitialDataLoaded, appState.lists, appLoading, router]);
+  }, [isClientMounted, isAuthenticated, authIsLoading, appState.lists, appState.userId, appIsLoading, router]);
 
-  // Show a loading spinner while determining the redirect
+  // Display a minimal loader while initial checks and redirects happen.
+  // AppLayoutContent will display a more comprehensive loader during its checks.
   return (
-    <div className="flex items-center justify-center h-screen bg-background text-primary">
-      <div className="flex flex-col items-center">
-        <ShoppingCart className="w-16 h-16 animate-pulse text-primary" />
-        <p className="mt-4 text-lg font-semibold">Initializing Neon Shopping...</p>
-      </div>
+    <div className="flex flex-col items-center justify-center h-screen bg-background text-center p-4">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+      <p className="text-primary text-sm font-medium">Initializing...</p>
     </div>
   );
 }

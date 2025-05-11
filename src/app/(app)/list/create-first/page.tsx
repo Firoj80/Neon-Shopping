@@ -1,81 +1,89 @@
-
+// src/app/(app)/list/create-first/page.tsx
 "use client";
-
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAppContext } from '@/context/app-context';
-import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, PlusCircle } from 'lucide-react';
-import { useClientOnly } from '@/hooks/use-client-only';
+import { ListPlus, PlusCircle } from 'lucide-react';
+import { AddEditListModal } from '@/components/list/AddEditListModal';
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
+import { useAppContext } from '@/context/app-context'; // For checking list count if needed
 
 export default function CreateFirstListPage() {
-  const { state: appState, isLoading: appIsLoading } = useAppContext();
-  const router = useRouter();
-  const [showAddListModal, setShowAddListModal] = useState(false);
-  const isClient = useClientOnly();
+    const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
+    const { isAuthenticated, isLoading: authIsLoading, user } = useAuth();
+    const { state: appState, isLoading: appLoading } = useAppContext();
+    const router = useRouter();
 
-  const handleOpenAddListModal = () => {
-    if (!appState.userId) { 
-        console.error("Cannot create list: User ID is not available in AppContext.");
-        return;
+    const isLoading = authIsLoading || appLoading;
+
+    // Effect to redirect authenticated users with lists away from this page (now primarily handled by AppLayoutContent)
+    // This acts as a secondary check if user lands here directly.
+    useEffect(() => {
+        if (!isLoading && isAuthenticated && user && Array.isArray(appState.lists)) {
+            const userLists = appState.lists.filter(list => list.userId === user.id);
+            if (userLists.length > 0) {
+                console.log("CreateFirstListPage: Authenticated and has lists, redirecting to /list");
+                router.replace('/list');
+            }
+        }
+    }, [isLoading, isAuthenticated, user, appState.lists, router]);
+
+    const handleCreateListClick = () => {
+        if (isLoading) {
+            console.log("Auth/App still loading, please wait...");
+            return;
+        }
+        if (isAuthenticated && user) {
+            setIsAddListModalOpen(true);
+        } else {
+            // This case should ideally be handled by middleware or AppLayout redirecting to /auth
+            console.log("CreateFirstListPage: User not authenticated. This page should not be reachable without auth.");
+            router.push('/auth?redirect=/list/create-first'); 
+        }
+    };
+
+    const handleListCreated = () => {
+        setIsAddListModalOpen(false);
+        // AppContext will update lists, AppLayoutContent's useEffect will handle redirection to /list
+        // Or, more directly, redirect here:
+        router.replace('/list');
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        );
     }
-    setShowAddListModal(true);
-  };
+    
+    // If an authenticated user has lists, they will be redirected by the useEffect.
+    // This page is primarily for authenticated users without lists.
+    // If not authenticated, AppLayoutContent should redirect to /auth.
 
-  if (!isClient || appIsLoading || !appState.isInitialDataLoaded) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-background text-center">
-        <ShoppingCart className="w-24 h-24 text-primary mb-6 animate-pulse" />
-        <h1 className="text-3xl font-bold text-primary mb-4">Loading Your Space...</h1>
-        <p className="text-muted-foreground">Getting things ready for you.</p>
-      </div>
-    );
-  }
-  
-  // Redirect if lists already exist (AppLayout should also handle this)
-  if (appState.lists && appState.lists.length > 0) {
-    // router.replace('/list'); // This is now handled by AppLayout useEffect primarily
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-background text-center">
-            <ShoppingCart className="w-24 h-24 text-primary mb-6 animate-pulse" />
-            <h1 className="text-3xl font-bold text-primary mb-4">Loading Your Lists...</h1>
-            <p className="text-muted-foreground">Redirecting shortly...</p>
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-center py-10">
+            <ListPlus className="h-16 w-16 text-primary/50 mb-4" />
+            <h1 className="text-xl font-semibold text-neonText mb-2">Create Your First List</h1>
+            <p className="text-muted-foreground mb-6 max-w-md">
+                Welcome to Neon Shopping! Get started by creating your first shopping list to organize your items and track your budget.
+            </p>
+            <Button
+                onClick={handleCreateListClick}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-neon glow-border"
+                size="lg"
+            >
+                <PlusCircle className="mr-2 h-5 w-5" /> Create New List
+            </Button>
+            
+            {isAuthenticated && user && (
+                 <AddEditListModal
+                     isOpen={isAddListModalOpen}
+                     onClose={() => setIsAddListModalOpen(false)}
+                     onListSaved={handleListCreated} // Add this prop to handle successful save
+                     // listData is null for creating a new list
+                 />
+            )}
         </div>
     );
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-gradient-to-br from-background to-primary/10 text-center">
-      <div className="bg-card p-8 sm:p-12 rounded-xl shadow-neon-lg border border-primary/30 max-w-md w-full card-glow">
-        <ShoppingCart className="w-20 h-20 sm:w-24 sm:h-24 text-primary mx-auto mb-6" />
-        <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-4">Create Your First List</h1>
-        <p className="text-muted-foreground mb-8 text-sm sm:text-base">
-          Welcome to Neon Shopping! Get started by creating your first shopping list to organize your items and track your budget.
-        </p>
-        <Button
-          onClick={handleOpenAddListModal}
-          className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-8 py-3 rounded-lg shadow-md hover:shadow-neon transition-all duration-300 ease-in-out transform hover:scale-105 group"
-          disabled={!appState.userId} 
-        >
-          <PlusCircle className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
-          Create First List
-        </Button>
-      </div>
-
-      {showAddListModal && appState.userId && (
-        <AddEditListModal
-          isOpen={showAddListModal}
-          onClose={() => setShowAddListModal(false)}
-          userId={appState.userId} 
-          onListCreated={() => {
-            // AppLayout will handle redirect to /list after list creation updates AppContext
-          }}
-        />
-      )}
-       {!appState.userId && !appIsLoading && isClient && ( 
-         <p className="mt-4 text-sm text-destructive">User ID not available. Please try reloading.</p>
-       )}
-    </div>
-  );
 }

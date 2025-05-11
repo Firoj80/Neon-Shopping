@@ -1,11 +1,13 @@
-
+// src/app/(app)/list/page.tsx
 "use client";
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { useAppContext } from '@/context/app-context';
-import type { ShoppingListItem as AppShoppingListItem, List, Category } from '@/context/app-context';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { PlusCircle, Trash2, ShoppingCart, CheckCircle, ListPlus } from 'lucide-react';
+import { ItemCard } from '@/components/shopping/item-card';
+import { useAppContext, FREEMIUM_LIST_LIMIT } from '@/context/app-context';
+import type { ShoppingListItem as AppShoppingListItem, List } from '@/context/app-context';
 import { AddEditItemModal } from '@/components/shopping/add-edit-item-modal';
-import { BudgetCard } from '@/components/budget/budget-panel';
+import { BudgetCard, BudgetCardSkeleton } from '@/components/budget/budget-panel';
 import { ListsCarousel } from '@/components/list/ListsCarousel';
 import {
   AlertDialog,
@@ -17,252 +19,271 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ItemCard } from '@/components/shopping/item-card';
-import { PlusCircle, Search, LayoutList, ShoppingCart } from 'lucide-react';
+import ClientOnly from '@/components/client-only';
 import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
-// Import CreateFirstListPage to handle the "no lists" scenario directly
-import CreateFirstListPage from './create-first/page';
+import { useRouter, usePathname } from 'next/navigation';
+// Removed import of CreateFirstListPage as AppLayoutContent handles initial redirection
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
+const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
 
 export default function ShoppingListPage() {
-  const { state, dispatch, isLoading } = useAppContext();
-  const { lists, selectedListId, shoppingListItems, currency, categories, userId } = state;
+  const { state: appState, dispatch, isLoading: appContextIsLoading } = useAppContext();
+  const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname(); // Ensure pathname is available
 
-  const [showAddEditItemModal, setShowAddEditItemModal] = useState(false);
-  const [itemToEdit, setItemToEdit] = useState<AppShoppingListItem | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<AppShoppingListItem | null>(null);
-  const [showAddEditListModal, setShowAddEditListModal] = useState(false);
-  const [listToEdit, setListToEdit] = useState<List | null>(null);
+  const isLoading = appContextIsLoading || authIsLoading;
+  const isClientMounted = useClientOnly();
+
+
+  const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<AppShoppingListItem | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'current' | 'purchased'>('current');
   
-  const isClient = useClientOnly();
 
-  const selectedList = useMemo(() => {
-    return lists.find(list => list.id === selectedListId);
-  }, [lists, selectedListId]);
+  const { selectedListId, shoppingListItems, lists, userId: contextUserId, isPremium } = appState;
+  const currentUserId = user?.id || contextUserId;
 
-  const itemsForSelectedList = useMemo(() => {
-    if (!selectedListId) return [];
-    return shoppingListItems.filter(item => item.listId === selectedListId);
-  }, [shoppingListItems, selectedListId]);
 
-  const currentItems = useMemo(() => {
-    return itemsForSelectedList.filter(item => !item.checked && item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [itemsForSelectedList, searchTerm]);
-
-  const purchasedItems = useMemo(() => {
-    return itemsForSelectedList.filter(item => item.checked && item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [itemsForSelectedList, searchTerm]); // removed shoppingListItems, selectedListId as itemsForSelectedList already covers them
+   const selectedList: List | undefined = useMemo(() => {
+       if (!Array.isArray(lists) || !currentUserId) return undefined;
+       return lists.find(list => list.id === selectedListId && list.userId === currentUserId);
+   }, [lists, selectedListId, currentUserId]);
 
   const handleAddItemClick = () => {
-    if (!selectedListId || !userId) {
-      console.error("Cannot add item: No list selected or user ID missing.");
+    if (!selectedListId) {
+      toast({
+        title: "No List Selected",
+        description: "Please select or create a list before adding items.",
+        variant: "destructive"
+      });
       return;
     }
-    setItemToEdit(null);
-    setShowAddEditItemModal(true);
+    setEditingItem(null);
+    setIsAddItemModalOpen(true);
   };
 
   const handleEditItem = (item: AppShoppingListItem) => {
-    setItemToEdit(item);
-    setShowAddEditItemModal(true);
+    setEditingItem(item);
+    setIsAddItemModalOpen(true);
   };
 
-  const handleDeleteItem = (item: AppShoppingListItem) => {
-    setItemToDelete(item);
-    setShowDeleteDialog(true);
+  const handleDeleteItem = (id: string) => {
+    setItemToDelete(id);
   };
 
-  const confirmDeleteItem = () => {
-    if (itemToDelete) {
-      dispatch({ type: 'DELETE_SHOPPING_ITEM', payload: itemToDelete.id });
+  const confirmDelete = async () => {
+    if (itemToDelete && currentUserId) {
+      try {
+        await fetchFromApi('items/delete_item.php', {
+          method: 'POST',
+          body: JSON.stringify({ itemId: itemToDelete, userId: currentUserId }),
+        });
+        dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete });
+        toast({ title: "Success", description: "Item removed." });
+      } catch (error: any) {
+        toast({ title: "Error", description: error.message || "Failed to remove item.", variant: "destructive" });
+      }
+      setItemToDelete(null);
     }
-    setShowDeleteDialog(false);
-    setItemToDelete(null);
   };
 
-  const handleSelectList = (listId: string) => {
-    dispatch({ type: 'SELECT_LIST', payload: listId });
-  };
 
-  const handleCreateNewList = () => {
-    if (!userId) {
-      console.error("Cannot create new list: User ID missing.");
-      return;
+  const userLists = useMemo(() => {
+    if (!Array.isArray(lists) || !currentUserId) return [];
+    return lists.filter(list => list.userId === currentUserId);
+  }, [lists, currentUserId]);
+
+
+  const itemsForSelectedList = useMemo(() => {
+    if (!selectedListId || !Array.isArray(shoppingListItems) || !currentUserId) return [];
+    return shoppingListItems.filter(item => item.listId === selectedListId && item.userId === currentUserId);
+  }, [selectedListId, shoppingListItems, currentUserId]);
+
+  const currentItems = useMemo(() => itemsForSelectedList.filter(item => !item.checked), [itemsForSelectedList]);
+  const purchasedItems = useMemo(() => itemsForSelectedList.filter(item => item.checked), [itemsForSelectedList]);
+
+  // Redirect to create-first if authenticated, no lists, and not already on create-first
+  useEffect(() => {
+    if (isClientMounted && !isLoading && isAuthenticated && userLists.length === 0 && pathname !== CREATE_FIRST_LIST_ROUTE) {
+      console.log("ShoppingListPage: Authenticated, no lists, redirecting to create-first.");
+      router.replace(CREATE_FIRST_LIST_ROUTE);
     }
-    setListToEdit(null);
-    setShowAddEditListModal(true);
-  };
-  
-  const handleEditList = (list: List) => {
-    setListToEdit(list);
-    setShowAddEditListModal(true);
-  };
-  
-  if (!isClient || isLoading || !state.isInitialDataLoaded) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-primary">
-        <ShoppingCart className="w-16 h-16 animate-pulse text-primary" />
-        <p className="mt-4 text-lg font-semibold">Loading Your Shopping Space...</p>
-      </div>
-    );
-  }
-  
-  // If no lists and data is loaded, AppLayout or HomePage should redirect to /list/create-first
-  // This can be a fallback or removed if redirects are solid.
-  if (lists.length === 0 && state.isInitialDataLoaded && !isLoading) {
-     return <CreateFirstListPage />; // Directly render the CreateFirstListPage component
-  }
+  }, [isClientMounted, isLoading, isAuthenticated, userLists, pathname, router]);
+
+
+  const CardSkeleton = () => (
+     <Card className="bg-card rounded-lg p-3 w-full border border-border/20 animate-pulse shadow-neon glow-border-inner">
+        <div className="flex items-center">
+            <Skeleton className="h-5 w-5 rounded mr-3 shrink-0" />
+             <div className="flex-grow min-w-0">
+                <Skeleton className="h-4 w-3/4" />
+                <div className="flex items-center gap-x-2 text-xs text-muted-foreground mt-1.5">
+                   <Skeleton className="h-3 w-1/6" />
+                   <Skeleton className="h-3 w-1/4" />
+                   <Skeleton className="h-3 w-1/5" />
+                   <Skeleton className="h-4 w-1/5 rounded-full" />
+                </div>
+            </div>
+           <div className="flex space-x-1 ml-auto shrink-0">
+             <Skeleton className="h-6 w-6 rounded-md" />
+             <Skeleton className="h-6 w-6 rounded-md" />
+           </div>
+        </div>
+    </Card>
+  );
+  const renderSkeletons = () => (
+    Array.from({ length: 3 }).map((_, index) => <CardSkeleton key={index} />)
+  );
+
+ const renderItemList = (items: AppShoppingListItem[], emptyMessage: string) => (
+     isLoading && itemsForSelectedList.length === 0 ? (
+         <div className="flex flex-col gap-2 pb-4">
+            {renderSkeletons()}
+         </div>
+    ) : items.length === 0 ? (
+         <div className="flex items-center justify-center h-full text-center py-10 min-h-[100px]">
+            <p className="text-muted-foreground text-neonText">{emptyMessage}</p>
+        </div>
+    ) : (
+        <div className="flex flex-col gap-2 pb-4">
+            {items.map((item) => (
+                <ItemCard key={item.id} item={item} onEdit={handleEditItem} onDelete={handleDeleteItem} />
+            ))}
+        </div>
+    )
+  );
+
+   if (!isClientMounted || isLoading) { // Show skeleton if not mounted or still loading initial data
+       return (
+         <div className="flex flex-col h-full">
+            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
+                <BudgetCardSkeleton/>
+                <Skeleton className="h-10 w-full rounded-lg mb-2" /> {/* ListsCarousel Skeleton */}
+                <Skeleton className="h-10 w-full rounded-lg" /> {/* TabsList Skeleton */}
+            </div>
+             <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+                {renderSkeletons()}
+            </div>
+         </div>
+       );
+   }
+   
+   // If authenticated but no lists, and already on this page, the useEffect above should redirect.
+   // This is a fallback state.
+   if (isAuthenticated && userLists.length === 0 && pathname === DEFAULT_AUTHENTICATED_ROUTE) {
+     return (
+       <div className="flex items-center justify-center h-screen">
+         <p className="text-muted-foreground">Redirecting to create your first list...</p>
+       </div>
+     );
+   }
+   
 
   return (
-    <div className="flex flex-col h-screen_minus_header overflow-hidden"> {/* Ensure full height */}
-      <div className="sticky top-0 z-10 bg-background pt-4 shadow-sm px-4 sm:px-6 md:px-8"> {/* Added padding here */}
-        <BudgetCard
-          list={selectedList}
-          items={itemsForSelectedList}
-          currency={currency}
-          onEditBudget={() => selectedList && handleEditList(selectedList)}
-        />
-
-        <ListsCarousel
-            lists={lists}
-            selectedListId={selectedListId}
-            onSelectList={handleSelectList}
-            onAddNewList={handleCreateNewList}
-            onEditList={handleEditList}
-            isPremium={state.isPremium}
-        />
-        
-        <div className="relative mt-2 mb-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-            type="search"
-            placeholder="Search items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-border/30 focus:border-primary focus:shadow-neon"
-            />
+    <div className="flex flex-col h-full">
+        {/* Sticky Header: Budget, Lists Carousel, Tabs */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
+            <BudgetCard />
+            <ListsCarousel />
+            <ClientOnly>
+               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'current' | 'purchased')} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 bg-card border border-primary/20 shadow-sm glow-border-inner mt-2">
+                        <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon/30 transition-all">
+                            <ShoppingCart className="mr-2 h-4 w-4" /> Current ({currentItems.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="purchased" className="data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary data-[state=active]:shadow-neon/30 transition-all">
+                            <CheckCircle className="mr-2 h-4 w-4" /> Purchased ({purchasedItems.length})
+                        </TabsTrigger>
+                    </TabsList>
+               </Tabs>
+            </ClientOnly>
         </div>
 
-        <Tabs defaultValue="current" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-2 bg-card border border-primary/20 shadow-sm">
-            <TabsTrigger value="current" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
-                Current ({currentItems.length})
-            </TabsTrigger>
-            <TabsTrigger value="purchased" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-neon-sm transition-all">
-                Purchased ({purchasedItems.length})
-            </TabsTrigger>
-            </TabsList>
-        </Tabs>
-      </div>
-      
-      <ScrollArea className="flex-grow px-4 sm:px-6 md:px-8"> {/* Added padding here */}
-        {/* TabsContent needs to be inside a single Tabs component or handled differently */}
-        <Tabs defaultValue="current" className="w-full">
-          <TabsContent value="current" className="mt-0">
-            {currentItems.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
-                <LayoutList className="mx-auto h-12 w-12 mb-2" />
-                No current items. Add some!
-              </div>
-            ) : (
-              <div className="space-y-2 pb-20">
-                {currentItems.map(item => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    currency={currency}
-                    categories={categories}
-                    onEdit={() => handleEditItem(item)}
-                    onDelete={() => handleDeleteItem(item)}
-                    onToggleChecked={() => dispatch({ type: 'TOGGLE_ITEM_CHECKED', payload: item.id })}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          <TabsContent value="purchased" className="mt-0">
-            {purchasedItems.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
-                <ShoppingCart className="mx-auto h-12 w-12 mb-2" />
-                 No items purchased yet.
-              </div>
-            ) : (
-              <div className="space-y-2 pb-20">
-                {purchasedItems.map(item => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    currency={currency}
-                    categories={categories}
-                    onEdit={() => handleEditItem(item)}
-                    onDelete={() => handleDeleteItem(item)}
-                    onToggleChecked={() => dispatch({ type: 'TOGGLE_ITEM_CHECKED', payload: item.id })}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </ScrollArea>
+        {/* Scrollable Item List Area */}
+        <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+          {(!selectedListId && userLists.length > 0) || (userLists.length === 0 && !isLoading && isAuthenticated)? (
+            // This condition might need review based on how AppLayout handles initial no-list state
+            <div className="flex items-center justify-center h-full text-center py-10">
+              <p className="text-muted-foreground text-neonText">
+                {isAuthenticated && userLists.length === 0 ? "Create your first list to get started!" : "Please select or create a shopping list."}
+              </p>
+            </div>
+           ) : (
+             <ClientOnly>
+                 <Tabs value={activeTab} className="w-full"> {/* Assuming Tabs component handles its own value logic now */}
+                     <TabsContent value="current" className="mt-0 pt-2"> {/* Ensure no negative margin */}
+                         {renderItemList(currentItems, "No current items in this list. Add some!")}
+                     </TabsContent>
+                     <TabsContent value="purchased" className="mt-0 pt-2">  {/* Ensure no negative margin */}
+                         {renderItemList(purchasedItems, "No items purchased in this list yet.")}
+                     </TabsContent>
+                 </Tabs>
+             </ClientOnly>
+           )}
+        </div>
 
-      {selectedListId && (
         <Button
-            onClick={handleAddItemClick}
-            className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] right-4 sm:bottom-6 sm:right-6 z-20 rounded-full h-14 w-14 p-0 shadow-neon-lg bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 transition-transform"
+            onClick={() => {
+                 if (!selectedListId) {
+                     toast({
+                         title: "No List Selected",
+                         description: "Please select or create a list first.",
+                         variant: "default",
+                     });
+                     return;
+                 }
+                 // Ensure user is authenticated before allowing item addition
+                 if (!isAuthenticated || !currentUserId) {
+                     toast({ title: "Authentication Required", description: "Please log in to add items.", variant: "destructive"});
+                     router.push(AUTH_ROUTE); // Redirect to login if not authenticated
+                     return;
+                 }
+                 handleAddItemClick();
+            }}
+            size="lg"
+            className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-6 md:right-8 z-30 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
-            disabled={!selectedListId} 
+            disabled={isLoading || (!selectedListId && userLists.length > 0) } // Disable if loading or no list selected but lists exist
         >
-            <PlusCircle className="h-7 w-7" />
+            <PlusCircle className="h-6 w-6" />
         </Button>
-      )}
 
-      {showAddEditItemModal && selectedList && userId && (
-        <AddEditItemModal
-          isOpen={showAddEditItemModal}
-          onClose={() => setShowAddEditItemModal(false)}
-          itemToEdit={itemToEdit}
-          listId={selectedList.id} 
-          defaultCategoryId={selectedList.defaultCategory} 
-          userId={userId} 
-        />
-      )}
-      
-      {showAddEditListModal && userId && (
-         <AddEditListModal
-           isOpen={showAddEditListModal}
-           onClose={() => setShowAddEditListModal(false)}
-           listToEdit={listToEdit}
-           userId={userId}
-         />
-       )}
+        {currentUserId && selectedListId && ( // Only render modal if user and list are selected
+            <AddEditItemModal
+                isOpen={isAddItemModalOpen}
+                onClose={() => { setIsAddItemModalOpen(false); setEditingItem(null); }}
+                itemData={editingItem}
+                currentListId={selectedListId} // Pass currentListId
+            />
+        )}
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="bg-card border-primary/40 shadow-neon rounded-lg card-glow">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the item
-              "{itemToDelete?.name}".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="hover:bg-muted/80">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteItem}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+            <AlertDialogContent className="glow-border">
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the item from this shopping list.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setItemToDelete(null)} className="glow-border-inner">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
