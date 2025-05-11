@@ -1,14 +1,15 @@
+
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { format, startOfDay, isSameDay } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
-import { getUserCurrency, type Currency } from '@/services/currency';
+import { getUserCurrency, getSupportedCurrencies, type Currency } from '@/services/currency'; // Import getSupportedCurrencies
 import { defaultThemeId } from '@/config/themes';
 
 const LOCAL_STORAGE_KEY = 'neonShoppingState_vLocal_anon_v4';
 export const FREEMIUM_LIST_LIMIT = 3;
-export const FREEMIUM_CATEGORY_LIMIT = 5; // Not strictly enforced now, but kept for potential future use or UI text
+export const FREEMIUM_CATEGORY_LIMIT = 5; 
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'uncategorized', name: 'Uncategorized', userId: null },
@@ -57,13 +58,14 @@ interface AppState {
   theme: string;
   isLoading: boolean;
   isInitialDataLoaded: boolean;
-  // isPremium: boolean; // Premium features removed
+  isPremium: boolean; 
 }
 
 interface AppContextProps {
   state: AppState;
   dispatch: React.Dispatch<Action>;
   formatCurrency: (amount: number) => string;
+  isLoading: boolean; // Added isLoading to context props for easier access
 }
 
 const defaultCurrency: Currency = { code: 'USD', symbol: '$', name: 'US Dollar' };
@@ -71,7 +73,7 @@ const defaultCurrency: Currency = { code: 'USD', symbol: '$', name: 'US Dollar' 
 const initialState: AppState = {
   userId: null,
   currency: defaultCurrency,
-  supportedCurrencies: [defaultCurrency], // Initialize with default to prevent map errors
+  supportedCurrencies: [defaultCurrency], 
   lists: [],
   selectedListId: null,
   shoppingListItems: [],
@@ -79,7 +81,7 @@ const initialState: AppState = {
   theme: defaultThemeId,
   isLoading: true,
   isInitialDataLoaded: false,
-  // isPremium: false, // Premium features removed
+  isPremium: false, // All features are enabled by default now
 };
 
 type Action =
@@ -89,7 +91,7 @@ type Action =
   | { type: 'UPDATE_LIST'; payload: List }
   | { type: 'DELETE_LIST'; payload: string }
   | { type: 'SELECT_LIST'; payload: string | null }
-  | { type: 'ADD_SHOPPING_ITEM'; payload: Omit<ShoppingListItem, 'id' | 'userId' | 'dateAdded' | 'checked'> }
+  | { type: 'ADD_SHOPPING_ITEM'; payload: ShoppingListItem }
   | { type: 'UPDATE_SHOPPING_ITEM'; payload: ShoppingListItem }
   | { type: 'REMOVE_SHOPPING_ITEM'; payload: string }
   | { type: 'TOGGLE_SHOPPING_ITEM'; payload: string }
@@ -97,17 +99,17 @@ type Action =
   | { type: 'UPDATE_CATEGORY'; payload: { id: string; name: string } }
   | { type: 'REMOVE_CATEGORY'; payload: { categoryId: string; reassignToId?: string } }
   | { type: 'SET_THEME'; payload: string }
-  | { type: 'SET_USER_ID'; payload: string | null } // For anonymous user ID management
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: 'SET_USER_ID'; payload: string | null } 
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_PREMIUM_STATUS'; payload: boolean };
 
 
 const mergeCategories = (defaultCats: Category[], storedCats: Category[] | undefined, currentUserId: string | null): Category[] => {
   const categoryMap = new Map<string, Category>();
-  defaultCats.forEach(cat => categoryMap.set(cat.id, { ...cat, userId: null })); // Ensure default categories have null userId
+  defaultCats.forEach(cat => categoryMap.set(cat.id, { ...cat, userId: null })); 
 
   if (storedCats) {
     storedCats.forEach(cat => {
-      // Keep default categories and user-specific categories
       if (cat.userId === null || (currentUserId && cat.userId === currentUserId)) {
         categoryMap.set(cat.id, cat);
       }
@@ -124,17 +126,18 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'LOAD_STATE':
       const { userId: loadedUserId, supportedCurrencies: loadedSupportedCurrenciesFromPayload, ...restOfPayload } = action.payload;
       newState = {
-        ...initialState, // Start from a clean slate
+        ...initialState, 
         ...restOfPayload,
-        userId: loadedUserId, // This should be the anonymous ID initially
+        userId: loadedUserId, 
         currency: restOfPayload.currency || initialState.currency,
         supportedCurrencies: Array.isArray(loadedSupportedCurrenciesFromPayload) && loadedSupportedCurrenciesFromPayload.length > 0 ? loadedSupportedCurrenciesFromPayload : [initialState.currency],
         categories: mergeCategories(DEFAULT_CATEGORIES, restOfPayload.categories, loadedUserId),
         theme: restOfPayload.theme || initialState.theme,
         isLoading: false,
         isInitialDataLoaded: true,
+        isPremium: restOfPayload.isPremium !== undefined ? restOfPayload.isPremium : initialState.isPremium,
       };
-      // Select first list if available for the current user (anonymous)
+      // Select first list if available for the current user
       if (newState.lists && newState.lists.length > 0 && loadedUserId) {
           const userLists = newState.lists.filter(l => l.userId === loadedUserId);
           if (userLists.length > 0) {
@@ -147,13 +150,15 @@ function appReducer(state: AppState, action: Action): AppState {
          newState.selectedListId = null;
       }
       break;
-    case 'SET_USER_ID': // Handles setting/clearing user ID (for anonymous user)
+    case 'SET_USER_ID': 
       newState.userId = action.payload;
-      if (!action.payload) { // If user logs out or becomes anonymous with no data
+      // Reset user-specific data if user logs out (payload is null)
+      if (!action.payload) { 
         newState.lists = [];
         newState.shoppingListItems = [];
-        newState.categories = [...DEFAULT_CATEGORIES];
+        newState.categories = [...DEFAULT_CATEGORIES]; // Reset to defaults
         newState.selectedListId = null;
+        newState.isPremium = false; // Reset premium status on logout
       }
       break;
     case 'SET_CURRENCY':
@@ -164,10 +169,12 @@ function appReducer(state: AppState, action: Action): AppState {
         console.error("Cannot add list: No user ID set.");
         return state;
       }
+      // Premium feature: Limit number of lists for non-premium users
+      // All features are enabled by default
       const newListWithUserId: List = { ...action.payload, userId: state.userId };
       newState.lists = [...state.lists, newListWithUserId];
       const userListsAfterAdd = newState.lists.filter(l => l.userId === state.userId);
-      if (userListsAfterAdd.length === 1) { // Auto-select if it's the first list for this user
+      if (userListsAfterAdd.length === 1) { 
         newState.selectedListId = newListWithUserId.id;
       }
       break;
@@ -192,31 +199,22 @@ function appReducer(state: AppState, action: Action): AppState {
       }
       break;
     case 'SELECT_LIST':
-      if (!state.userId && action.payload !== null) { // Prevent selecting a list if no user (e.g. after logout)
+      if (!state.userId && action.payload !== null) { 
           newState.selectedListId = null;
       } else {
         const listToSelect = state.lists.find(l => l.id === action.payload);
-        // Allow selecting null, or a list belonging to the current user
         if (action.payload === null || (listToSelect && listToSelect.userId === state.userId)) {
           newState.selectedListId = action.payload;
         }
       }
       break;
     case 'ADD_SHOPPING_ITEM': {
-      if (!state.userId || !state.selectedListId) {
-        console.error("Attempted to add item without userId or selectedListId");
+      if (!action.payload.listId || !action.payload.userId) {
+        console.error("Attempted to add item without listId or userId");
         return state;
       }
       const newItem: ShoppingListItem = {
-        id: uuidv4(),
-        userId: state.userId,
-        listId: state.selectedListId,
-        name: action.payload.name,
-        quantity: action.payload.quantity,
-        price: action.payload.price,
-        category: action.payload.category,
-        checked: false,
-        dateAdded: Date.now(),
+        ...action.payload, // Spread the payload which now includes all fields
       };
       newState.shoppingListItems = [...state.shoppingListItems, newItem];
       break;
@@ -251,13 +249,12 @@ function appReducer(state: AppState, action: Action): AppState {
       const newCategory: Category = {
         id: uuidv4(),
         name: action.payload.name,
-        userId: state.userId, // User-specific category
+        userId: state.userId, 
       };
       newState.categories = [...state.categories, newCategory];
       break;
     case 'UPDATE_CATEGORY':
       const categoryToUpdate = state.categories.find(c => c.id === action.payload.id);
-      // Only allow updating user-created categories
       if (categoryToUpdate && categoryToUpdate.userId === state.userId) {
         newState.categories = state.categories.map(cat =>
           cat.id === action.payload.id ? { ...cat, name: action.payload.name } : cat
@@ -266,11 +263,11 @@ function appReducer(state: AppState, action: Action): AppState {
       break;
     case 'REMOVE_CATEGORY':
       const categoryToRemove = state.categories.find(c => c.id === action.payload.categoryId);
-      // Only allow deleting user-created categories, and not 'uncategorized'
+      // Allow deleting user-created categories; default categories (userId: null) cannot be deleted.
       if (categoryToRemove && categoryToRemove.userId === state.userId && categoryToRemove.id !== 'uncategorized') {
         newState.categories = state.categories.filter(cat => cat.id !== action.payload.categoryId);
         const reassignId = action.payload.reassignToId || 'uncategorized';
-        if (state.userId) { // Ensure userId exists for item reassignment
+        if (state.userId) { 
             newState.shoppingListItems = state.shoppingListItems.map(item =>
                 item.category === action.payload.categoryId && item.userId === state.userId ? { ...item, category: reassignId } : item
             );
@@ -283,6 +280,9 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'SET_THEME':
       newState.theme = action.payload;
       break;
+    case 'SET_PREMIUM_STATUS': // Handle premium status change
+      newState.isPremium = action.payload;
+      break;
     case 'SET_LOADING':
       newState = { ...state, isLoading: action.payload };
       break;
@@ -290,10 +290,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return state;
   }
 
-  // Save state to localStorage for anonymous user data, identified by their anonymous ID
   if (state.userId && typeof window !== 'undefined' && action.type !== 'LOAD_STATE' && action.type !== 'SET_LOADING') {
     try {
-      // Only save if a userId is present (which will be the anonymous ID)
       const userSpecificStorageKey = `${LOCAL_STORAGE_KEY}_${state.userId}`;
       const { isLoading: _omittedIsLoading, isInitialDataLoaded: _omittedIsInitial, ...stateToSave } = newState;
       localStorage.setItem(userSpecificStorageKey, JSON.stringify(stateToSave));
@@ -308,13 +306,15 @@ export const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [isLoading, setIsLoading] = useState(true); // Local loading state for this provider
+  const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
 
   useEffect(() => {
     const loadInitialData = async () => {
-      if (state.isInitialDataLoaded) return; // Prevent re-loading if already done
+      if (isInitialDataLoaded) return; 
 
-      dispatch({ type: 'SET_LOADING', payload: true });
-      console.log("AppProvider: Loading initial data (anonymous)...");
+      setIsLoading(true);
+      console.log("AppProvider: Loading initial data (anonymous or from localStorage)...");
 
       let userId = localStorage.getItem('app_user_id_vLocal_anon');
       if (!userId) {
@@ -335,20 +335,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           console.log("AppProvider: Loaded state from localStorage for user:", userId);
         } catch (e) {
           console.error("AppProvider: Failed to parse stored state, resetting for user:", userId, e);
-          localStorage.removeItem(userSpecificStorageKey); // Clear corrupted state
+          localStorage.removeItem(userSpecificStorageKey); 
         }
       } else {
         console.log("AppProvider: No saved state found in localStorage for user:", userId);
       }
 
       let currencyToSet = defaultCurrency;
-      let allSupportedCurrencies: Currency[] = [defaultCurrency]; // Default to an array with the default currency
+      let allSupportedCurrencies: Currency[] = [defaultCurrency]; 
 
       if (loadedStateFromStorage.currency) {
         currencyToSet = loadedStateFromStorage.currency;
       } else {
         try {
-          const detectedCurrency = await getUserCurrency(); // This is async
+          const detectedCurrency = await getUserCurrency(); 
           if (detectedCurrency) {
             currencyToSet = detectedCurrency;
             console.log("AppProvider: Currency auto-detected:", currencyToSet);
@@ -371,41 +371,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.error("AppProvider: Failed to fetch supported currencies list:", e);
       }
 
-      // Prepare the payload for LOAD_STATE
-      // Ensure all properties expected by AppState (except isLoading/isInitialDataLoaded) are present
       const finalPayload = {
-        userId: userId, // The anonymous user ID
+        userId: userId, 
         currency: currencyToSet,
-        lists: (loadedStateFromStorage.lists || []).filter(l => l.userId === userId), // Ensure lists are for this anonymous user
+        lists: (loadedStateFromStorage.lists || []).filter(l => l.userId === userId), 
         selectedListId: loadedStateFromStorage.selectedListId || null,
         shoppingListItems: (loadedStateFromStorage.shoppingListItems || []).filter(i => i.userId === userId),
-        categories: loadedStateFromStorage.categories, // Reducer will merge with defaults
+        categories: loadedStateFromStorage.categories, 
         theme: loadedStateFromStorage.theme || defaultThemeId,
+        isPremium: loadedStateFromStorage.isPremium !== undefined ? loadedStateFromStorage.isPremium : false,
         supportedCurrencies: allSupportedCurrencies,
       };
       
       dispatch({ type: 'LOAD_STATE', payload: finalPayload });
-      // isLoading and isInitialDataLoaded are set by the LOAD_STATE action
-      console.log("AppProvider: Initial data processing finished. Current user ID in context:", userId);
+      setIsInitialDataLoaded(true); // Mark initial load as complete
+      // SET_LOADING to false is handled by LOAD_STATE
+      console.log("AppProvider: Initial data processing finished. Current user ID in context:", userId); // Changed to use userId directly
     };
 
-    loadInitialData();
-  }, [state.isInitialDataLoaded]); // Rerun if isInitialDataLoaded changes, e.g. after logout a full reload might reset this.
+    // Only run if initial data hasn't been loaded yet.
+    if (!isInitialDataLoaded) {
+        loadInitialData();
+    }
+}, [isInitialDataLoaded]); // Depend on isInitialDataLoaded
+
 
   const formatCurrency = useCallback((amount: number) => {
     try {
-      return new Intl.NumberFormat(undefined, { // Use user's locale for formatting
+      return new Intl.NumberFormat(undefined, { 
         style: 'currency',
         currency: state.currency.code,
       }).format(amount);
     } catch (error) {
       console.warn("Currency formatting error for code:", state.currency.code, error);
-      return `${state.currency.symbol || '$'}${amount.toFixed(2)}`; // Fallback
+      return `${state.currency.symbol || '$'}${amount.toFixed(2)}`; 
     }
   }, [state.currency]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, formatCurrency }}>
+    <AppContext.Provider value={{ state, dispatch, formatCurrency, isLoading: state.isLoading }}>
       {children}
     </AppContext.Provider>
   );
@@ -418,3 +422,5 @@ export const useAppContext = (): AppContextProps => {
   }
   return context;
 };
+
+    
