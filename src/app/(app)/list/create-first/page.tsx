@@ -16,7 +16,8 @@ export default function CreateFirstListPage() {
     const isLoading = appLoading || !isClientMounted;
 
     useEffect(() => {
-        if (!isLoading) {
+        // Check if the anonymous user (identified by appState.userId) has lists
+        if (!isLoading && appState.userId) {
             const userLists = appState.lists.filter(list => list.userId === appState.userId);
             if (userLists.length > 0) {
                 console.log("CreateFirstListPage: User has lists, redirecting to /list");
@@ -62,6 +63,7 @@ export default function CreateFirstListPage() {
                  isOpen={isAddListModalOpen}
                  onClose={() => setIsAddListModalOpen(false)}
                  onListSaved={handleListCreated}
+                 // listData is undefined for new lists
              />
         </div>
     );

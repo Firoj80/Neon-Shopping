@@ -1,13 +1,12 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { useAppContext } from '@/context/app-context'; // Removed FREEMIUM_LIST_LIMIT import
+import { useAppContext } from '@/context/app-context';
 import type { List } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle } from '@/components/ui/card'; // Removed CardHeader as it's not used
-import { PlusCircle, Trash2 } from 'lucide-react'; // Removed Lock
+import { Card, CardTitle } from '@/components/ui/card';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AddEditListModal } from './AddEditListModal';
-// Removed useToast and Link as they are not needed for premium messages anymore
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,13 +20,16 @@ import {
 
 export const ListsCarousel: React.FC = () => {
   const { state, dispatch } = useAppContext();
-  const { lists, selectedListId } = state; // Removed isPremium
+  const { lists, selectedListId, userId } = state; // isPremium removed
 
   const [isAddEditListModalOpen, setIsAddEditListModalOpen] = useState(false);
   const [editingList, setEditingList] = useState<List | null>(null);
   const [listToDelete, setListToDelete] = useState<List | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Filter lists based on the current anonymous user ID
+  const userLists = lists.filter(list => list.userId === userId);
 
   useEffect(() => {
     if (scrollContainerRef.current && selectedListId) {
@@ -43,14 +45,14 @@ export const ListsCarousel: React.FC = () => {
         });
       }
     }
-  }, [selectedListId, lists]);
+  }, [selectedListId, userLists]); // Depend on userLists
 
   const handleSelectList = (listId: string) => {
     dispatch({ type: 'SELECT_LIST', payload: listId });
   };
 
   const handleAddNewList = () => {
-    // No premium check for list limit
+    // No premium check needed as all features are enabled locally
     setEditingList(null);
     setIsAddEditListModalOpen(true);
   };
@@ -74,7 +76,7 @@ export const ListsCarousel: React.FC = () => {
         className="flex overflow-x-auto space-x-2 pb-1 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent"
         style={{ scrollbarWidth: 'thin' }}
       >
-        {lists.map((list) => {
+        {userLists.map((list) => { // Iterate over userLists
           const isSelected = list.id === selectedListId;
           return (
             <Card
