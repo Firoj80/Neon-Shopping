@@ -19,7 +19,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: 'export', // Often used for simpler, pure Next.js static deployments
+  // If you are deploying to a static host (like GitHub Pages without a custom server),
+  // you might need 'output: "export"'. For dynamic features and server-side logic (even with local storage),
+  // this is usually not needed or desired.
+  // output: 'export',
 };
 
 export default nextConfig;

@@ -1,14 +1,11 @@
-// src/app/layout.tsx
-"use client"; // This remains a client component due to AuthProvider and other client-side logic
+"use client"; // Root layout often needs to be client for providers
 
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { Providers } from './providers'; // Providers includes AppProvider
+import { Providers } from './providers';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from '../context/auth-context'; // Changed to relative path
 import ClientOnly from '@/components/client-only';
-// Removed SidebarProvider import
 import { ThemeWatcher } from '@/context/theme-watcher';
 import { cn } from '@/lib/utils';
 
@@ -17,11 +14,12 @@ const inter = Inter({
   subsets: ['latin'],
 });
 
-// Metadata should be in a server component or removed from client component RootLayout
+// Metadata should ideally be in a server component if possible,
+// or defined statically if this remains a client component.
+// For simplicity in rebuild, static definition is fine.
 // export const metadata: Metadata = {
-//   title: 'Neon Shopping',
-//   description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
-//   icons: [{ rel: 'icon', url: '/favicon.ico' }],
+// title: 'Neon Shopping',
+// description: 'Track your expenses and manage shopping lists with a neon cyberpunk aesthetic.',
 // };
 
 export default function RootLayout({
@@ -33,22 +31,19 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={cn(
-          inter.variable, // Use the Inter font variable
+          inter.variable,
           'font-sans antialiased min-h-screen flex flex-col bg-background',
         )}
       >
-        <Providers> {/* Providers includes AppProvider */}
-          <AuthProvider>
-            {/* Removed SidebarProvider wrapper */}
-            <ThemeWatcher>
-              <ClientOnly>
-                <AppLayout>
-                  {children}
-                </AppLayout>
-              </ClientOnly>
-              <Toaster />
-            </ThemeWatcher>
-          </AuthProvider>
+        <Providers>
+          <ThemeWatcher>
+            <ClientOnly> {/* Ensures client-side rendering for components using browser APIs */}
+              <AppLayout>
+                {children}
+              </AppLayout>
+            </ClientOnly>
+            <Toaster />
+          </ThemeWatcher>
         </Providers>
       </body>
     </html>

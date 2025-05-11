@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -8,32 +7,23 @@ import { useAppContext } from '@/context/app-context';
 import { themes, themeColors, defaultThemeId } from '@/config/themes';
 import { CheckCircle, Palette, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Link from 'next/link'; // For linking to premium page
-import { useToast } from '@/hooks/use-toast'; // For showing premium messages
+import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ThemesPage() {
   const { state, dispatch } = useAppContext();
   const currentThemeId = state.theme || defaultThemeId;
-  const { isPremium } = state;
+  // For local storage version, assume all themes are available (isPremium = true effectively)
+  const isPremium = true; 
   const { toast } = useToast();
 
   const handleThemeChange = (themeId: string) => {
-    if (!isPremium && themeId !== defaultThemeId) {
-        toast({
-            title: "Premium Theme",
-            description: (
-                <div className="flex flex-col gap-2">
-                   <span>This theme is available for Premium users only.</span>
-                   <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                       <Link href="/premium">Upgrade to Premium</Link>
-                   </Button>
-                </div>
-            ),
-            variant: "default", // Use default for info, or destructive for more alert-like
-        });
-        return;
-    }
+    // No premium check needed for local storage version as all themes are available
     dispatch({ type: 'SET_THEME', payload: themeId });
+    toast({
+        title: "Theme Applied!",
+        description: `Switched to ${themes.find(t => t.id === themeId)?.name || 'selected'} theme.`,
+    });
   };
 
   return (
@@ -44,17 +34,12 @@ export default function ThemesPage() {
         <p className="text-lg text-muted-foreground">
           Personalize your Neon Shopping experience. Click a theme to apply it instantly.
         </p>
-        {!isPremium && (
-            <p className="text-sm text-yellow-500">
-                Some themes are Premium exclusives. <Button variant="link" asChild className="p-0 h-auto text-secondary hover:text-secondary/80 ml-1"><Link href="/premium">Upgrade Now!</Link></Button>
-            </p>
-        )}
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {themes.map((theme) => {
           const isActive = theme.id === currentThemeId;
-          const isThemePremiumLocked = !isPremium && theme.id !== defaultThemeId;
+          // No premium lock for local storage version
           const colors = themeColors[theme.id] || themeColors[defaultThemeId];
           const getHslString = (variableName: string) => `hsl(${colors[variableName]})`;
 
@@ -64,7 +49,6 @@ export default function ThemesPage() {
               className={cn(
                 "cursor-pointer transition-all duration-300 ease-in-out transform hover:scale-105 glow-border",
                 isActive ? "ring-2 ring-offset-2 ring-offset-background ring-secondary shadow-neon-lg" : "hover:shadow-neon",
-                isThemePremiumLocked && "opacity-70 cursor-not-allowed"
               )}
               onClick={() => handleThemeChange(theme.id)}
               style={{
@@ -79,10 +63,9 @@ export default function ThemesPage() {
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-lg font-semibold" style={{ color: `hsl(${colors['--primary']})` }}>{theme.name}</CardTitle>
                   {isActive && <CheckCircle className="h-6 w-6 text-green-500" />}
-                  {isThemePremiumLocked && <Lock className="h-5 w-5 text-yellow-400" />}
                 </div>
                 <CardDescription style={{ color: `hsl(${colors['--muted-foreground']})` }}>
-                  {isThemePremiumLocked ? "Premium Only" : "Click to apply this theme."}
+                  Click to apply this theme.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 space-y-3 glow-border-inner" style={{ backgroundColor: `hsl(${colors['--card']})` }}>
@@ -99,19 +82,17 @@ export default function ThemesPage() {
                     className={cn(
                         "w-full mt-3 glow-border-inner",
                         isActive ? "bg-secondary text-secondary-foreground" : "border-primary text-primary hover:bg-primary/10",
-                        isThemePremiumLocked && "bg-muted/50 border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
                     )}
                     style={isActive ? {
                         backgroundColor: `hsl(${colors['--secondary']})`,
                         color: `hsl(${colors['--secondary-foreground']})`,
                         borderColor: `hsl(${colors['--secondary']})`
-                    } : isThemePremiumLocked ? {} : {
+                    } : {
                         borderColor: `hsl(${colors['--primary']})`,
                         color: `hsl(${colors['--primary']})`
                     }}
-                    disabled={isThemePremiumLocked && !isActive} // Disable if locked and not active
                  >
-                    {isActive ? 'Applied' : isThemePremiumLocked ? 'Premium' : 'Apply Theme'}
+                    {isActive ? 'Applied' : 'Apply Theme'}
                  </Button>
               </CardContent>
             </Card>
