@@ -4,18 +4,18 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown, Gem, ShieldCheckIcon } from 'lucide-react';
+import { CheckCircle, XCircle, ShieldCheckIcon as Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown, Gem } from 'lucide-react'; // Keep ShieldCheckIcon as Shield
 import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context'; 
-import { useToast } from '@/hooks/use-toast'; 
+// import { useToast } from '@/hooks/use-toast'; // Toast not needed if no demo buttons
 import Link from 'next/link';
 
 
 export default function PremiumPage() {
-  const { state, dispatch } = useAppContext(); 
-  const { toast } = useToast(); 
+  const { state } = useAppContext(); 
+  // const { toast } = useToast(); // Not needed if demo buttons are removed
 
   const premiumFeatures = [
-    { text: "Ad-Free Experience", icon: <CheckCircle className="h-5 w-5 text-green-500" /> }, // Changed icon for consistency
+    { text: "Ad-Free Experience", icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
     { text: "Full Dashboard Access with Advanced Stats", icon: <BarChart2 className="h-5 w-5 text-green-500" /> },
     { text: "Complete Purchase History", icon: <FileText className="h-5 w-5 text-green-500" /> },
     { text: "Analyse and Export Financial Records", icon: <TrendingUp className="h-5 w-5 text-green-500" /> },
@@ -25,33 +25,15 @@ export default function PremiumPage() {
   ];
 
   const freemiumLimitations = [
-    { text: "Contains Ads", icon: <XCircle className="h-5 w-5 text-red-500" /> }, // Changed icon for consistency
-    { text: "No Dashboard Access", icon: <XCircle className="h-5 w-5 text-red-500" /> },
-    { text: "No Purchase History Access", icon: <XCircle className="h-5 w-5 text-red-500" /> },
-    { text: "No Financial Analytics or Export", icon: <XCircle className="h-5 w-5 text-red-500" /> },
-    { text: `Limited to ${FREEMIUM_LIST_LIMIT} Shopping Lists`, icon: <ListPlus className="h-5 w-5 text-yellow-500" /> },
-    { text: `Limited to ${DEFAULT_CATEGORIES.filter(c => c.id !== 'uncategorized').length} Pre-Created Categories (cannot add new or edit/delete defaults)`, icon: <PlusCircle className="h-5 w-5 text-yellow-500" /> },
-    { text: "Default Theme Only", icon: <Palette className="h-5 w-5 text-yellow-500" /> },
+    { text: "Contains Ads (Conceptual - No Ads in Local Version)", icon: <XCircle className="h-5 w-5 text-red-500" /> },
+    { text: "No Dashboard Access (All Features Enabled in Local Version)", icon: <XCircle className="h-5 w-5 text-red-500" /> },
+    { text: "No Purchase History Access (All Features Enabled in Local Version)", icon: <XCircle className="h-5 w-5 text-red-500" /> },
+    { text: "No Financial Analytics or Export (All Features Enabled in Local Version)", icon: <XCircle className="h-5 w-5 text-red-500" /> },
+    { text: `Limited to ${FREEMIUM_LIST_LIMIT} Shopping Lists (All Features Enabled in Local Version)`, icon: <ListPlus className="h-5 w-5 text-yellow-500" /> },
+    { text: `Limited to ${DEFAULT_CATEGORIES.filter(c => c.id !== 'uncategorized').length} Pre-Created Categories (All Features Enabled in Local Version)`, icon: <PlusCircle className="h-5 w-5 text-yellow-500" /> },
+    { text: "Default Theme Only (All Themes Available in Local Version)", icon: <Palette className="h-5 w-5 text-yellow-500" /> },
   ];
 
-  // These handlers are for local demo/testing of premium state switching.
-  // Real implementation would involve payment processing.
-  const handleUpgrade = () => {
-    dispatch({ type: 'SET_PREMIUM_STATUS', payload: true });
-    toast({
-      title: "Switched to Premium! (Demo)",
-      description: "All premium features are now enabled for this session.",
-    });
-  };
-
-  const handleDowngrade = () => {
-    dispatch({ type: 'SET_PREMIUM_STATUS', payload: false });
-    toast({
-      title: "Switched to Freemium (Demo)",
-      description: "Premium features are now disabled.",
-      variant: "destructive"
-    });
-  };
 
   return (
     <div className="space-y-8 p-2 sm:p-4 md:p-6 max-w-4xl mx-auto">
@@ -68,8 +50,9 @@ export default function PremiumPage() {
             <CardTitle className="text-lg text-neonText">Current Status</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-            <CardDescription className={`text-xl font-bold ${state.isPremium ? 'text-green-500' : 'text-yellow-500'}`}>
-            {state.isPremium ? 'Premium Active' : 'Freemium'}
+            {/* Since premium is always true for local storage, this will always show "Premium Active" */}
+            <CardDescription className="text-xl font-bold text-green-500">
+             All Features Enabled (Local Version)
             </CardDescription>
         </CardContent>
       </Card>
@@ -80,7 +63,7 @@ export default function PremiumPage() {
           <Card className="bg-card border-primary/40 shadow-neon glow-border">
             <CardHeader>
               <CardTitle className="text-xl text-primary flex items-center gap-2">
-                <ShieldCheckIcon className="h-6 w-6" /> Premium Benefits
+                <Shield className="h-6 w-6" /> Premium Benefits (All Enabled)
               </CardTitle>
               <CardDescription className="text-muted-foreground">
                 Everything you need for ultimate financial control.
@@ -95,44 +78,21 @@ export default function PremiumPage() {
               ))}
             </CardContent>
           </Card>
-            <CardFooter className="flex-col gap-3 p-0">
-                 <Button asChild size="lg" className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon-lg hover:shadow-xl hover:shadow-secondary/60 transition-all duration-300 ease-in-out glow-border text-base px-8 py-3">
-                    <Link href="/premium-plans">
-                         <Crown className="mr-2 h-5 w-5" /> View Premium Plans
-                    </Link>
-                </Button>
-                 {state.isPremium ? (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive/80 glow-border-inner"
-                        onClick={handleDowngrade}
-                    >
-                       Downgrade to Freemium (Test)
-                    </Button>
-                ) : (
-                     <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full border-green-500/50 text-green-500 hover:bg-green-900/10 hover:text-green-400 glow-border-inner"
-                        onClick={handleUpgrade}
-                    >
-                       Enable Premium (Test)
-                    </Button>
-                )}
-                <p className="text-xs text-muted-foreground pt-2">
-                  This page demonstrates feature differences. Actual subscription is handled via "View Premium Plans".
-                </p>
-            </CardFooter>
+          <CardFooter className="flex-col gap-3 p-0">
+            {/* Removed upgrade/downgrade test buttons */}
+            <p className="text-xs text-muted-foreground pt-2">
+              This page outlines features. In this local version, all features are enabled by default.
+            </p>
+          </CardFooter>
         </div>
 
         <Card className="bg-card border-border/30 shadow-md glow-border">
           <CardHeader>
             <CardTitle className="text-xl text-muted-foreground flex items-center gap-2">
-              <XCircle className="h-6 w-6" /> Freemium Limitations
+              <XCircle className="h-6 w-6" /> Freemium Model (Conceptual)
             </CardTitle>
             <CardDescription className="text-muted-foreground">
-              Basic features to get you started.
+              If this app had a freemium model, these would be the limitations.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 glow-border-inner p-4">
