@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -11,7 +12,7 @@ import type { Category, Currency } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Layers, Trash2, Edit, PlusCircle, Save, X, Palette, DollarSign } from 'lucide-react';
+import { Layers, Trash2, Edit, PlusCircle, Save, X, DollarSign } from 'lucide-react'; // Removed Palette
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import Link from 'next/link';
-
+// Link import removed as it's not used after theme card removal
 
 export default function SettingsPage() {
   const { state, dispatch } = useAppContext();
@@ -40,7 +40,6 @@ export default function SettingsPage() {
   const [selectedCurrencyCode, setSelectedCurrencyCode] = useState<string>(currentCurrency.code);
 
   useEffect(() => {
-    // Filter categories to show only global (userId: null) and current user's categories
     setCategories(currentCategories.filter(cat => cat.userId === null || cat.userId === userId));
   }, [currentCategories, userId]);
 
@@ -54,7 +53,6 @@ export default function SettingsPage() {
       toast({ title: "Error", description: "Category name cannot be empty.", variant: "destructive" });
       return;
     }
-    // Check against both global and user-specific categories for name collision
     if (categories.some(cat => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase() && (cat.userId === null || cat.userId === userId))) {
       toast({ title: "Error", description: "Category name already exists.", variant: "destructive" });
       return;
@@ -65,7 +63,6 @@ export default function SettingsPage() {
   };
 
   const handleStartEditCategory = (category: Category) => {
-    // Prevent editing of default categories by non-owners (should be userId === null)
     if (category.userId === null && category.id !== 'uncategorized') {
         toast({ title: "Action Restricted", description: "Default categories cannot be edited.", variant: "default" });
         return;
@@ -79,7 +76,6 @@ export default function SettingsPage() {
       toast({ title: "Error", description: "Category name cannot be empty.", variant: "destructive" });
       return;
     }
-    // Check against both global and user-specific categories for name collision, excluding the one being edited
     if (categories.some(cat => cat.id !== id && cat.name.toLowerCase() === editingCategoryName.trim().toLowerCase() && (cat.userId === null || cat.userId === userId))) {
       toast({ title: "Error", description: "Category name already exists.", variant: "destructive" });
       return;
@@ -96,7 +92,7 @@ export default function SettingsPage() {
   };
 
   const handleDeleteCategoryClick = (category: Category) => {
-    if (category.id === 'uncategorized' || category.userId === null) { // Prevent deletion of 'uncategorized' and other default system categories
+    if (category.id === 'uncategorized' || category.userId === null) { 
         toast({
             title: "Action Restricted",
             description: "Default categories cannot be deleted.",
@@ -128,7 +124,6 @@ export default function SettingsPage() {
 
   const categoriesForReassignment = useMemo(() => {
     if (!categoryToDelete || !userId) return [];
-    // Only allow reassigning to global or user's own categories
     return categories.filter(c => c.id !== categoryToDelete.id && (c.userId === null || c.userId === userId));
   }, [categories, categoryToDelete, userId]);
 
@@ -170,7 +165,6 @@ export default function SettingsPage() {
                         <SelectValue placeholder="Select currency..." />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner" position="popper">
-                        {/* Defensive check before mapping */}
                         {Array.isArray(state.supportedCurrencies) && state.supportedCurrencies.length > 0 ? (
                             state.supportedCurrencies.map((currency) => (
                                 <SelectItem key={currency.code} value={currency.code} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary">
@@ -275,7 +269,7 @@ export default function SettingsPage() {
                                             </SelectTrigger>
                                             <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
                                               <SelectItem value="uncategorized" className="focus:bg-secondary/30 focus:text-secondary">Uncategorized</SelectItem>
-                                              {categoriesForReassignment.filter(c => c.id !== 'uncategorized').map((cat) => ( // Exclude uncategorized from re-assign options here if it is the target
+                                              {categoriesForReassignment.filter(c => c.id !== 'uncategorized').map((cat) => ( 
                                                 <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
                                                   {cat.name}
                                                 </SelectItem>
@@ -318,7 +312,6 @@ export default function SettingsPage() {
                              {defaultSystemCategories.map((category) => (
                                  <li key={category.id} className="flex items-center justify-between p-2 hover:bg-muted/10 glow-border-inner">
                                      <span className="text-sm text-neonText/70 italic">{category.name} (Default)</span>
-                                     {/* Default categories cannot be edited or deleted from here */}
                                      <div className="flex items-center gap-1 opacity-50">
                                           <Button variant="ghost" size="icon" className="h-7 w-7" disabled><Edit className="h-4 w-4" /></Button>
                                           <Button variant="ghost" size="icon" className="h-7 w-7" disabled><Trash2 className="h-4 w-4" /></Button>
@@ -329,25 +322,10 @@ export default function SettingsPage() {
                     </ScrollArea>
                 </Card>
             </div>
-
-
         </CardContent>
       </Card>
 
-      {/* Theme Settings Card (Link to Themes Page) */}
-      <Card className="bg-card border-purple-500/30 shadow-neon glow-border">
-        <CardHeader>
-            <CardTitle className="text-purple-400 flex items-center gap-2">
-                <Palette className="h-5 w-5" /> App Theme
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">Customize the look and feel of Neon Shopping.</CardDescription>
-        </CardHeader>
-        <CardContent className="glow-border-inner p-4">
-            <Button asChild className="w-full bg-purple-500 hover:bg-purple-500/90 text-white glow-border-inner">
-                <Link href="/themes">Change Theme</Link>
-            </Button>
-        </CardContent>
-      </Card>
+      {/* Theme settings card removed */}
     </div>
   );
 }
@@ -400,15 +378,6 @@ const SettingsPageSkeleton: React.FC = () => (
         </div>
       </CardContent>
     </Card>
-    {/* Theme Skeleton */}
-    <Card className="bg-card border-border/20 shadow-md glow-border">
-      <CardHeader>
-        <Skeleton className="h-6 w-1/5 mb-1" />
-        <Skeleton className="h-4 w-2/3" />
-      </CardHeader>
-      <CardContent className="glow-border-inner p-4">
-        <Skeleton className="h-10 w-full rounded-md glow-border-inner" />
-      </CardContent>
-    </Card>
+    {/* Theme Skeleton removed */}
   </div>
 );

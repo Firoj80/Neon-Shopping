@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
@@ -21,20 +22,20 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
-  Menu as MenuIcon, // Renamed Menu to avoid conflict
+  Menu as MenuIcon,
   ShoppingCart,
   LayoutDashboard,
   History,
   Settings,
-  Palette, // For Themes
+  // Palette, // Removed Palette as Themes are removed
   Info,
   Mail,
-  ShieldCheck as PolicyIcon, // Renamed for clarity
-  FileText as ArticleIcon,  // Renamed for clarity
+  ShieldCheck as PolicyIcon,
+  FileText as ArticleIcon,
   Star,
-  AppWindow as AppsIcon,   // Corrected AppsIcon
+  AppWindow as AppsIcon,
   X,
-  DollarSign, // Added for Currency
+  DollarSign,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -42,14 +43,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
+import { useClientOnly } from '@/hooks/use-client-only';
 
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC<{ onMenuToggle: () => void; isMenuOpen: boolean }> = ({ onMenuToggle, isMenuOpen }) => {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
-      {/* Left Side: Hamburger Menu Trigger */}
        <SheetTrigger asChild>
         <Button variant="ghost" size="icon" onClick={onMenuToggle} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
           <AnimatePresence initial={false} mode="wait">
@@ -67,7 +67,6 @@ const MobileHeader: React.FC<{ onMenuToggle: () => void; isMenuOpen: boolean }> 
         </Button>
        </SheetTrigger>
 
-      {/* Centered App Title */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <Link href="/list" className="flex items-center gap-2 text-lg font-semibold text-primary">
           <ShoppingCart className="w-6 h-6" />
@@ -75,8 +74,7 @@ const MobileHeader: React.FC<{ onMenuToggle: () => void; isMenuOpen: boolean }> 
         </Link>
       </div>
 
-      {/* Right side: Placeholder */}
-      <div className="w-10 h-10"></div> {/* Placeholder to balance the hamburger icon */}
+      <div className="w-10 h-10"></div>
     </header>
   );
 };
@@ -91,12 +89,11 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  // const { logout } = useAuth(); // Removed logout from useAuth
 
   const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-    if (e) e.preventDefault(); // Prevent default link behavior
-    if (onLinkClick) onLinkClick(); // Close mobile sheet if applicable
-    router.push(href); // Navigate programmatically
+    if (e) e.preventDefault(); 
+    if (onLinkClick) onLinkClick(); 
+    router.push(href); 
   }, [onLinkClick, router]);
 
 
@@ -105,11 +102,10 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },
-    { href: '/themes', label: 'Themes', icon: Palette },
+    // { href: '/themes', label: 'Themes', icon: Palette }, // Themes link removed
   ];
 
   const secondaryMenuItems = [
-    // { href: '/premium', label: 'Premium Info', icon: Star }, // Premium page can remain informational
     { href: '/about', label: 'About Us', icon: Info },
     { href: '/contact', label: 'Contact Us', icon: Mail },
     { href: '/privacy', label: 'Privacy Policy', icon: PolicyIcon },
@@ -136,7 +132,6 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
         ),
     };
     
-    // Use SheetClose for mobile to ensure the sheet closes on navigation
     const interactiveElement = isMobile ? (
         <SheetClose asChild>
              <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)} className="flex items-center gap-2 w-full h-full p-2">
@@ -174,46 +169,42 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2 border-t border-sidebar-border h-10">
-        {/* Logout button removed as auth is removed */}
       </SidebarFooter>
     </>
   );
 };
 
 
-// --- AppLayoutContent: Handles loading states and conditional rendering ---
 const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const appContext = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
-  const isClientMounted = useClientOnly(); // Use the hook
+  const isClientMounted = useClientOnly();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
 
-  const { state: appState, isLoading: appIsLoading } = appContext;
+  const { isLoading: appIsLoading } = appContext;
+  const isLoading = appIsLoading || !isClientMounted;
 
 
-  // --- Redirect Logic ---
-  // Moved inside useEffect to prevent rendering during rendering
   useEffect(() => {
-    if (isClientMounted && !appIsLoading) { // Check if client is mounted and app context is loaded
-      const hasLists = Array.isArray(appState.lists) && appState.lists.length > 0;
+    if (isClientMounted && !isLoading) { 
+      const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+      const isUserOnAuthPage = pathname === '/auth';
+      const isUserOnCreateFirstPage = pathname === '/list/create-first';
 
-      // If no lists and not on create-first page, redirect
-      if (!hasLists && pathname !== '/list/create-first') {
-        console.log("AppLayoutContent: No lists, redirecting to create-first.");
-        router.replace('/list/create-first');
-      }
-      // If has lists and on create-first page, redirect to main list page
-      else if (hasLists && pathname === '/list/create-first') {
-        console.log("AppLayoutContent: Has lists, on create-first. Redirecting to /list.");
-        router.replace('/list');
+      if (!hasLists && !isUserOnCreateFirstPage && !isUserOnAuthPage ) {
+         console.log("AppLayoutContent: No lists, redirecting to create-first.");
+         router.replace('/list/create-first');
+      } else if (hasLists && isUserOnCreateFirstPage) {
+         console.log("AppLayoutContent: Has lists, on create-first. Redirecting to /list.");
+         router.replace('/list');
       }
     }
-  }, [isClientMounted, appIsLoading, appState.lists, pathname, router]);
+  }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]);
 
 
-  if (!isClientMounted || appIsLoading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-background text-center p-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
@@ -221,24 +212,20 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
       </div>
     );
   }
-
-  // --- Render full layout ---
+  
   return (
      <>
-       {/* Mobile Header & Sheet */}
        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <MobileHeader onMenuToggle={() => setIsSheetOpen(prev => !prev)} isMenuOpen={isSheetOpen} />
-         <SheetContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground"> {/* Use SheetContent directly */}
+         <SheetContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground">
           <MainMenuContent onLinkClick={() => setIsSheetOpen(false)} isMobile={true} />
         </SheetContent>
       </Sheet>
 
-       {/* Desktop Sidebar */}
        <Sidebar className="hidden md:flex md:flex-col">
         <MainMenuContent isMobile={false} />
       </Sidebar>
 
-       {/* Main Content Area */}
        <SidebarInset>
         <main className="flex-1 flex flex-col md:px-6 lg:px-8 xl:px-10 md:py-4 bg-background overflow-y-auto max-w-full">
           <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom))]">
@@ -250,7 +237,6 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
    );
 }
 
-// --- Main AppLayout component with TooltipProvider ---
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <TooltipProvider delayDuration={0}>
