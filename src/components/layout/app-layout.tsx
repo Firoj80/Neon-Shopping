@@ -19,8 +19,8 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
+  SidebarSheetContent,
   SidebarSeparator,
-  SidebarSheetContent
 } from '@/components/ui/sidebar';
 import {
   Menu as MenuIcon,
@@ -28,15 +28,17 @@ import {
   LayoutDashboard,
   History,
   Settings,
-  Palette, // For Themes
+  Palette,
   Info,
   Mail,
-  ShieldCheck as PolicyIcon, // Renamed for clarity
-  FileText as ArticleIcon, // Renamed for clarity
+  ShieldCheck as PolicyIcon,
+  FileText as ArticleIcon,
   Star,
-  AppWindow as AppsIcon, // Corrected from 'Apps'
+  AppWindow as AppsIcon,
   X,
-  // Gem, // Icon for premium, removed as premium logic is removed
+  UserCircle2 as ProfileIcon,
+  LogOut as LogoutIcon,
+  DollarSign, // Added for Currency
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -44,34 +46,42 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
-// Removed useAuth and AuthProvider imports as auth system is removed.
+// import { useAuth } from '@/context/auth-context'; // Removed useAuth import
 import { useClientOnly } from '@/hooks/use-client-only';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
 const DEFAULT_LIST_ROUTE = '/list';
-// const AUTH_ROUTE = '/auth'; // Auth route no longer needed
+const AUTH_ROUTE = '/auth';
 
 // --- Mobile Header Component ---
 const MobileHeader: React.FC<{ onMenuToggle: () => void; isMenuOpen: boolean }> = ({ onMenuToggle, isMenuOpen }) => {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
-       {/* Left Side: Hamburger Menu Trigger */}
+      {/* Left Side: Hamburger Menu Trigger */}
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" onClick={onMenuToggle} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
-          <AnimatePresence initial={false} mode="wait">
-            <motion.div
-              key={isMenuOpen ? "x" : "menu"}
-              initial={{ rotate: isMenuOpen ? -90 : 90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: isMenuOpen ? 90 : -90, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {isMenuOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-            </motion.div>
-          </AnimatePresence>
-          <span className="sr-only">Toggle Sidebar</span>
-        </Button>
+          <Button variant="ghost" size="icon" onClick={onMenuToggle} className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+            <AnimatePresence initial={false} mode="wait">
+              <motion.div
+                key={isMenuOpen ? "x" : "menu"}
+                initial={{ rotate: isMenuOpen ? -90 : 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: isMenuOpen ? 90 : -90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {isMenuOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+              </motion.div>
+            </AnimatePresence>
+            <span className="sr-only">Toggle Sidebar</span>
+          </Button>
       </SheetTrigger>
       
       {/* Centered App Name/Logo */}
@@ -93,12 +103,14 @@ const MobileHeader: React.FC<{ onMenuToggle: () => void; isMenuOpen: boolean }> 
 interface MainMenuContentProps {
   onLinkClick?: () => void;
   isMobile?: boolean;
+  // isAuthenticated: boolean; // No longer needed
+  // handleLogout: () => void; // No longer needed
+  // userName?: string | null; // No longer needed
 }
 
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  // Removed useAuth and logout logic as auth system is removed.
 
   const handleLinkClick = useCallback((href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     if (e) e.preventDefault();
@@ -121,7 +133,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
     { href: '/rate', label: 'Rate App', icon: Star },
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
-    // { href: '/premium', label: 'Unlock Premium', icon: Gem } // Premium option removed
+    // { href: '/premium', label: 'Unlock Premium', icon: Gem } // Premium link removed
   ];
 
   const renderMenuItem = (item: typeof mainNavItems[0] | typeof secondaryMenuItems[0]) => {
@@ -147,10 +159,20 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       </Link>
     );
 
+    if (isMobile) {
+      return (
+        <SidebarMenuItem key={item.href}>
+          <SidebarMenuButton {...commonButtonProps}>
+            <SheetClose asChild>{interactiveElement}</SheetClose>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    }
+
     return (
       <SidebarMenuItem key={item.href}>
         <SidebarMenuButton {...commonButtonProps}>
-          {isMobile ? <SheetClose asChild>{interactiveElement}</SheetClose> : interactiveElement}
+          {interactiveElement}
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -171,21 +193,21 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           {secondaryMenuItems.map(item => renderMenuItem(item))}
         </SidebarMenu>
       </SidebarContent>
-      {/* Removed Logout button as auth system is removed */}
+       {/* Removed Logout button and user info display as auth is removed */}
     </Fragment>
   );
 };
 
+
 // --- Main App Layout Content (Manages Redirection and Loading States) ---
 const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const appContext = useAppContext();
-  // Removed useAuth as auth system is removed.
   const router = useRouter();
   const pathname = usePathname();
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false); // For mobile sidebar
   const isClientMounted = useClientOnly();
 
-  const isLoading = appContext.isLoading; // Simplified loading based on AppContext
+  const isLoading = appContext.isLoading;
 
   const toggleMobileSidebar = useCallback(() => {
     setIsSheetOpen(prev => !prev);
@@ -194,16 +216,14 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
   // --- Redirect Logic ---
   useEffect(() => {
     if (isClientMounted && !isLoading) {
-      // Logic for anonymous users
-      const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.filter(l => l.userId === appContext.state.userId).length > 0;
-      
-      if (!hasLists && pathname !== CREATE_FIRST_LIST_ROUTE) {
-        console.log("AppLayoutContent: No lists for anonymous user, redirecting to create-first.");
-        router.replace(CREATE_FIRST_LIST_ROUTE);
-      } else if (hasLists && pathname === CREATE_FIRST_LIST_ROUTE) {
-        console.log("AppLayoutContent: Anonymous user has lists, on create-first. Redirecting to /list.");
-        router.replace(DEFAULT_LIST_ROUTE);
-      }
+        const userLists = appContext.state.lists.filter(list => list.userId === appContext.state.userId);
+        if (userLists.length === 0 && pathname !== CREATE_FIRST_LIST_ROUTE && pathname !== AUTH_ROUTE) {
+             console.log("AppLayoutContent: No lists for user, redirecting to create-first.");
+             router.replace(CREATE_FIRST_LIST_ROUTE);
+        } else if (userLists.length > 0 && pathname === CREATE_FIRST_LIST_ROUTE) {
+             console.log("AppLayoutContent: User has lists, on create-first. Redirecting to /list.");
+             router.replace(DEFAULT_LIST_ROUTE);
+        }
     }
   }, [isClientMounted, isLoading, appContext.state.lists, appContext.state.userId, pathname, router]);
 
@@ -211,27 +231,29 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
   if (!isClientMounted || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
+        {/* Keep a simple loader, "Loading Neon Shopping..." removed */}
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  // If current path is the "create first list" page, render it directly without the full layout shell.
-  // This assumes the CreateFirstListPage handles its own minimal layout.
-  if (pathname === CREATE_FIRST_LIST_ROUTE && (!appContext.state.lists || appContext.state.lists.filter(l=> l.userId === appContext.state.userId).length === 0)) {
-      return <>{children}</>;
+  // If user has no lists and is on the create-first page, render it directly
+  if (appContext.state.lists.filter(list => list.userId === appContext.state.userId).length === 0 && pathname === CREATE_FIRST_LIST_ROUTE) {
+    return <>{children}</>;
   }
 
 
   return (
     <Fragment>
+      {/* Mobile Header & Sheet-based Sidebar */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <MobileHeader onMenuToggle={toggleMobileSidebar} isMenuOpen={isSheetOpen} />
-        <SidebarSheetContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground">
-          <MainMenuContent onLinkClick={() => setIsSheetOpen(false)} isMobile={true} />
-        </SidebarSheetContent>
+         <MobileHeader onMenuToggle={toggleMobileSidebar} isMenuOpen={isSheetOpen} />
+         <SidebarSheetContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground">
+           <MainMenuContent onLinkClick={() => setIsSheetOpen(false)} isMobile={true} />
+         </SidebarSheetContent>
       </Sheet>
 
+      {/* Desktop Sidebar */}
       <Sidebar className="hidden md:flex md:flex-col">
         <MainMenuContent isMobile={false} />
       </Sidebar>
