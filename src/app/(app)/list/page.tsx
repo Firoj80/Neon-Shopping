@@ -28,20 +28,22 @@ import { AddEditListModal } from '@/components/list/AddEditListModal';
 import { useClientOnly } from '@/hooks/use-client-only';
 import { useRouter, usePathname } from 'next/navigation';
 // Removed import of CreateFirstListPage as AppLayoutContent handles initial redirection
-import { useAuth } from '@/context/auth-context';
+// import { useAuth } from '@/context/auth-context'; // Removed Auth import
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { v4 as uuidv4 } from 'uuid'; // For generating IDs if not using API
 
 const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
+const DEFAULT_LIST_ROUTE = '/list'; // Define this if not already available
 
 export default function ShoppingListPage() {
   const { state: appState, dispatch, isLoading: appContextIsLoading } = useAppContext();
-  const { user, isAuthenticated, isLoading: authIsLoading } = useAuth();
+  // const { user, isAuthenticated, isLoading: authIsLoading } = useAuth(); // Removed Auth
   const { toast } = useToast();
   const router = useRouter();
-  const pathname = usePathname(); // Ensure pathname is available
+  const pathname = usePathname();
 
-  const isLoading = appContextIsLoading || authIsLoading;
+  const isLoading = appContextIsLoading; // Simplified loading state
   const isClientMounted = useClientOnly();
 
 
@@ -49,10 +51,10 @@ export default function ShoppingListPage() {
   const [editingItem, setEditingItem] = useState<AppShoppingListItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'current' | 'purchased'>('current');
-  
+
 
   const { selectedListId, shoppingListItems, lists, userId: contextUserId, isPremium } = appState;
-  const currentUserId = user?.id || contextUserId;
+  const currentUserId = contextUserId; // Directly use contextUserId
 
 
    const selectedList: List | undefined = useMemo(() => {
@@ -69,6 +71,7 @@ export default function ShoppingListPage() {
       });
       return;
     }
+    // No authentication check needed for local storage version
     setEditingItem(null);
     setIsAddItemModalOpen(true);
   };
@@ -82,18 +85,11 @@ export default function ShoppingListPage() {
     setItemToDelete(id);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => { // Removed async as no API call
     if (itemToDelete && currentUserId) {
-      try {
-        await fetchFromApi('items/delete_item.php', {
-          method: 'POST',
-          body: JSON.stringify({ itemId: itemToDelete, userId: currentUserId }),
-        });
-        dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete });
-        toast({ title: "Success", description: "Item removed." });
-      } catch (error: any) {
-        toast({ title: "Error", description: error.message || "Failed to remove item.", variant: "destructive" });
-      }
+      // Local storage version: dispatch directly
+      dispatch({ type: 'REMOVE_SHOPPING_ITEM', payload: itemToDelete });
+      toast({ title: "Success", description: "Item removed." });
       setItemToDelete(null);
     }
   };
@@ -115,11 +111,11 @@ export default function ShoppingListPage() {
 
   // Redirect to create-first if authenticated, no lists, and not already on create-first
   useEffect(() => {
-    if (isClientMounted && !isLoading && isAuthenticated && userLists.length === 0 && pathname !== CREATE_FIRST_LIST_ROUTE) {
-      console.log("ShoppingListPage: Authenticated, no lists, redirecting to create-first.");
+    if (isClientMounted && !isLoading && userLists.length === 0 && pathname !== CREATE_FIRST_LIST_ROUTE) {
+      console.log("ShoppingListPage: No lists, redirecting to create-first.");
       router.replace(CREATE_FIRST_LIST_ROUTE);
     }
-  }, [isClientMounted, isLoading, isAuthenticated, userLists, pathname, router]);
+  }, [isClientMounted, isLoading, userLists, pathname, router]);
 
 
   const CardSkeleton = () => (
@@ -164,13 +160,13 @@ export default function ShoppingListPage() {
     )
   );
 
-   if (!isClientMounted || isLoading) { // Show skeleton if not mounted or still loading initial data
+   if (!isClientMounted || isLoading) {
        return (
          <div className="flex flex-col h-full">
             <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-1 pb-0 px-1 md:px-0">
                 <BudgetCardSkeleton/>
-                <Skeleton className="h-10 w-full rounded-lg mb-2" /> {/* ListsCarousel Skeleton */}
-                <Skeleton className="h-10 w-full rounded-lg" /> {/* TabsList Skeleton */}
+                <Skeleton className="h-10 w-full rounded-lg mb-2" /> 
+                <Skeleton className="h-10 w-full rounded-lg" />
             </div>
              <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
                 {renderSkeletons()}
@@ -178,17 +174,18 @@ export default function ShoppingListPage() {
          </div>
        );
    }
-   
-   // If authenticated but no lists, and already on this page, the useEffect above should redirect.
-   // This is a fallback state.
-   if (isAuthenticated && userLists.length === 0 && pathname === DEFAULT_AUTHENTICATED_ROUTE) {
+
+   if (userLists.length === 0 && pathname === DEFAULT_LIST_ROUTE) {
+     // This case should be handled by the useEffect redirecting to CREATE_FIRST_LIST_ROUTE
+     // If it reaches here, it implies a slight delay or race condition.
+     // A minimal placeholder can be shown or simply let the redirect handle it.
      return (
        <div className="flex items-center justify-center h-screen">
-         <p className="text-muted-foreground">Redirecting to create your first list...</p>
+         <p className="text-muted-foreground">Loading your lists...</p>
        </div>
      );
    }
-   
+
 
   return (
     <div className="flex flex-col h-full">
@@ -212,20 +209,19 @@ export default function ShoppingListPage() {
 
         {/* Scrollable Item List Area */}
         <div className="flex-grow overflow-y-auto mt-1 px-1 md:px-0 pb-[calc(6rem+env(safe-area-inset-bottom))]">
-          {(!selectedListId && userLists.length > 0) || (userLists.length === 0 && !isLoading && isAuthenticated)? (
-            // This condition might need review based on how AppLayout handles initial no-list state
+          {(!selectedListId && userLists.length > 0) || (userLists.length === 0 && !isLoading)? (
             <div className="flex items-center justify-center h-full text-center py-10">
               <p className="text-muted-foreground text-neonText">
-                {isAuthenticated && userLists.length === 0 ? "Create your first list to get started!" : "Please select or create a shopping list."}
+                {userLists.length === 0 ? "Create your first list to get started!" : "Please select or create a shopping list."}
               </p>
             </div>
            ) : (
              <ClientOnly>
-                 <Tabs value={activeTab} className="w-full"> {/* Assuming Tabs component handles its own value logic now */}
-                     <TabsContent value="current" className="mt-0 pt-2"> {/* Ensure no negative margin */}
+                 <Tabs value={activeTab} className="w-full">
+                     <TabsContent value="current" className="mt-0 pt-2">
                          {renderItemList(currentItems, "No current items in this list. Add some!")}
                      </TabsContent>
-                     <TabsContent value="purchased" className="mt-0 pt-2">  {/* Ensure no negative margin */}
+                     <TabsContent value="purchased" className="mt-0 pt-2">
                          {renderItemList(purchasedItems, "No items purchased in this list yet.")}
                      </TabsContent>
                  </Tabs>
@@ -243,28 +239,23 @@ export default function ShoppingListPage() {
                      });
                      return;
                  }
-                 // Ensure user is authenticated before allowing item addition
-                 if (!isAuthenticated || !currentUserId) {
-                     toast({ title: "Authentication Required", description: "Please log in to add items.", variant: "destructive"});
-                     router.push(AUTH_ROUTE); // Redirect to login if not authenticated
-                     return;
-                 }
+                 // No auth check needed for local storage version
                  handleAddItemClick();
             }}
             size="lg"
             className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-6 md:right-8 z-30 rounded-full h-14 w-14 p-0 shadow-neon-lg hover:shadow-xl hover:shadow-primary/60 transition-all duration-300 ease-in-out bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Add new item"
-            disabled={isLoading || (!selectedListId && userLists.length > 0) } // Disable if loading or no list selected but lists exist
+            disabled={isLoading || (!selectedListId && userLists.length > 0) }
         >
             <PlusCircle className="h-6 w-6" />
         </Button>
 
-        {currentUserId && selectedListId && ( // Only render modal if user and list are selected
+        {currentUserId && selectedListId && (
             <AddEditItemModal
                 isOpen={isAddItemModalOpen}
                 onClose={() => { setIsAddItemModalOpen(false); setEditingItem(null); }}
                 itemData={editingItem}
-                currentListId={selectedListId} // Pass currentListId
+                currentListId={selectedListId}
             />
         )}
 
