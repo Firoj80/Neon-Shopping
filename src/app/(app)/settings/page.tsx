@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useAppContext, DEFAULT_CATEGORIES } from '@/context/app-context';
-import type { Category } from '@/context/app-context';
+import type { Category, Currency } from '@/context/app-context'; // Added Currency import
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Layers, Trash2, Edit, PlusCircle, Save, X, Lock } from 'lucide-react';
+import { Layers, Trash2, Edit, PlusCircle, Save, X, Palette, DollarSign } from 'lucide-react'; // Added Palette, DollarSign
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +23,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import Link from 'next/link';
+import Link from 'next/link'; // Keep Link for navigation
+
 
 export default function SettingsPage() {
   const { state, dispatch, isLoading: contextLoading } = useAppContext();
+  const { categories: currentCategories, currency: currentCurrency, supportedCurrencies } = state;
   const { toast } = useToast();
-  const { categories: currentCategories, isPremium } = state;
 
   const [categories, setCategories] = useState<Category[]>(currentCategories);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -36,31 +37,19 @@ export default function SettingsPage() {
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [reassignCategoryId, setReassignCategoryId] = useState<string>('uncategorized');
+  const [selectedCurrencyCode, setSelectedCurrencyCode] = useState<string>(currentCurrency.code);
+
 
   useEffect(() => {
     setCategories(currentCategories);
   }, [currentCategories]);
 
-  // Freemium users cannot add any new categories.
-  const canAddCategories = useMemo(() => isPremium, [isPremium]);
+  useEffect(() => {
+    setSelectedCurrencyCode(currentCurrency.code);
+  }, [currentCurrency]);
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canAddCategories) {
-        toast({
-            title: "Premium Feature",
-            description: (
-                <div className="flex flex-col gap-2">
-                   <span>Adding custom categories is a Premium feature.</span>
-                   <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                       <Link href="/premium">Upgrade to Premium</Link>
-                   </Button>
-                </div>
-            ),
-            variant: "default",
-        });
-        return;
-    }
     if (newCategoryName.trim() === '') {
       toast({ title: "Error", description: "Category name cannot be empty.", variant: "destructive" });
       return;
@@ -100,22 +89,6 @@ export default function SettingsPage() {
   };
 
   const handleDeleteCategoryClick = (category: Category) => {
-    const isDefault = DEFAULT_CATEGORIES.some(dc => dc.id === category.id && category.id !== 'uncategorized');
-    if (!isPremium && isDefault) {
-        toast({
-            title: "Action Restricted",
-            description: (
-                <div className="flex flex-col gap-2">
-                   <span>Default categories cannot be deleted by freemium users.</span>
-                   <Button asChild size="sm" className="mt-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                       <Link href="/premium">Upgrade to Premium</Link>
-                   </Button>
-                </div>
-            ),
-            variant: "default",
-        });
-        return;
-    }
     if (category.id === 'uncategorized') {
         toast({
             title: "Action Restricted",
@@ -126,23 +99,13 @@ export default function SettingsPage() {
     }
     setCategoryToDelete(category);
     const availableCategories = categories.filter(c => c.id !== category.id);
-    // Default to 'uncategorized' if no other categories are available for reassignment or if it's the logical default
     setReassignCategoryId(availableCategories.find(c => c.id !== 'uncategorized')?.id || 'uncategorized');
   };
 
   const confirmDeleteCategory = () => {
     if (!categoryToDelete) return;
-    // Re-check premium status and if it's a default category before actual deletion dispatch
-    // This is a defensive check, main blocking is in handleDeleteCategoryClick
-    const isDefault = DEFAULT_CATEGORIES.some(dc => dc.id === categoryToDelete.id && categoryToDelete.id !== 'uncategorized');
-    if (!isPremium && isDefault) {
-        toast({ title: "Error", description: "Cannot delete default categories on freemium plan.", variant: "destructive" });
-        setCategoryToDelete(null);
-        return;
-    }
-
+    
     const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id);
-    // Ensure reassignToId is valid, fallback to 'uncategorized'
     const finalReassignId = (categoriesForReassignment.some(c => c.id === reassignCategoryId) || reassignCategoryId === 'uncategorized') 
                             ? reassignCategoryId 
                             : 'uncategorized';
@@ -152,15 +115,23 @@ export default function SettingsPage() {
       payload: { categoryId: categoryToDelete.id, reassignToId: itemsWithCategory.length > 0 ? finalReassignId : undefined }
     });
     setCategoryToDelete(null);
-    setReassignCategoryId('uncategorized'); // Reset for next potential deletion
+    setReassignCategoryId('uncategorized'); 
     toast({ title: "Success", description: "Category deleted." });
   };
 
   const categoriesForReassignment = useMemo(() => {
     if (!categoryToDelete) return [];
-    // Exclude the category being deleted and 'uncategorized' should be listed as an option if it's not the one being deleted.
     return categories.filter(c => c.id !== categoryToDelete.id);
   }, [categories, categoryToDelete]);
+
+  const handleCurrencyChange = (currencyCode: string) => {
+    const newCurrency = state.supportedCurrencies.find(c => c.code === currencyCode);
+    if (newCurrency) {
+        dispatch({ type: 'SET_CURRENCY', payload: newCurrency });
+        toast({ title: "Success", description: `Currency changed to ${newCurrency.name} (${newCurrency.symbol}).`});
+    }
+  };
+
 
   const isLoading = contextLoading;
 
@@ -171,9 +142,39 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
-      <Card className="bg-card border-secondary/30 shadow-neon glow-border">
+      
+      {/* Currency Settings Card */}
+      <Card className="bg-card border-primary/30 shadow-neon glow-border">
         <CardHeader>
           <CardTitle className="text-primary flex items-center gap-2">
+            <DollarSign className="h-5 w-5" /> Currency
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">Select your preferred currency.</CardDescription>
+        </CardHeader>
+        <CardContent className="glow-border-inner p-4">
+            <div className="grid gap-1.5">
+                <Label htmlFor="currency-select" className="text-neonText/80 text-xs">Select Currency</Label>
+                <Select value={selectedCurrencyCode} onValueChange={handleCurrencyChange}>
+                    <SelectTrigger id="currency-select" className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner">
+                        <SelectValue placeholder="Select currency..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner" position="popper">
+                        {state.supportedCurrencies.map((currency) => (
+                            <SelectItem key={currency.code} value={currency.code} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary">
+                                {currency.name} ({currency.symbol})
+                            </SelectItem>
+                        ))}
+                        {state.supportedCurrencies.length === 0 && <SelectItem value="loading" disabled>Loading currencies...</SelectItem>}
+                    </SelectContent>
+                </Select>
+            </div>
+        </CardContent>
+      </Card>
+
+      {/* Category Management Card */}
+      <Card className="bg-card border-secondary/30 shadow-neon glow-border">
+        <CardHeader>
+          <CardTitle className="text-secondary flex items-center gap-2">
             <Layers className="h-5 w-5" /> Categories
           </CardTitle>
           <CardDescription className="text-muted-foreground">Manage your shopping item categories.</CardDescription>
@@ -188,31 +189,22 @@ export default function SettingsPage() {
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="e.g., Clothing"
                 className="border-secondary/50 focus:border-secondary focus:shadow-neon focus:ring-secondary glow-border-inner"
-                disabled={!canAddCategories}
               />
             </div>
-            <Button type="submit" size="icon" className="bg-primary text-primary-foreground h-10 w-10 shrink-0 glow-border-inner" disabled={!canAddCategories}>
-              {canAddCategories ? <PlusCircle className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
+            <Button type="submit" size="icon" className="bg-secondary text-secondary-foreground h-10 w-10 shrink-0 glow-border-inner">
+              <PlusCircle className="h-5 w-5" />
               <span className="sr-only">Add Category</span>
             </Button>
           </form>
-          {!canAddCategories && (
-            <p className="text-xs text-yellow-500 text-center mt-2">
-                Adding custom categories is a Premium feature.
-                <Button variant="link" asChild className="p-0 h-auto text-secondary hover:text-secondary/80 ml-1">
-                    <Link href="/premium">Upgrade to Premium</Link>
-                </Button>
-            </p>
-          )}
+          
           <div className="space-y-2 pt-4">
             <h4 className="text-sm font-medium text-muted-foreground">Your Categories:</h4>
             {categories.length > 0 ? (
               <Card className="p-0 border-border/30 glow-border-inner">
-                <ScrollArea className="h-auto max-h-72"> {/* Added ScrollArea for long lists */}
+                <ScrollArea className="h-auto max-h-72"> 
                   <ul className="divide-y divide-border/30">
                     {categories.map((category) => {
-                      const isDefaultNonUncategorized = DEFAULT_CATEGORIES.some(dc => dc.id === category.id && category.id !== 'uncategorized');
-                      const canDeleteThisCategory = isPremium || (!isDefaultNonUncategorized && category.id !== 'uncategorized');
+                      const canDeleteThisCategory = category.id !== 'uncategorized';
 
                       return (
                         <li key={category.id} className="flex items-center justify-between p-2 hover:bg-muted/10 glow-border-inner">
@@ -251,11 +243,11 @@ export default function SettingsPage() {
                                       onClick={() => handleDeleteCategoryClick(category)} 
                                       disabled={!canDeleteThisCategory}
                                     >
-                                      {!canDeleteThisCategory ? <Lock className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                                      {canDeleteThisCategory ? <Trash2 className="h-4 w-4" /> : <X className="h-4 w-4 opacity-50" />}
                                       <span className="sr-only">Delete</span>
                                     </Button>
                                   </AlertDialogTrigger>
-                                  {categoryToDelete && categoryToDelete.id === category.id && ( // Only render content if this category is the one to delete
+                                  {categoryToDelete && categoryToDelete.id === category.id && ( 
                                      <AlertDialogContent className="glow-border">
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Delete Category: {categoryToDelete?.name}?</AlertDialogTitle>
@@ -283,7 +275,6 @@ export default function SettingsPage() {
                                               <SelectValue placeholder="Select a category..." />
                                             </SelectTrigger>
                                             <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
-                                              {/* Always include Uncategorized as the first option for reassignment */}
                                               <SelectItem value="uncategorized" className="focus:bg-secondary/30 focus:text-secondary">Uncategorized</SelectItem>
                                               {categoriesForReassignment.filter(c => c.id !== 'uncategorized').map((cat) => (
                                                 <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
@@ -325,6 +316,21 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Theme Settings Card (Link to Themes Page) */}
+      <Card className="bg-card border-purple-500/30 shadow-neon glow-border">
+        <CardHeader>
+            <CardTitle className="text-purple-400 flex items-center gap-2">
+                <Palette className="h-5 w-5" /> App Theme
+            </CardTitle>
+            <CardDescription className="text-muted-foreground">Customize the look and feel of Neon Shopping.</CardDescription>
+        </CardHeader>
+        <CardContent className="glow-border-inner p-4">
+            <Button asChild className="w-full bg-purple-500 hover:bg-purple-500/90 text-white glow-border-inner">
+                <Link href="/themes">Change Theme</Link>
+            </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -332,6 +338,18 @@ export default function SettingsPage() {
 const SettingsPageSkeleton: React.FC = () => (
   <div className="space-y-6 animate-pulse">
     <Skeleton className="h-8 w-1/4" />
+    {/* Currency Skeleton */}
+    <Card className="bg-card border-border/20 shadow-md glow-border">
+      <CardHeader>
+        <Skeleton className="h-6 w-1/5 mb-1" />
+        <Skeleton className="h-4 w-2/3" />
+      </CardHeader>
+      <CardContent className="glow-border-inner p-4">
+        <Skeleton className="h-3 w-1/4 mb-1.5" />
+        <Skeleton className="h-10 w-full rounded-md glow-border-inner" />
+      </CardContent>
+    </Card>
+    {/* Categories Skeleton */}
     <Card className="bg-card border-border/20 shadow-md glow-border">
       <CardHeader>
         <Skeleton className="h-6 w-1/4 mb-1" />
@@ -363,6 +381,16 @@ const SettingsPageSkeleton: React.FC = () => (
             </ScrollArea>
           </Card>
         </div>
+      </CardContent>
+    </Card>
+    {/* Theme Skeleton */}
+    <Card className="bg-card border-border/20 shadow-md glow-border">
+      <CardHeader>
+        <Skeleton className="h-6 w-1/5 mb-1" />
+        <Skeleton className="h-4 w-2/3" />
+      </CardHeader>
+      <CardContent className="glow-border-inner p-4">
+        <Skeleton className="h-10 w-full rounded-md glow-border-inner" />
       </CardContent>
     </Card>
   </div>

@@ -4,15 +4,14 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, ShieldCheckIcon as Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown, Gem } from 'lucide-react'; // Keep ShieldCheckIcon as Shield
+import { CheckCircle, XCircle, ShieldCheckIcon as Shield, BarChart2, FileText, Palette, ListPlus, PlusCircle, TrendingUp, Crown, Gem } from 'lucide-react';
 import { useAppContext, FREEMIUM_LIST_LIMIT, DEFAULT_CATEGORIES } from '@/context/app-context'; 
-// import { useToast } from '@/hooks/use-toast'; // Toast not needed if no demo buttons
-import Link from 'next/link';
+import Link from 'next/link'; // Keep Link for navigating to plans if needed
 
 
 export default function PremiumPage() {
   const { state } = useAppContext(); 
-  // const { toast } = useToast(); // Not needed if demo buttons are removed
+  // No isPremium check needed as all features are enabled in local version
 
   const premiumFeatures = [
     { text: "Ad-Free Experience", icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
@@ -30,7 +29,7 @@ export default function PremiumPage() {
     { text: "No Purchase History Access (All Features Enabled in Local Version)", icon: <XCircle className="h-5 w-5 text-red-500" /> },
     { text: "No Financial Analytics or Export (All Features Enabled in Local Version)", icon: <XCircle className="h-5 w-5 text-red-500" /> },
     { text: `Limited to ${FREEMIUM_LIST_LIMIT} Shopping Lists (All Features Enabled in Local Version)`, icon: <ListPlus className="h-5 w-5 text-yellow-500" /> },
-    { text: `Limited to ${DEFAULT_CATEGORIES.filter(c => c.id !== 'uncategorized').length} Pre-Created Categories (All Features Enabled in Local Version)`, icon: <PlusCircle className="h-5 w-5 text-yellow-500" /> },
+    { text: `Limited to ${DEFAULT_CATEGORIES.filter(c => c.id !== 'uncategorized' && c.userId === null).length} Pre-Created Categories (All Features Enabled in Local Version)`, icon: <PlusCircle className="h-5 w-5 text-yellow-500" /> },
     { text: "Default Theme Only (All Themes Available in Local Version)", icon: <Palette className="h-5 w-5 text-yellow-500" /> },
   ];
 
@@ -50,10 +49,12 @@ export default function PremiumPage() {
             <CardTitle className="text-lg text-neonText">Current Status</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-            {/* Since premium is always true for local storage, this will always show "Premium Active" */}
             <CardDescription className="text-xl font-bold text-green-500">
              All Features Enabled (Local Version)
             </CardDescription>
+             <p className="text-xs text-muted-foreground pt-1">
+              This version includes all premium benefits by default.
+            </p>
         </CardContent>
       </Card>
 
@@ -77,13 +78,12 @@ export default function PremiumPage() {
                 </div>
               ))}
             </CardContent>
+             <CardFooter className="p-4 border-t border-primary/20">
+                <Button asChild className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon glow-border">
+                    <Link href="/premium-plans">View Conceptual Plans</Link>
+                </Button>
+            </CardFooter>
           </Card>
-          <CardFooter className="flex-col gap-3 p-0">
-            {/* Removed upgrade/downgrade test buttons */}
-            <p className="text-xs text-muted-foreground pt-2">
-              This page outlines features. In this local version, all features are enabled by default.
-            </p>
-          </CardFooter>
         </div>
 
         <Card className="bg-card border-border/30 shadow-md glow-border">

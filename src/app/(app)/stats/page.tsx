@@ -11,20 +11,14 @@ import { useAppContext } from '@/context/app-context';
 import type { Category, List, ShoppingListItem } from '@/context/app-context';
 import { subDays, format, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, Download, Lock } from 'lucide-react';
+import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, Download } from 'lucide-react'; // Removed Lock
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 import { ChartConfig } from '@/components/ui/chart';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable'; // Extends jsPDF
-import Link from 'next/link'; // For linking to premium page
-
-type TrendChartType = 'line' | 'bar';
-type CategoryChartType = 'pie' | 'bar';
-type TimePeriodPreset = '7d' | '30d' | '90d' | 'custom';
-type CategoryFilter = string; // 'all' or specific category ID
-type ListFilter = string | null; // 'all' represented by null
+// Removed Link import
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDFWithAutoTable;
@@ -32,18 +26,18 @@ interface jsPDFWithAutoTable extends jsPDF {
 
 export default function StatsPage() {
     const { state, formatCurrency, isLoading } = useAppContext();
-    const { isPremium } = state; // Get premium status
+    // Removed isPremium from state
 
-    const [trendChartType, setTrendChartType] = useState<TrendChartType>('line');
-    const [categoryChartType, setCategoryChartType] = useState<CategoryChartType>('pie');
-    const [timePeriodPreset, setTimePeriodPreset] = useState<TimePeriodPreset>('30d');
-    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
+    const [trendChartType, setTrendChartType] = useState<'line' | 'bar'>('line');
+    const [categoryChartType, setCategoryChartType] = useState<'pie' | 'bar'>('pie');
+    const [timePeriodPreset, setTimePeriodPreset] = useState<'7d' | '30d' | '90d' | 'custom'>('30d');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         const endDate = endOfDay(new Date());
         const startDate = startOfDay(subDays(endDate, 29));
         return { from: startDate, to: endDate };
     });
-    const [selectedListId, setSelectedListId] = useState<ListFilter>(null);
+    const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
     useEffect(() => {
         if (timePeriodPreset === 'custom') {
@@ -203,43 +197,106 @@ export default function StatsPage() {
     };
 
     const handleExportPDF = () => {
-        if (!isPremium) return; // Premium check
         const doc = new jsPDF() as jsPDFWithAutoTable;
-        // ... (rest of PDF export logic)
+        doc.setFontSize(18);
+        doc.text('Expense Dashboard Report', 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Filters: ${getFilterLabel()}`, 14, 30);
+        doc.text(`Generated on: ${format(new Date(), 'MMM d, yyyy HH:mm')}`, 14, 36);
+    
+        // Summary Stats Table
+        const summaryTableBody = [
+            ['Total Spent', formatCurrency(summaryStats.totalSpent)],
+            ['Average Spend / Day (in range)', formatCurrency(summaryStats.averagePerDayInRange)],
+            ['Average Spend / Day (on spending days)', formatCurrency(summaryStats.averagePerSpendingDay)],
+            ['Highest Spend Day', summaryStats.highestSpendDay ? `${formatCurrency(summaryStats.highestSpendDay.total)} on ${summaryStats.highestSpendDay.date}` : 'N/A'],
+            ['Total Items Purchased', summaryStats.totalItems.toString()],
+        ];
+        doc.autoTable({
+            head: [['Statistic', 'Value']],
+            body: summaryTableBody,
+            startY: 45,
+            theme: 'striped',
+            headStyles: { fillColor: [30, 130, 76] }, // Example: Darker green
+        });
+        let lastY = (doc as any).lastAutoTable.finalY;
+    
+        // Expense Trend Table (if data exists)
+        if (processedTrendData.length > 0) {
+            doc.text('Expense Trend Data', 14, lastY + 15);
+            const trendTableColumns = ["Date", "Total Spent"];
+            const trendTableRows = processedTrendData.map(d => [d.date, formatCurrency(d.total)]);
+            doc.autoTable({
+                head: [trendTableColumns],
+                body: trendTableRows,
+                startY: lastY + 20,
+                theme: 'grid',
+            });
+            lastY = (doc as any).lastAutoTable.finalY;
+        }
+    
+        // Category Breakdown Table (if data exists)
+        if (processedCategoryData.length > 0) {
+            doc.text('Category Breakdown Data', 14, lastY + 15);
+            const categoryTableColumns = ["Category", "Total Spent"];
+            const categoryTableRows = processedCategoryData.map(d => [d.category, formatCurrency(d.total)]);
+            doc.autoTable({
+                head: [categoryTableColumns],
+                body: categoryTableRows,
+                startY: lastY + 20,
+                theme: 'grid',
+            });
+        }
         doc.save('expense_dashboard_report.pdf');
     };
 
     const downloadCSV = (csvContent: string, fileName: string) => {
-        if (!isPremium) return; // Premium check
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        // ... (rest of CSV download logic)
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
     const handleExportCSV = () => {
-        if (!isPremium) return; // Premium check
         let csvContent = "Data Type,Value 1,Value 2\r\n";
-        // ... (rest of CSV content generation logic)
+        // Summary Stats
+        csvContent += "Summary Statistics,\r\n";
+        csvContent += `Total Spent,${summaryStats.totalSpent}\r\n`; // Raw number
+        csvContent += `Average Spend / Day (in range),${summaryStats.averagePerDayInRange}\r\n`;
+        csvContent += `Average Spend / Day (on spending days),${summaryStats.averagePerSpendingDay}\r\n`;
+        csvContent += `Highest Spend Day,${summaryStats.highestSpendDay ? `${summaryStats.highestSpendDay.total} on ${summaryStats.highestSpendDay.date}` : 'N/A'}\r\n`;
+        csvContent += `Total Items Purchased,${summaryStats.totalItems}\r\n`;
+        csvContent += "\r\n";
+    
+        // Trend Data
+        csvContent += "Expense Trend Data,\r\n";
+        csvContent += "Date,Total Spent\r\n";
+        processedTrendData.forEach(item => {
+            csvContent += `"${item.date}",${item.total}\r\n`; // Raw number
+        });
+        csvContent += "\r\n";
+    
+        // Category Data
+        csvContent += "Category Breakdown Data,\r\n";
+        csvContent += "Category,Total Spent\r\n";
+        processedCategoryData.forEach(item => {
+            const safeCategory = `"${item.category.replace(/"/g, '""')}"`; // Escape double quotes
+            csvContent += `${safeCategory},${item.total}\r\n`; // Raw number
+        });
+    
         downloadCSV(csvContent, 'expense_dashboard_report.csv');
     };
 
     if (isLoading) {
         return <StatsPageSkeleton />;
-    }
-
-    if (!isPremium) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <Lock className="h-16 w-16 text-primary mb-4" />
-                <h2 className="text-2xl font-semibold text-neonText mb-2">Dashboard Locked</h2>
-                <p className="text-muted-foreground mb-6 max-w-md">
-                    Access to detailed statistics and financial analytics is a Premium feature.
-                    Upgrade to unlock the full power of your expense dashboard!
-                </p>
-                <Button asChild className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon glow-border">
-                    <Link href="/premium">Upgrade to Premium</Link>
-                </Button>
-            </div>
-        );
     }
 
     return (
@@ -248,11 +305,11 @@ export default function StatsPage() {
              <div className="flex justify-between items-center">
                  <h1 className="text-xl sm:text-2xl font-bold text-primary">Expense Dashboard</h1>
                 <div className="flex gap-2">
-                    <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3" disabled={!isPremium}>
-                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF {!isPremium && <Lock className="h-3 w-3 ml-1" />}
+                    <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF
                     </Button>
-                    <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3" disabled={!isPremium}>
-                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV {!isPremium && <Lock className="h-3 w-3 ml-1" />}
+                    <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                        <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV
                     </Button>
                 </div>
              </div>
@@ -286,7 +343,7 @@ export default function StatsPage() {
                      </div>
                      {/* Time Period Preset */}
                      <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
-                          <Select value={timePeriodPreset} onValueChange={(value: TimePeriodPreset) => setTimePeriodPreset(value)}>
+                          <Select value={timePeriodPreset} onValueChange={(value: '7d' | '30d' | '90d' | 'custom') => setTimePeriodPreset(value)}>
                               <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary [&[data-state=open]]:border-primary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
                                  <CalendarDays className="h-4 w-4 mr-2 opacity-70" />
                                  <SelectValue placeholder="Select time period" />
@@ -310,7 +367,7 @@ export default function StatsPage() {
                       </div>
                       {/* Category Filter */}
                        <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                          <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
+                          <Select value={selectedCategory} onValueChange={(value: string) => setSelectedCategory(value)}>
                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-primary text-xs sm:text-sm glow-border-inner">
                                   <Layers className="h-4 w-4 mr-2 opacity-70" />
                                  <SelectValue placeholder="Filter by category" />
@@ -471,7 +528,6 @@ export default function StatsPage() {
          </div>
     );
 }
-// ... (StatsPageSkeleton remains the same)
 
 const StatsPageSkeleton: React.FC = () => (
     <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">

@@ -7,7 +7,7 @@ import { useAppContext } from '@/context/app-context';
 import type { ShoppingListItem, Category, List } from '@/context/app-context';
 import { subDays, format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards, Download, Lock } from 'lucide-react';
+import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards, Download } from 'lucide-react'; // Removed Lock
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
@@ -25,11 +25,7 @@ import {
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import Link from 'next/link'; // For linking to premium page
-
-type CategoryFilter = string; 
-type SortOption = 'dateDesc' | 'dateAsc' | 'priceDesc' | 'priceAsc';
-type ListFilter = string | null; 
+// Removed Link import as premium page link is not needed here
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDFWithAutoTable;
@@ -37,17 +33,17 @@ interface jsPDFWithAutoTable extends jsPDF {
 
 export default function HistoryPage() {
     const { state, dispatch, formatCurrency, isLoading } = useAppContext();
-    const { isPremium } = state; // Get premium status
+    // Removed isPremium from state as it's no longer used for feature locking
 
-    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
-    const [sortOption, setSortOption] = useState<SortOption>('dateDesc');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all'); // string for category ID
+    const [sortOption, setSortOption] = useState<'dateDesc' | 'dateAsc' | 'priceDesc' | 'priceAsc'>('dateDesc');
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         const endDate = endOfDay(new Date());
         const startDate = startOfDay(subDays(endDate, 29)); 
         return { from: startDate, to: endDate };
     });
-    const [selectedListId, setSelectedListId] = useState<ListFilter>(null); 
+    const [selectedListId, setSelectedListId] = useState<string | null>(null); 
 
     const historyItems = useMemo(() => {
         let items = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : [];
@@ -69,7 +65,7 @@ export default function HistoryPage() {
             switch (sortOption) {
                 case 'dateAsc': return a.dateAdded - b.dateAdded;
                 case 'priceDesc': return (b.price * b.quantity) - (a.price * a.quantity);
-                case 'priceAsc': return (a.price * a.quantity) - (b.price * b.quantity);
+                case 'priceAsc': return (a.price * a.quantity) - (b.price * a.quantity);
                 case 'dateDesc':
                 default: return b.dateAdded - a.dateAdded;
             }
@@ -107,43 +103,81 @@ export default function HistoryPage() {
      };
 
      const handleExportPDF = () => {
-        if (!isPremium) return; // Premium check
          const doc = new jsPDF() as jsPDFWithAutoTable;
-         // ... (rest of PDF export logic)
+         doc.setFontSize(18);
+         doc.text('Purchase History Report', 14, 22);
+         doc.setFontSize(11);
+         doc.setTextColor(100);
+         doc.text(`Filters: ${getFilterLabel()}`, 14, 30);
+         doc.text(`Generated on: ${format(new Date(), 'MMM d, yyyy HH:mm')}`, 14, 36);
+
+         const tableColumn = ["Date", "Item Name", "Quantity", "Unit Price", "Total Price", "Category", "List"];
+         const tableRows: (string | number)[][] = [];
+
+         historyItems.forEach(item => {
+             const listName = state.lists.find(l => l.id === item.listId)?.name || 'N/A';
+             const rowData = [
+                 format(new Date(item.dateAdded), 'yyyy-MM-dd'),
+                 item.name,
+                 item.quantity,
+                 formatCurrency(item.price),
+                 formatCurrency(item.price * item.quantity),
+                 getCategoryName(item.category),
+                 listName,
+             ];
+             tableRows.push(rowData);
+         });
+
+         doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 45,
+            theme: 'grid',
+            headStyles: { fillColor: [22, 160, 133] }, // Example primary color
+            styles: { font: 'helvetica', fontSize: 9 },
+         });
+         
+         const finalY = (doc as any).lastAutoTable.finalY || 0;
+         doc.setFontSize(10);
+         doc.text(`Total Spent: ${formatCurrency(historyItems.reduce((sum, item) => sum + item.price * item.quantity, 0))}`, 14, finalY + 10);
+
          doc.save('purchase_history_report.pdf');
      };
 
      const downloadCSV = (csvContent: string, fileName: string) => {
-        if (!isPremium) return; // Premium check
          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-         // ... (rest of CSV download logic)
+         const link = document.createElement("a");
+         if (link.download !== undefined) {
+             const url = URL.createObjectURL(blob);
+             link.setAttribute("href", url);
+             link.setAttribute("download", fileName);
+             link.style.visibility = 'hidden';
+             document.body.appendChild(link);
+             link.click();
+             document.body.removeChild(link);
+         }
      };
 
      const handleExportCSV = () => {
-        if (!isPremium) return; // Premium check
-         let csvContent = "";
-         // ... (rest of CSV content generation logic)
+         let csvContent = "Date,Item Name,Quantity,Unit Price,Total Price,Category,List\r\n";
+         historyItems.forEach(item => {
+            const listName = state.lists.find(l => l.id === item.listId)?.name || 'N/A';
+            const row = [
+                format(new Date(item.dateAdded), 'yyyy-MM-dd'),
+                `"${item.name.replace(/"/g, '""')}"`, // Escape double quotes
+                item.quantity,
+                item.price, // Raw number for CSV
+                item.price * item.quantity, // Raw number for CSV
+                `"${getCategoryName(item.category).replace(/"/g, '""')}"`,
+                `"${listName.replace(/"/g, '""')}"`
+            ].join(',');
+            csvContent += row + "\r\n";
+         });
          downloadCSV(csvContent, 'purchase_history_report.csv');
      };
 
     if (isLoading) {
         return <HistoryPageSkeleton />;
-    }
-
-    if (!isPremium) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <Lock className="h-16 w-16 text-primary mb-4" />
-                <h2 className="text-2xl font-semibold text-neonText mb-2">Purchase History Locked</h2>
-                <p className="text-muted-foreground mb-6 max-w-md">
-                    Access to your detailed purchase history and export features is a Premium benefit.
-                    Upgrade to keep track of all your past expenses!
-                </p>
-                <Button asChild className="bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-neon glow-border">
-                    <Link href="/premium">Upgrade to Premium</Link>
-                </Button>
-            </div>
-        );
     }
 
     return (
@@ -154,11 +188,11 @@ export default function HistoryPage() {
                      <History className="h-6 w-6" /> Purchase History
                  </h1>
                  <div className="flex gap-2">
-                     <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3" disabled={!isPremium}>
-                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF {!isPremium && <Lock className="h-3 w-3 ml-1" />}
+                     <Button onClick={handleExportPDF} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> PDF
                      </Button>
-                     <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3" disabled={!isPremium}>
-                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV {!isPremium && <Lock className="h-3 w-3 ml-1" />}
+                     <Button onClick={handleExportCSV} variant="outline" size="sm" className="glow-border-inner text-xs px-2 py-1 h-auto sm:px-3">
+                         <Download className="h-3.5 w-3.5 mr-1 sm:mr-1.5" /> CSV
                      </Button>
                  </div>
              </div>
@@ -201,7 +235,7 @@ export default function HistoryPage() {
                       </div>
                       {/* Category Filter */}
                       <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                          <Select value={selectedCategory} onValueChange={(value: CategoryFilter) => setSelectedCategory(value)}>
+                          <Select value={selectedCategory} onValueChange={(value: string) => setSelectedCategory(value)}>
                               <SelectTrigger className="w-full border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary [&[data-state=open]]:border-secondary [&[data-state=open]]:shadow-secondary text-xs sm:text-sm glow-border-inner">
                                   <Layers className="h-4 w-4 mr-2 opacity-70" />
                                   <SelectValue placeholder="Filter by category" />
@@ -224,7 +258,7 @@ export default function HistoryPage() {
                       </div>
                        {/* Sort Select */}
                        <div className="flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px]">
-                          <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
+                          <Select value={sortOption} onValueChange={(value: 'dateDesc' | 'dateAsc' | 'priceDesc' | 'priceAsc') => setSortOption(value)}>
                               <SelectTrigger className="w-full border-secondary/50 focus:border-secondary focus:shadow-secondary focus:ring-secondary text-xs sm:text-sm glow-border-inner">
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
                                   <SelectValue placeholder="Sort by..." />
@@ -281,7 +315,7 @@ export default function HistoryPage() {
         </div>
     );
 }
-// ... (HistoryItemCard and HistoryPageSkeleton remain the same)
+
 interface HistoryItemCardProps {
     item: ShoppingListItem;
     formatCurrency: (amount: number) => string;
@@ -332,7 +366,6 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({ item, formatCurrency,
 };
 
 
-// --- Skeleton Loader Component ---
 const HistoryPageSkeleton: React.FC = () => (
     <div className="flex flex-col gap-4 sm:gap-6 p-1 sm:p-0 h-full animate-pulse">
         {/* Header Skeleton */}

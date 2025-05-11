@@ -5,20 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { useAppContext } from '@/context/app-context';
 import { themes, themeColors, defaultThemeId } from '@/config/themes';
-import { CheckCircle, Palette, Lock } from 'lucide-react';
+import { CheckCircle, Palette } from 'lucide-react'; // Removed Lock
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
+// Removed Link import as premium page link is not needed here
 import { useToast } from '@/hooks/use-toast';
 
 export default function ThemesPage() {
   const { state, dispatch } = useAppContext();
   const currentThemeId = state.theme || defaultThemeId;
-  // For local storage version, assume all themes are available (isPremium = true effectively)
-  const isPremium = true; 
+  // No isPremium check needed as all themes are available
   const { toast } = useToast();
 
   const handleThemeChange = (themeId: string) => {
-    // No premium check needed for local storage version as all themes are available
     dispatch({ type: 'SET_THEME', payload: themeId });
     toast({
         title: "Theme Applied!",
@@ -39,8 +37,7 @@ export default function ThemesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {themes.map((theme) => {
           const isActive = theme.id === currentThemeId;
-          // No premium lock for local storage version
-          const colors = themeColors[theme.id] || themeColors[defaultThemeId];
+          const colors = themeColors[theme.id] || themeColors[defaultThemeId]; // Fallback to default theme colors if specific not found
           const getHslString = (variableName: string) => `hsl(${colors[variableName]})`;
 
           return (

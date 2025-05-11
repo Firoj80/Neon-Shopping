@@ -6,9 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Crown, Zap, Loader2, InfoIcon } from 'lucide-react';
 import { useAppContext } from '@/context/app-context';
-// import { useToast } from '@/hooks/use-toast'; // Not needed for informational page
 import { cn } from '@/lib/utils';
-// import Script from 'next/script'; // Razorpay SDK not needed for informational page
 
 interface PlanFeature {
   text: string;
@@ -22,7 +20,6 @@ interface Plan {
   priceYearly: number | null;
   description: string;
   features: string[];
-  // razorpayPlanId?: string; // Not needed for informational page
 }
 
 const premiumFeaturesList: PlanFeature[] = [
@@ -35,7 +32,6 @@ const premiumFeaturesList: PlanFeature[] = [
     { text: "Unlock All Cyberpunk Themes", icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
 ];
 
-// Static plan data for display purposes, as backend is removed
 const staticPlans: Plan[] = [
   {
     id: 'monthly_basic',
@@ -52,7 +48,7 @@ const staticPlans: Plan[] = [
   {
     id: 'three_month_standard',
     name: '3-Month Standard',
-    priceMonthly: 15.00, // Example: Effectively $5/month
+    priceMonthly: 15.00, 
     priceYearly: null,
     description: 'Enjoy 3 months of premium access.',
     features: [
@@ -67,7 +63,7 @@ const staticPlans: Plan[] = [
     id: 'yearly_premium',
     name: 'Yearly Premium',
     priceMonthly: null,
-    priceYearly: 48.00, // Example: Effectively $4/month
+    priceYearly: 48.00, 
     description: 'Best value! Full year of premium access.',
     features: [
       "Ad-Free Experience",
@@ -84,14 +80,11 @@ const staticPlans: Plan[] = [
 
 export default function PremiumPlansPage() {
   const { state: appState, formatCurrency } = useAppContext();
-  // const { toast } = useToast(); // Not needed
-  const [plans, setPlans] = useState<Plan[]>(staticPlans); // Use static plans
-  const [isLoadingPlans, setIsLoadingPlans] = useState(false); // No loading from API
-  // const [isProcessingPayment, setIsProcessingPayment] = useState<string | null>(null); // Not needed
-  // const [isRazorpaySdkLoaded, setIsRazorpaySdkLoaded] = useState(false); // Not needed
+  const [plans, setPlans] = useState<Plan[]>(staticPlans); 
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false); 
 
 
-  if (isLoadingPlans) { // Should not happen with static data, but kept for structure
+  if (isLoadingPlans) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)] p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -102,13 +95,12 @@ export default function PremiumPlansPage() {
 
   return (
     <>
-      {/* Razorpay Script removed */}
       <div className="space-y-8 p-2 sm:p-4 md:p-6 max-w-5xl mx-auto">
         <header className="text-center space-y-2">
           <Crown className="h-12 w-12 text-secondary mx-auto animate-pulse" />
-          <h1 className="text-3xl sm:text-4xl font-bold text-primary">Premium Plans</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-primary">Premium Plans (Conceptual)</h1>
           <p className="text-lg text-muted-foreground">
-            Choose a plan that fits your cyberpunk lifestyle and unlock all features.
+            This page outlines conceptual premium plans. Payment integration is not active in this local version.
           </p>
         </header>
 
@@ -128,7 +120,6 @@ export default function PremiumPlansPage() {
               key={plan.id}
               className={cn(
                 "bg-card border-border/30 shadow-md hover:shadow-neon-lg transition-all transform hover:scale-105 flex flex-col glow-border",
-                // Premium status check removed, as all features are enabled
               )}
             >
               <CardHeader className="pb-4 glow-border-inner">
@@ -161,9 +152,8 @@ export default function PremiumPlansPage() {
               </CardContent>
               <CardFooter className="mt-auto glow-border-inner p-4">
                 <Button
-                  // onClick={() => handleSubscribe(plan)} // Subscription logic removed
                   className="w-full bg-primary hover:bg-primary/80 text-primary-foreground shadow-neon glow-border text-base"
-                  disabled // Disable subscribe button as there's no payment integration
+                  disabled 
                 >
                   <Zap className="mr-2 h-5 w-5" />
                   Subscribe (Feature Not Active)
@@ -173,7 +163,7 @@ export default function PremiumPlansPage() {
           ))}
         </div>
          <div className="text-center text-xs text-muted-foreground mt-8">
-            This page shows conceptual premium plans. Payment integration is not active in this local version.
+           Payment integration and actual subscriptions are not implemented in this local version.
         </div>
       </div>
     </>
