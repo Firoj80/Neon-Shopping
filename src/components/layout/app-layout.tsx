@@ -35,19 +35,18 @@ import {
   Star,
   AppWindow as AppsIcon,
   X,
-  Palette, // Added for Themes
-  // DollarSign removed as currency is not a separate page
+  DollarSign,
+  UserCircle2 as ProfileIcon,
+  LogOut
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppContext, AppContext } from '@/context/app-context'; // Added AppContext import
+import { useAppContext, AppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
-// AuthProvider and useAuth imports removed as auth system was simplified
-// import { useAuth } from '@/context/auth-context';
-// import { AuthProvider } from '@/context/auth-context';
 import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer';
+import { useClientOnly } from '@/hooks/use-client-only';
 
 
 // --- Mobile Header Component ---
@@ -59,23 +58,20 @@ const MobileHeader: React.FC = () => {
       {/* Left Side: Hamburger Menu Trigger */}
        <Sheet open={isOpen} onOpenChange={setIsOpen}>
          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
-              {/* Ensure single child for asChild */}
-              <div>
-                <AnimatePresence initial={false} mode="wait">
-                  <motion.div
-                    key={isOpen ? "x" : "menu"}
-                    initial={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-                  </motion.div>
-                </AnimatePresence>
-                <span className="sr-only">Toggle Sidebar</span>
-              </div>
-            </Button>
+           <Button variant="ghost" size="icon" className="mr-2 text-primary hover:text-primary/80 hover:bg-primary/10">
+             <AnimatePresence initial={false} mode="wait">
+               <motion.div
+                 key={isOpen ? "x" : "menu"}
+                 initial={{ rotate: isOpen ? -90 : 90, opacity: 0 }}
+                 animate={{ rotate: 0, opacity: 1 }}
+                 exit={{ rotate: isOpen ? 90 : -90, opacity: 0 }}
+                 transition={{ duration: 0.2 }}
+               >
+                 {isOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+               </motion.div>
+             </AnimatePresence>
+             <span className="sr-only">Toggle Sidebar</span>
+           </Button>
         </SheetTrigger>
          <SidebarSheetContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground">
             <MainMenuContent onLinkClick={() => setIsOpen(false)} isMobile={true} />
@@ -90,8 +86,8 @@ const MobileHeader: React.FC = () => {
         </Link>
       </div>
 
-      {/* Right Side: Placeholder for potential future icons (e.g., search, notifications) */}
-      <div className="w-10 h-10"></div> {/* This maintains symmetrical spacing */}
+      {/* Right Side: Placeholder for potential future icons */}
+      <div className="w-10 h-10"></div> {/* Maintains symmetrical spacing */}
     </header>
   );
 };
@@ -106,25 +102,12 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  // const { dispatch: appDispatch } = useAppContext(); // Removed appDispatch if not used
-  // const { logout: authLogout } = useAuth(); // Removed useAuth
-
-  const handleLogout = async () => {
-    // Simplified logout for localStorage (no API call)
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('app_state'); // Clear app specific state if needed
-      // localStorage.removeItem('user_id'); // If you stored a user_id separately
-    }
-    // appDispatch({ type: 'RESET_STATE_ON_LOGOUT' }); // Dispatch reset if needed
-    if (onLinkClick) onLinkClick();
-    router.push('/'); // Redirect to home or a landing page after logout
-  };
-
+  
   const handleLinkClick = useCallback(async (href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>, isAdProtected?: boolean) => {
     if (isAdProtected) {
       await showPreparedInterstitialAd();
     }
-    if (e) e.preventDefault(); // Prevent default only if it's a MouseEvent
+    if (e) e.preventDefault(); 
     if (onLinkClick) onLinkClick();
     router.push(href);
   }, [onLinkClick, router]);
@@ -135,7 +118,6 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard, adProtected: true },
     { href: '/history', label: 'History', icon: History, adProtected: true },
     { href: '/settings', label: 'Settings', icon: Settings, adProtected: true },
-    { href: '/themes', label: 'Themes', icon: Palette },
   ];
 
   const secondaryMenuItems = [
@@ -145,7 +127,6 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
     { href: '/rate', label: 'Rate App', icon: Star },
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
-    // Removed premium showcase link from here
   ];
 
 
@@ -206,7 +187,6 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           {secondaryMenuItems.map(item => renderMenuItem(item))}
         </SidebarMenu>
       </SidebarContent>
-       {/* Footer removed as logout is not part of the simplified app */}
     </Fragment>
   );
 };
@@ -217,29 +197,27 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
   const appContext = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
-  // const { isAuthenticated, isLoading: authLoading } = useAuth(); // Removed useAuth
+  const isClientMounted = useClientOnly();
 
-  const isLoading = appContext.isLoading; // Only app context loading now
-  const isClientMounted = React.useContext(AppContext)?.state.isInitialDataLoaded ?? false; // Simplified client mounted check
+  const isLoading = appContext.isLoading;
 
-  // --- Redirect Logic ---
    useEffect(() => {
      if (isClientMounted && !isLoading) {
        const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
 
-       if (!hasLists && pathname !== '/list/create-first' && pathname !== '/') {
-         router.replace('/list/create-first');
-       } else if (hasLists && pathname === '/list/create-first') {
-         router.replace('/list');
-       } else if (pathname === '/') { // If on homepage
+       if (pathname === '/') { 
            if (hasLists) {
                router.replace('/list');
            } else {
                router.replace('/list/create-first');
            }
+       } else if (!hasLists && pathname !== '/list/create-first') {
+         router.replace('/list/create-first');
+       } else if (hasLists && pathname === '/list/create-first') {
+         router.replace('/list');
        }
      }
-   }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]);
+   }, [isClientMounted, isLoading, appContext.state.lists, pathname, router, appContext.state.userId]);
 
 
   if (isLoading || !isClientMounted) {
@@ -249,8 +227,7 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
       </div>
     );
   }
-
-  // If user has no lists and is on the create-first page, render it directly
+  
   if (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname === '/list/create-first') {
     return <>{children}</>;
   }
@@ -258,17 +235,13 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
 
   return (
      <Fragment>
-       {/* Mobile Header */}
        <MobileHeader />
-
-        {/* Desktop Sidebar */}
         <Sidebar className="hidden md:flex md:flex-col">
          <MainMenuContent isMobile={false} />
        </Sidebar>
-
         <SidebarInset>
          <main className="flex-1 flex flex-col md:px-6 lg:px-8 xl:px-10 md:py-4 bg-background overflow-y-auto max-w-full">
-            <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom)+50px)]"> {/* Adjusted for AdMob Banner */}
+            <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom)+50px)]">
               {children}
             </div>
           </main>
