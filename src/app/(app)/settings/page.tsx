@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { useAppContext, DEFAULT_CATEGORIES } from '@/context/app-context';
-import type { Category, Currency } from '@/context/app-context'; // Added Currency import
+import type { Category, Currency } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Layers, Trash2, Edit, PlusCircle, Save, X, Palette, DollarSign } from 'lucide-react'; // Added Palette, DollarSign
+import { Layers, Trash2, Edit, PlusCircle, Save, X, Palette, DollarSign } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +23,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import Link from 'next/link'; // Keep Link for navigation
+import Link from 'next/link';
 
 
 export default function SettingsPage() {
-  const { state, dispatch, isLoading: contextLoading } = useAppContext();
-  const { categories: currentCategories, currency: currentCurrency, supportedCurrencies } = state;
+  const { state, dispatch } = useAppContext();
+  const { categories: currentCategories, currency: currentCurrency, supportedCurrencies, isLoading: contextIsLoading, isInitialDataLoaded, userId } = state;
   const { toast } = useToast();
 
   const [categories, setCategories] = useState<Category[]>(currentCategories);
@@ -39,10 +39,10 @@ export default function SettingsPage() {
   const [reassignCategoryId, setReassignCategoryId] = useState<string>('uncategorized');
   const [selectedCurrencyCode, setSelectedCurrencyCode] = useState<string>(currentCurrency.code);
 
-
   useEffect(() => {
-    setCategories(currentCategories);
-  }, [currentCategories]);
+    // Filter categories to show only global (userId: null) and current user's categories
+    setCategories(currentCategories.filter(cat => cat.userId === null || cat.userId === userId));
+  }, [currentCategories, userId]);
 
   useEffect(() => {
     setSelectedCurrencyCode(currentCurrency.code);
@@ -54,7 +54,8 @@ export default function SettingsPage() {
       toast({ title: "Error", description: "Category name cannot be empty.", variant: "destructive" });
       return;
     }
-    if (categories.some(cat => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase())) {
+    // Check against both global and user-specific categories for name collision
+    if (categories.some(cat => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase() && (cat.userId === null || cat.userId === userId))) {
       toast({ title: "Error", description: "Category name already exists.", variant: "destructive" });
       return;
     }
@@ -64,6 +65,11 @@ export default function SettingsPage() {
   };
 
   const handleStartEditCategory = (category: Category) => {
+    // Prevent editing of default categories by non-owners (should be userId === null)
+    if (category.userId === null && category.id !== 'uncategorized') {
+        toast({ title: "Action Restricted", description: "Default categories cannot be edited.", variant: "default" });
+        return;
+    }
     setEditingCategoryId(category.id);
     setEditingCategoryName(category.name);
   };
@@ -73,7 +79,8 @@ export default function SettingsPage() {
       toast({ title: "Error", description: "Category name cannot be empty.", variant: "destructive" });
       return;
     }
-    if (categories.some(cat => cat.id !== id && cat.name.toLowerCase() === editingCategoryName.trim().toLowerCase())) {
+    // Check against both global and user-specific categories for name collision, excluding the one being edited
+    if (categories.some(cat => cat.id !== id && cat.name.toLowerCase() === editingCategoryName.trim().toLowerCase() && (cat.userId === null || cat.userId === userId))) {
       toast({ title: "Error", description: "Category name already exists.", variant: "destructive" });
       return;
     }
@@ -89,23 +96,23 @@ export default function SettingsPage() {
   };
 
   const handleDeleteCategoryClick = (category: Category) => {
-    if (category.id === 'uncategorized') {
+    if (category.id === 'uncategorized' || category.userId === null) { // Prevent deletion of 'uncategorized' and other default system categories
         toast({
             title: "Action Restricted",
-            description: "The 'Uncategorized' category cannot be deleted.",
+            description: "Default categories cannot be deleted.",
             variant: "default",
         });
         return;
     }
     setCategoryToDelete(category);
-    const availableCategories = categories.filter(c => c.id !== category.id);
-    setReassignCategoryId(availableCategories.find(c => c.id !== 'uncategorized')?.id || 'uncategorized');
+    const availableCategoriesForReassignment = categories.filter(c => c.id !== category.id && (c.userId === null || c.userId === userId));
+    setReassignCategoryId(availableCategoriesForReassignment.find(c => c.id !== 'uncategorized')?.id || 'uncategorized');
   };
 
   const confirmDeleteCategory = () => {
-    if (!categoryToDelete) return;
+    if (!categoryToDelete || !userId) return;
     
-    const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id);
+    const itemsWithCategory = state.shoppingListItems.filter(item => item.category === categoryToDelete.id && item.userId === userId);
     const finalReassignId = (categoriesForReassignment.some(c => c.id === reassignCategoryId) || reassignCategoryId === 'uncategorized') 
                             ? reassignCategoryId 
                             : 'uncategorized';
@@ -120,9 +127,10 @@ export default function SettingsPage() {
   };
 
   const categoriesForReassignment = useMemo(() => {
-    if (!categoryToDelete) return [];
-    return categories.filter(c => c.id !== categoryToDelete.id);
-  }, [categories, categoryToDelete]);
+    if (!categoryToDelete || !userId) return [];
+    // Only allow reassigning to global or user's own categories
+    return categories.filter(c => c.id !== categoryToDelete.id && (c.userId === null || c.userId === userId));
+  }, [categories, categoryToDelete, userId]);
 
   const handleCurrencyChange = (currencyCode: string) => {
     const newCurrency = state.supportedCurrencies.find(c => c.code === currencyCode);
@@ -132,12 +140,15 @@ export default function SettingsPage() {
     }
   };
 
-
-  const isLoading = contextLoading;
+  const isLoading = contextIsLoading || !isInitialDataLoaded;
 
   if (isLoading) {
     return <SettingsPageSkeleton />;
   }
+
+  const userCreatedCategories = categories.filter(cat => cat.userId === userId && cat.id !== 'uncategorized');
+  const defaultSystemCategories = DEFAULT_CATEGORIES.filter(cat => cat.id !== 'uncategorized');
+
 
   return (
     <div className="space-y-6">
@@ -159,12 +170,16 @@ export default function SettingsPage() {
                         <SelectValue placeholder="Select currency..." />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-primary/80 text-neonText max-h-60 overflow-y-auto glow-border-inner" position="popper">
-                        {state.supportedCurrencies.map((currency) => (
-                            <SelectItem key={currency.code} value={currency.code} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary">
-                                {currency.name} ({currency.symbol})
-                            </SelectItem>
-                        ))}
-                        {state.supportedCurrencies.length === 0 && <SelectItem value="loading" disabled>Loading currencies...</SelectItem>}
+                        {/* Defensive check before mapping */}
+                        {Array.isArray(state.supportedCurrencies) && state.supportedCurrencies.length > 0 ? (
+                            state.supportedCurrencies.map((currency) => (
+                                <SelectItem key={currency.code} value={currency.code} className="focus:bg-secondary/30 focus:text-secondary data-[state=checked]:font-semibold data-[state=checked]:text-primary">
+                                    {currency.name} ({currency.symbol})
+                                </SelectItem>
+                            ))
+                        ) : (
+                            <SelectItem value="loading" disabled>Loading currencies...</SelectItem>
+                        )}
                     </SelectContent>
                 </Select>
             </div>
@@ -199,14 +214,11 @@ export default function SettingsPage() {
           
           <div className="space-y-2 pt-4">
             <h4 className="text-sm font-medium text-muted-foreground">Your Categories:</h4>
-            {categories.length > 0 ? (
+            {userCreatedCategories.length > 0 ? (
               <Card className="p-0 border-border/30 glow-border-inner">
-                <ScrollArea className="h-auto max-h-72"> 
+                <ScrollArea className="h-auto max-h-48"> 
                   <ul className="divide-y divide-border/30">
-                    {categories.map((category) => {
-                      const canDeleteThisCategory = category.id !== 'uncategorized';
-
-                      return (
+                    {userCreatedCategories.map((category) => (
                         <li key={category.id} className="flex items-center justify-between p-2 hover:bg-muted/10 glow-border-inner">
                           {editingCategoryId === category.id ? (
                             <div className="flex-grow flex items-center gap-2">
@@ -219,11 +231,9 @@ export default function SettingsPage() {
                               />
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:bg-green-900/30 glow-border-inner" onClick={() => handleSaveEditCategory(category.id)}>
                                 <Save className="h-4 w-4" />
-                                <span className="sr-only">Save</span>
                               </Button>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/30 glow-border-inner" onClick={handleCancelEdit}>
                                 <X className="h-4 w-4" />
-                                <span className="sr-only">Cancel</span>
                               </Button>
                             </div>
                           ) : (
@@ -232,26 +242,18 @@ export default function SettingsPage() {
                               <div className="flex items-center gap-1">
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-400 hover:bg-blue-900/30 glow-border-inner" onClick={() => handleStartEditCategory(category)}>
                                   <Edit className="h-4 w-4" />
-                                  <span className="sr-only">Edit</span>
                                 </Button>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-7 w-7 text-red-500 hover:bg-red-900/30 glow-border-inner" 
-                                      onClick={() => handleDeleteCategoryClick(category)} 
-                                      disabled={!canDeleteThisCategory}
-                                    >
-                                      {canDeleteThisCategory ? <Trash2 className="h-4 w-4" /> : <X className="h-4 w-4 opacity-50" />}
-                                      <span className="sr-only">Delete</span>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:bg-red-900/30 glow-border-inner" onClick={() => handleDeleteCategoryClick(category)}>
+                                      <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </AlertDialogTrigger>
                                   {categoryToDelete && categoryToDelete.id === category.id && ( 
                                      <AlertDialogContent className="glow-border">
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Delete Category: {categoryToDelete?.name}?</AlertDialogTitle>
-                                        {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) ? (
+                                        {state.shoppingListItems.some(item => item.category === categoryToDelete?.id && item.userId === userId) ? (
                                           <AlertDialogDescription>
                                             This category is used by some shopping items. Choose a category to reassign these items to, or they will be marked as 'Uncategorized'.
                                           </AlertDialogDescription>
@@ -261,40 +263,34 @@ export default function SettingsPage() {
                                           </AlertDialogDescription>
                                         )}
                                       </AlertDialogHeader>
-                                      {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length > 0 && (
+                                      {state.shoppingListItems.some(item => item.category === categoryToDelete?.id && item.userId === userId) && categoriesForReassignment.length > 0 && (
                                         <div className="py-4 grid gap-2">
                                           <Label htmlFor={`reassign-category-${categoryToDelete.id}`} className="text-neonText/80">Reassign Items To</Label>
                                           <Select
                                             value={reassignCategoryId}
                                             onValueChange={setReassignCategoryId}
                                           >
-                                            <SelectTrigger
-                                              id={`reassign-category-${categoryToDelete.id}`}
-                                              className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner"
-                                            >
+                                            <SelectTrigger id={`reassign-category-${categoryToDelete.id}`} className="border-primary/50 focus:border-primary focus:shadow-neon focus:ring-primary glow-border-inner">
                                               <SelectValue placeholder="Select a category..." />
                                             </SelectTrigger>
                                             <SelectContent className="bg-card border-primary/80 text-neonText glow-border-inner">
                                               <SelectItem value="uncategorized" className="focus:bg-secondary/30 focus:text-secondary">Uncategorized</SelectItem>
-                                              {categoriesForReassignment.filter(c => c.id !== 'uncategorized').map((cat) => (
+                                              {categoriesForReassignment.filter(c => c.id !== 'uncategorized').map((cat) => ( // Exclude uncategorized from re-assign options here if it is the target
                                                 <SelectItem key={cat.id} value={cat.id} className="focus:bg-secondary/30 focus:text-secondary">
                                                   {cat.name}
                                                 </SelectItem>
                                               ))}
                                             </SelectContent>
                                           </Select>
-                                          <p className="text-xs text-muted-foreground pt-1">Items will be reassigned to 'Uncategorized' if no other selection is made.</p>
+                                          <p className="text-xs text-muted-foreground pt-1">Items will be reassigned to 'Uncategorized' if no other selection is made or if target is 'Uncategorized'.</p>
                                         </div>
                                       )}
-                                       {state.shoppingListItems.some(item => item.category === categoryToDelete?.id) && categoriesForReassignment.length === 0 && (
+                                       {state.shoppingListItems.some(item => item.category === categoryToDelete?.id && item.userId === userId) && categoriesForReassignment.length === 0 && (
                                          <p className="text-sm text-muted-foreground py-2">Items will be moved to 'Uncategorized'.</p>
                                        )}
                                       <AlertDialogFooter>
                                         <AlertDialogCancel onClick={() => setCategoryToDelete(null)} className="glow-border-inner">Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={confirmDeleteCategory}
-                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner"
-                                        >
+                                        <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 glow-border-inner">
                                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                                         </AlertDialogAction>
                                       </AlertDialogFooter>
@@ -305,15 +301,36 @@ export default function SettingsPage() {
                             </>
                           )}
                         </li>
-                      );
-                    })}
+                    ))}
                   </ul>
                 </ScrollArea>
               </Card>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No categories added yet.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No custom categories added yet.</p>
             )}
           </div>
+
+            <div className="space-y-2 pt-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Default Categories:</h4>
+                <Card className="p-0 border-border/30 glow-border-inner">
+                    <ScrollArea className="h-auto max-h-48">
+                         <ul className="divide-y divide-border/30">
+                             {defaultSystemCategories.map((category) => (
+                                 <li key={category.id} className="flex items-center justify-between p-2 hover:bg-muted/10 glow-border-inner">
+                                     <span className="text-sm text-neonText/70 italic">{category.name} (Default)</span>
+                                     {/* Default categories cannot be edited or deleted from here */}
+                                     <div className="flex items-center gap-1 opacity-50">
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" disabled><Edit className="h-4 w-4" /></Button>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" disabled><Trash2 className="h-4 w-4" /></Button>
+                                     </div>
+                                 </li>
+                             ))}
+                         </ul>
+                    </ScrollArea>
+                </Card>
+            </div>
+
+
         </CardContent>
       </Card>
 
