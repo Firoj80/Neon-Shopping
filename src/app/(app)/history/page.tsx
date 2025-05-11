@@ -1,3 +1,4 @@
+// src/app/(app)/history/page.tsx
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { useAppContext } from '@/context/app-context';
 import type { ShoppingListItem, Category, List } from '@/context/app-context';
 import { subDays, format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards, Download } from 'lucide-react'; // Removed Lock
+import { History, Filter, Layers, CalendarDays, Tag, Trash2, WalletCards, Download } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
@@ -25,7 +26,8 @@ import {
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-// Removed Link import as premium page link is not needed here
+import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer';
+
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDFWithAutoTable;
@@ -33,7 +35,6 @@ interface jsPDFWithAutoTable extends jsPDF {
 
 export default function HistoryPage() {
     const { state, dispatch, formatCurrency, isLoading } = useAppContext();
-    // Removed isPremium from state as it's no longer used for feature locking
 
     const [selectedCategory, setSelectedCategory] = useState<string>('all'); // string for category ID
     const [sortOption, setSortOption] = useState<'dateDesc' | 'dateAsc' | 'priceDesc' | 'priceAsc'>('dateDesc');
@@ -45,12 +46,13 @@ export default function HistoryPage() {
     });
     const [selectedListId, setSelectedListId] = useState<string | null>(null); 
 
+    // Filter and sort items based on selections
     const historyItems = useMemo(() => {
-        let items = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : [];
-        if (selectedListId !== null) {
-            items = items.filter(item => item.listId === selectedListId); 
+        let items = Array.isArray(state.shoppingListItems) ? state.shoppingListItems.filter(item => item.checked) : []; // Only purchased items
+         if (selectedListId !== null) {
+            items = items.filter(item => item.listId === selectedListId); // List Filter
         }
-        if (dateRange?.from && dateRange?.to) {
+        if (dateRange?.from && dateRange?.to) { // Date Range Filter
             const startDate = startOfDay(dateRange.from);
             const endDate = endOfDay(dateRange.to);
             items = items.filter(item => {
@@ -58,14 +60,16 @@ export default function HistoryPage() {
                 return isWithinInterval(itemDate, { start: startDate, end: endDate });
             });
         }
-        if (selectedCategory !== 'all') {
+        if (selectedCategory !== 'all') { // Category Filter
             items = items.filter(item => item.category === selectedCategory);
         }
+        
+        // Sorting
         items.sort((a, b) => {
             switch (sortOption) {
                 case 'dateAsc': return a.dateAdded - b.dateAdded;
                 case 'priceDesc': return (b.price * b.quantity) - (a.price * a.quantity);
-                case 'priceAsc': return (a.price * a.quantity) - (b.price * a.quantity);
+                case 'priceAsc': return (a.price * a.quantity) - (b.price * b.quantity);
                 case 'dateDesc':
                 default: return b.dateAdded - a.dateAdded;
             }
@@ -102,7 +106,8 @@ export default function HistoryPage() {
        return `${listName} | ${dateLabel}${categoryLabel}`;
      };
 
-     const handleExportPDF = () => {
+     const handleExportPDF = async () => {
+         await showPreparedInterstitialAd();
          const doc = new jsPDF() as jsPDFWithAutoTable;
          doc.setFontSize(18);
          doc.text('Purchase History Report', 14, 22);
@@ -158,7 +163,8 @@ export default function HistoryPage() {
          }
      };
 
-     const handleExportCSV = () => {
+     const handleExportCSV = async () => {
+        await showPreparedInterstitialAd();
          let csvContent = "Date,Item Name,Quantity,Unit Price,Total Price,Category,List\r\n";
          historyItems.forEach(item => {
             const listName = state.lists.find(l => l.id === item.listId)?.name || 'N/A';
@@ -383,10 +389,10 @@ const HistoryPageSkeleton: React.FC = () => (
                  <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
-                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
-                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px] rounded-md" />
-                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
-                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md glow-border-inner" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px] rounded-md glow-border-inner" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md glow-border-inner" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md glow-border-inner" />
             </CardContent>
         </Card>
 

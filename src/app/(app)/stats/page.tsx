@@ -1,3 +1,4 @@
+// src/app/(app)/stats/page.tsx
 "use client";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,14 +12,14 @@ import { useAppContext } from '@/context/app-context';
 import type { Category, List, ShoppingListItem } from '@/context/app-context';
 import { subDays, format, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, Download } from 'lucide-react'; // Removed Lock
+import { TrendingUp, WalletCards, CalendarDays, Filter, Layers, PieChart as PieChartIcon, BarChart3, Download } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 import { ChartConfig } from '@/components/ui/chart';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Extends jsPDF
-// Removed Link import
+import 'jspdf-autotable';
+import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer';
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDFWithAutoTable;
@@ -26,7 +27,6 @@ interface jsPDFWithAutoTable extends jsPDF {
 
 export default function StatsPage() {
     const { state, formatCurrency, isLoading } = useAppContext();
-    // Removed isPremium from state
 
     const [trendChartType, setTrendChartType] = useState<'line' | 'bar'>('line');
     const [categoryChartType, setCategoryChartType] = useState<'pie' | 'bar'>('pie');
@@ -39,10 +39,9 @@ export default function StatsPage() {
     });
     const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (timePeriodPreset === 'custom') {
-            return;
-        }
+     useEffect(() => {
+        if (timePeriodPreset === 'custom' || !dateRange) return; 
+
         const now = new Date();
         let newStartDate: Date;
         const newEndDate = endOfDay(now);
@@ -54,6 +53,7 @@ export default function StatsPage() {
         }
         setDateRange({ from: newStartDate, to: newEndDate });
     }, [timePeriodPreset]);
+
 
     const handleDateRangeChange = (newRange: DateRange | undefined) => {
         setDateRange(newRange);
@@ -67,9 +67,11 @@ export default function StatsPage() {
         const startDate = startOfDay(dateRange.from);
         const endDate = endOfDay(dateRange.to);
         const allShoppingItems = state.shoppingListItems;
+        
         return allShoppingItems.filter(item => {
-            if (!item.checked) return false;
-            if (selectedListId !== null && item.listId !== selectedListId) return false;
+            if (!item.checked) return false; // Only purchased items
+            if (selectedListId !== null && item.listId !== selectedListId) return false; // List Filter
+
             const itemDate = new Date(item.dateAdded);
             const isWithinDate = isWithinInterval(itemDate, { start: startDate, end: endDate });
             const isMatchingCategory = selectedCategory === 'all' || item.category === selectedCategory;
@@ -83,30 +85,35 @@ export default function StatsPage() {
         const endDate = endOfDay(dateRange.to);
         const dailyTotals: Record<string, number> = {};
         const datesInRange = eachDayOfInterval({ start: startDate, end: endDate });
+        
         datesInRange.forEach(date => {
             const formattedDate = format(date, 'yyyy-MM-dd');
             dailyTotals[formattedDate] = 0;
         });
+
         filteredItems.forEach(item => {
             const itemDate = format(new Date(item.dateAdded), 'yyyy-MM-dd');
              if (dailyTotals.hasOwnProperty(itemDate)) {
                 dailyTotals[itemDate] += item.quantity * item.price;
              }
         });
+
         const durationDays = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24);
         let dateFormat = 'MMM dd';
         if (durationDays <= 7) dateFormat = 'eee';
         else if (durationDays > 90) dateFormat = 'MMM yy';
+
         const dateMap = new Map<string, Date>();
         Object.keys(dailyTotals).forEach(dateStr => {
              dateMap.set(dateStr, parseISO(dateStr + 'T00:00:00Z'));
         });
+
         const formattedData: ProcessedExpenseData[] = Object.entries(dailyTotals)
           .map(([dateStr, total]) => ({
-             date: format(dateMap.get(dateStr)!, dateFormat),
+             date: format(dateMap.get(dateStr)!, dateFormat), // Use mapped Date object
              total,
            }))
-          .sort((a, b) => {
+          .sort((a, b) => { // Sort based on actual Date objects for correctness
               const dateAStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === a.date)?.[0];
               const dateBStr = [...dateMap.entries()].find(([_, d]) => format(d, dateFormat) === b.date)?.[0];
               if (!dateAStr || !dateBStr) return 0;
@@ -125,54 +132,65 @@ export default function StatsPage() {
              }
              categoryTotals[categoryId].total += item.quantity * item.price;
          });
+
          const totalSpent = Object.values(categoryTotals).reduce((sum, catData) => sum + catData.total, 0);
-         if (totalSpent === 0) return [];
+         if (totalSpent === 0) return []; // Avoid division by zero or empty pie chart
+
          const categoryData: CategoryData[] = Object.entries(categoryTotals)
              .map(([_, catData]) => ({
                  category: catData.name,
                  total: catData.total,
              }))
-             .sort((a, b) => b.total - a.total);
+             .sort((a, b) => b.total - a.total); // Sort for consistent pie chart display
          return categoryData;
      }, [filteredItems, state.categories]);
 
      const dynamicChartConfig = useMemo(() => {
         const config: ChartConfig = { total: { label: "Total Spend", color: "hsl(var(--primary))" } };
+        // Consistent color palette for charts
         const availableColors = [
             "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
-            "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(150 100% 50%)",
-            "hsl(270 100% 60%)", "hsl(30 100% 50%)",
-            "hsl(210 100% 60%)", "hsl(330 100% 60%)"
+            "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(150 100% 50%)", // Lime Green (Example)
+            "hsl(270 100% 60%)", "hsl(30 100% 50%)",  // Orange (Example)
+            "hsl(210 100% 60%)", "hsl(330 100% 60%)"  // Pink (Example)
         ];
         let colorIndex = 0;
         state.categories.forEach(cat => {
           config[cat.name] = {
             label: cat.name,
-            color: availableColors[colorIndex % availableColors.length],
+            color: availableColors[colorIndex % availableColors.length], // Cycle through colors
           };
           colorIndex++;
         });
-        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" };
+        config['Uncategorized'] = { label: "Uncategorized", color: "hsl(0 0% 70%)" }; // Muted grey for uncategorized
         return config;
      }, [state.categories]);
 
+
      const summaryStats = useMemo(() => {
         if (!dateRange?.from || !dateRange?.to) return { totalSpent: 0, averagePerDayInRange: 0, averagePerSpendingDay: 0, highestSpendDay: null, totalItems: 0 };
+
         const totalSpent = filteredItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
         const daysWithSpending = new Set(filteredItems.map(item => format(new Date(item.dateAdded), 'yyyy-MM-dd')));
-        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size);
+        const numberOfDaysWithSpending = Math.max(1, daysWithSpending.size); // Avoid division by zero
+
          const start = startOfDay(dateRange.from);
          const end = endOfDay(dateRange.to);
-         const numberOfDaysInRange = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 3600 * 24) + 1);
+         const numberOfDaysInRange = Math.max(1, (end.getTime() - start.getTime()) / (1000 * 3600 * 24) + 1); // +1 to include both start and end day
+
          const averagePerDayInRange = totalSpent / numberOfDaysInRange;
          const averagePerSpendingDay = totalSpent / numberOfDaysWithSpending;
+
          const highestSpendDay = processedTrendData.reduce(
             (max, day) => (day.total > max.total ? day : max),
-            { date: '', total: -1 }
+            { date: '', total: -1 } // Initialize with a value that will be overridden
           );
+
          const totalItems = filteredItems.length;
+
         return { totalSpent, averagePerDayInRange, averagePerSpendingDay, highestSpendDay: highestSpendDay.total >= 0 ? highestSpendDay : null, totalItems };
     }, [filteredItems, processedTrendData, dateRange]);
+
 
      const getCategoryName = (categoryId: string): string => {
         return state.categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized';
@@ -196,7 +214,8 @@ export default function StatsPage() {
         return `${listName} | ${dateLabel}${categoryLabel}`;
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
+        await showPreparedInterstitialAd();
         const doc = new jsPDF() as jsPDFWithAutoTable;
         doc.setFontSize(18);
         doc.text('Expense Dashboard Report', 14, 22);
@@ -204,7 +223,7 @@ export default function StatsPage() {
         doc.setTextColor(100);
         doc.text(`Filters: ${getFilterLabel()}`, 14, 30);
         doc.text(`Generated on: ${format(new Date(), 'MMM d, yyyy HH:mm')}`, 14, 36);
-    
+
         // Summary Stats Table
         const summaryTableBody = [
             ['Total Spent', formatCurrency(summaryStats.totalSpent)],
@@ -221,7 +240,7 @@ export default function StatsPage() {
             headStyles: { fillColor: [30, 130, 76] }, // Example: Darker green
         });
         let lastY = (doc as any).lastAutoTable.finalY;
-    
+
         // Expense Trend Table (if data exists)
         if (processedTrendData.length > 0) {
             doc.text('Expense Trend Data', 14, lastY + 15);
@@ -235,7 +254,7 @@ export default function StatsPage() {
             });
             lastY = (doc as any).lastAutoTable.finalY;
         }
-    
+
         // Category Breakdown Table (if data exists)
         if (processedCategoryData.length > 0) {
             doc.text('Category Breakdown Data', 14, lastY + 15);
@@ -265,35 +284,37 @@ export default function StatsPage() {
         }
     };
 
-    const handleExportCSV = () => {
-        let csvContent = "Data Type,Value 1,Value 2\r\n";
+    const handleExportCSV = async () => {
+        await showPreparedInterstitialAd();
+        let csvContent = "Data Type,Value 1,Value 2\r\n"; // Header for sections
         // Summary Stats
-        csvContent += "Summary Statistics,\r\n";
-        csvContent += `Total Spent,${summaryStats.totalSpent}\r\n`; // Raw number
-        csvContent += `Average Spend / Day (in range),${summaryStats.averagePerDayInRange}\r\n`;
-        csvContent += `Average Spend / Day (on spending days),${summaryStats.averagePerSpendingDay}\r\n`;
-        csvContent += `Highest Spend Day,${summaryStats.highestSpendDay ? `${summaryStats.highestSpendDay.total} on ${summaryStats.highestSpendDay.date}` : 'N/A'}\r\n`;
-        csvContent += `Total Items Purchased,${summaryStats.totalItems}\r\n`;
-        csvContent += "\r\n";
-    
+        csvContent += "Summary Statistics,\r\n"; // Section title
+        csvContent += `Total Spent,"${summaryStats.totalSpent}"\r\n`; // Raw number, quoted for safety
+        csvContent += `Average Spend / Day (in range),"${summaryStats.averagePerDayInRange}"\r\n`;
+        csvContent += `Average Spend / Day (on spending days),"${summaryStats.averagePerSpendingDay}"\r\n`;
+        csvContent += `Highest Spend Day,"${summaryStats.highestSpendDay ? `${summaryStats.highestSpendDay.total} on ${summaryStats.highestSpendDay.date}` : 'N/A'}"\r\n`;
+        csvContent += `Total Items Purchased,"${summaryStats.totalItems}"\r\n`;
+        csvContent += "\r\n"; // Empty line between sections
+
         // Trend Data
-        csvContent += "Expense Trend Data,\r\n";
-        csvContent += "Date,Total Spent\r\n";
+        csvContent += "Expense Trend Data,\r\n"; // Section title
+        csvContent += '"Date","Total Spent"\r\n'; // Changed from backticks to double quotes
         processedTrendData.forEach(item => {
-            csvContent += `"${item.date}",${item.total}\r\n`; // Raw number
+            csvContent += `"${item.date}","${item.total}"\n`; // Changed \r\n to \n
         });
-        csvContent += "\r\n";
-    
+        csvContent += "\r\n"; // Empty line
+
         // Category Data
-        csvContent += "Category Breakdown Data,\r\n";
-        csvContent += "Category,Total Spent\r\n";
+        csvContent += "Category Breakdown Data,\r\n"; // Section title
+        csvContent += '"Category","Total Spent"\r\n'; // Changed from backticks to double quotes
         processedCategoryData.forEach(item => {
-            const safeCategory = `"${item.category.replace(/"/g, '""')}"`; // Escape double quotes
-            csvContent += `${safeCategory},${item.total}\r\n`; // Raw number
+            const safeCategory = `"${item.category.replace(/"/g, '""')}"`; // Escape double quotes in category name
+            csvContent += `${safeCategory},"${item.total}"\r\n`; // Quoted total for safety, using \r\n
         });
-    
+
         downloadCSV(csvContent, 'expense_dashboard_report.csv');
     };
+
 
     if (isLoading) {
         return <StatsPageSkeleton />;
@@ -315,7 +336,7 @@ export default function StatsPage() {
              </div>
 
              {/* Filter Section */}
-             <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border">
+            <Card className="bg-background/95 border-border/20 shadow-sm sticky top-0 z-10 backdrop-blur-sm glow-border">
                  <CardHeader className="pb-3 px-4 pt-4 sm:px-6 sm:pt-5">
                       <CardTitle className="text-base font-semibold text-secondary flex items-center gap-2 mb-2 sm:mb-0">
                          <Filter className="h-4 w-4" /> Filters
@@ -404,7 +425,7 @@ export default function StatsPage() {
                              <CardTitle className="text-xs sm:text-sm font-medium text-primary">Total Spent</CardTitle>
                              <WalletCards className="h-4 w-4 text-muted-foreground" />
                              </CardHeader>
-                             <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                             <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5 glow-border-inner">
                              <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.totalSpent)}</div>
                              <p className="text-xs text-muted-foreground">{summaryStats.totalItems} items ({getFilterLabel()})</p>
                              </CardContent>
@@ -414,7 +435,7 @@ export default function StatsPage() {
                              <CardTitle className="text-xs sm:text-sm font-medium text-secondary">Avg. Spend / Day</CardTitle>
                              <TrendingUp className="h-4 w-4 text-muted-foreground" />
                              </CardHeader>
-                             <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                             <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5 glow-border-inner">
                              <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.averagePerDayInRange)}</div>
                              <p className="text-xs text-muted-foreground">Avg/spending day: {formatCurrency(summaryStats.averagePerSpendingDay)}</p>
                              </CardContent>
@@ -424,7 +445,7 @@ export default function StatsPage() {
                              <CardTitle className="text-xs sm:text-sm font-medium text-yellow-500">Highest Spend Day</CardTitle>
                              <CalendarDays className="h-4 w-4 text-muted-foreground" />
                              </CardHeader>
-                             <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                             <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5 glow-border-inner">
                              {summaryStats.highestSpendDay ? (
                                  <>
                                      <div className="text-lg sm:text-2xl font-bold text-neonText">{formatCurrency(summaryStats.highestSpendDay.total)}</div>
@@ -440,7 +461,7 @@ export default function StatsPage() {
                              <CardTitle className="text-xs sm:text-sm font-medium text-green-500">Items Purchased</CardTitle>
                              <Layers className="h-4 w-4 text-muted-foreground" />
                              </CardHeader>
-                             <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                             <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5 glow-border-inner">
                              <div className="text-lg sm:text-2xl font-bold text-neonText">{summaryStats.totalItems}</div>
                                  <p className="text-xs text-muted-foreground">{getFilterLabel()}</p>
                              </CardContent>
@@ -455,24 +476,24 @@ export default function StatsPage() {
                                      <CardTitle className="text-base sm:text-lg text-primary">Expense Trend</CardTitle>
                                      <CardDescription className="text-xs text-muted-foreground mt-1">{getFilterLabel()}</CardDescription>
                                  </div>
-                                 <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
+                                 <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center glow-border-inner">
                                      <Button
                                          variant={trendChartType === 'line' ? 'secondary' : 'ghost'}
                                          size="icon"
                                          onClick={() => setTrendChartType('line')}
-                                         className={`h-7 w-7 ${trendChartType === 'line' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                         className={`h-7 w-7 ${trendChartType === 'line' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'} glow-border-inner`}
                                          aria-label="Show as Line Chart"
                                      > <BarChart3 className="h-4 w-4 transform rotate-90" /> </Button>
                                      <Button
                                          variant={trendChartType === 'bar' ? 'secondary' : 'ghost'}
                                          size="icon"
                                          onClick={() => setTrendChartType('bar')}
-                                         className={`h-7 w-7 ${trendChartType === 'bar' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                         className={`h-7 w-7 ${trendChartType === 'bar' ? 'bg-secondary/50 text-secondary-foreground shadow-sm' : 'text-muted-foreground'} glow-border-inner`}
                                          aria-label="Show as Bar Chart"
                                      > <BarChart3 className="h-4 w-4" /> </Button>
                                  </div>
                              </CardHeader>
-                             <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
+                             <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 glow-border-inner">
                                  {processedTrendData.length > 0 ? (
                                      <ExpenseChart data={processedTrendData} chartType={trendChartType} chartConfig={dynamicChartConfig} />
                                  ) : (
@@ -491,24 +512,24 @@ export default function StatsPage() {
                                      </CardTitle>
                                      <CardDescription className="text-xs text-muted-foreground mt-1">{getFilterLabel()}</CardDescription>
                                  </div>
-                                 <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center">
+                                 <div className="flex items-center gap-1 border border-border/30 p-1 rounded-md self-start sm:self-center glow-border-inner">
                                      <Button
                                              variant={categoryChartType === 'pie' ? 'primary' : 'ghost'}
                                              size="icon"
                                              onClick={() => setCategoryChartType('pie')}
-                                             className={`h-7 w-7 ${categoryChartType === 'pie' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                             className={`h-7 w-7 ${categoryChartType === 'pie' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'} glow-border-inner`}
                                              aria-label="Show as Pie Chart"
                                          > <PieChartIcon className="h-4 w-4" /> </Button>
                                          <Button
                                              variant={categoryChartType === 'bar' ? 'primary' : 'ghost'}
                                              size="icon"
                                              onClick={() => setCategoryChartType('bar')}
-                                             className={`h-7 w-7 ${categoryChartType === 'bar' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}
+                                             className={`h-7 w-7 ${categoryChartType === 'bar' ? 'bg-primary/50 text-primary-foreground shadow-sm' : 'text-muted-foreground'} glow-border-inner`}
                                              aria-label="Show as Bar Chart"
                                          > <BarChart3 className="h-4 w-4" /> </Button>
                                      </div>
                              </CardHeader>
-                             <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4">
+                             <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 glow-border-inner">
                                  {processedCategoryData.length > 0 ? (
                                      categoryChartType === 'pie' ? (
                                          <CategoryPieChart data={processedCategoryData} chartConfig={dynamicChartConfig} />
@@ -546,10 +567,10 @@ const StatsPageSkeleton: React.FC = () => (
                  <Skeleton className="h-5 w-1/4 mb-2 sm:mb-0" /> {/* Title */}
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 p-4 sm:p-6 pt-0 sm:pt-2">
-                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
-                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px] rounded-md" />
-                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px] rounded-md" />
-                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md glow-border-inner" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[160px] rounded-md glow-border-inner" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[240px] rounded-md glow-border-inner" />
+                 <Skeleton className="h-9 sm:h-10 flex-none w-full sm:w-auto sm:flex-1 sm:min-w-[180px] rounded-md glow-border-inner" />
             </CardContent>
         </Card>
 
@@ -564,7 +585,7 @@ const StatsPageSkeleton: React.FC = () => (
                                 <Skeleton className="h-4 w-3/5" />
                                 <Skeleton className="h-4 w-4" />
                             </CardHeader>
-                            <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5">
+                            <CardContent className="pb-3 px-4 sm:pb-4 sm:px-5 glow-border-inner">
                                 <Skeleton className="h-6 w-1/2 sm:h-7 mb-1" />
                                 <Skeleton className="h-3 w-3/4" />
                             </CardContent>
@@ -580,9 +601,9 @@ const StatsPageSkeleton: React.FC = () => (
                                 <Skeleton className="h-5 sm:h-6 w-4/5" />
                                 <Skeleton className="h-4 w-3/5" />
                             </div>
-                            <Skeleton className="h-8 w-16 rounded-md" />
+                            <Skeleton className="h-8 w-16 rounded-md glow-border-inner" />
                         </CardHeader>
-                        <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center">
+                        <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center glow-border-inner">
                             <Skeleton className="h-4/5 w-11/12" />
                         </CardContent>
                     </Card>
@@ -592,9 +613,9 @@ const StatsPageSkeleton: React.FC = () => (
                                 <Skeleton className="h-5 sm:h-6 w-full" />
                                 <Skeleton className="h-4 w-3/5" />
                             </div>
-                            <Skeleton className="h-8 w-16 rounded-md" />
+                            <Skeleton className="h-8 w-16 rounded-md glow-border-inner" />
                         </CardHeader>
-                        <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center">
+                        <CardContent className="pl-1 pr-3 sm:pl-2 sm:pr-4 pb-4 h-[248px] sm:h-[348px] flex items-center justify-center glow-border-inner">
                             <Skeleton className="h-4/5 w-4/5 rounded-full" />
                         </CardContent>
                     </Card>
