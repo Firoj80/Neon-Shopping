@@ -34,18 +34,16 @@ import {
   FileText as ArticleIcon,
   Star,
   AppWindow as AppsIcon,
+  Palette, 
   X,
-  DollarSign,
-  UserCircle2 as ProfileIcon,
   LogOut
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppContext, AppContext } from '@/context/app-context';
+import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { showPreparedInterstitialAd } from '@/components/admob/ad-initializer';
 import { useClientOnly } from '@/hooks/use-client-only';
 
 
@@ -102,11 +100,17 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
+  // const { logout } = useAuth(); // Removed Auth
+  const appContext = useAppContext();
+
+  const handleLogout = () => {
+    // logout(); // Removed Auth
+    appContext.dispatch({ type: 'RESET_STATE' }); // Reset app state, which now handles user ID
+    if (onLinkClick) onLinkClick();
+    router.push('/'); // Redirect to home, which will then redirect to /auth if not authenticated
+  };
   
-  const handleLinkClick = useCallback(async (href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>, isAdProtected?: boolean) => {
-    if (isAdProtected) {
-      await showPreparedInterstitialAd();
-    }
+  const handleLinkClick = useCallback(async (href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     if (e) e.preventDefault(); 
     if (onLinkClick) onLinkClick();
     router.push(href);
@@ -115,9 +119,10 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
 
   const mainNavItems = [
     { href: '/list', label: 'Shopping List', icon: ShoppingCart },
-    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard, adProtected: true },
-    { href: '/history', label: 'History', icon: History, adProtected: true },
-    { href: '/settings', label: 'Settings', icon: Settings, adProtected: true },
+    { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/history', label: 'History', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/themes', label: 'Themes', icon: Palette },
   ];
 
   const secondaryMenuItems = [
@@ -142,13 +147,15 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       asChild: true,
       isActive: pathname === item.href,
       className: cn(
-        "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out hover:text-white hover:border-secondary/50 hover:shadow-neon focus:shadow-neon-lg glow-border-inner p-0",
-        pathname === item.href ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30" : "hover:bg-primary/10 hover:border-primary/30",
+        "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out sidebar-menu-item-custom-glow p-0", // Added new custom glow class, removed glow-border-inner
+        pathname === item.href 
+          ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30" 
+          : "hover:bg-primary/10 hover:border-primary/30", // Removed hover:shadow-neon
       ),
     };
 
     const interactiveElement = (
-      <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e, (item as any).adProtected)} className="flex items-center gap-2 w-full h-full p-2">
+      <Link href={item.href} onClick={(e) => handleLinkClick(item.href, e)} className="flex items-center gap-2 w-full h-full p-2">
         {linkContent}
       </Link>
     );
@@ -187,6 +194,15 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           {secondaryMenuItems.map(item => renderMenuItem(item))}
         </SidebarMenu>
       </SidebarContent>
+       <SidebarFooter className="p-2 border-t border-sidebar-border">
+            <SidebarMenuButton
+              className="w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out sidebar-menu-item-custom-glow p-2 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
+              onClick={handleLogout} // Use the new handleLogout
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Log Out
+            </SidebarMenuButton>
+        </SidebarFooter>
     </Fragment>
   );
 };
@@ -195,43 +211,43 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
 // --- Main App Layout Content ---
 const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const appContext = useAppContext();
+  // const authState = useAuth(); // Removed Auth
   const router = useRouter();
   const pathname = usePathname();
-  const isClientMounted = useClientOnly();
 
-  const isLoading = appContext.isLoading;
+  const isClientMounted = useClientOnly(); 
+  const isLoading = appContext.isLoading; 
+  
+  // Determine if on an auth-related page to avoid redirects while there
+  const isOnAuthPage = pathname === '/auth';
 
-   useEffect(() => {
-     if (isClientMounted && !isLoading) {
-       const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
-
-       if (pathname === '/') { 
-           if (hasLists) {
-               router.replace('/list');
-           } else {
-               router.replace('/list/create-first');
-           }
-       } else if (!hasLists && pathname !== '/list/create-first') {
-         router.replace('/list/create-first');
-       } else if (hasLists && pathname === '/list/create-first') {
-         router.replace('/list');
-       }
-     }
-   }, [isClientMounted, isLoading, appContext.state.lists, pathname, router, appContext.state.userId]);
+  useEffect(() => {
+    if (isClientMounted && !isLoading && !isOnAuthPage) {
+      const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+      if (!hasLists && pathname !== '/list/create-first') {
+        console.log("AppLayoutContent: No lists and not on create-first, redirecting to /list/create-first");
+        router.replace('/list/create-first');
+      } else if (hasLists && pathname === '/list/create-first') {
+        console.log("AppLayoutContent: Has lists and on create-first, redirecting to /list");
+        router.replace('/list');
+      }
+    }
+  }, [isClientMounted, isLoading, appContext.state.lists, pathname, router, isOnAuthPage]);
 
 
-  if (isLoading || !isClientMounted) {
+  if (!isClientMounted || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
-  
-  if (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname === '/list/create-first') {
+
+  // If on auth page, or if create-first should be shown based on logic above, render children directly
+  if (isOnAuthPage || (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname === '/list/create-first')) {
     return <>{children}</>;
   }
-
+  
 
   return (
      <Fragment>
@@ -241,7 +257,7 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
        </Sidebar>
         <SidebarInset>
          <main className="flex-1 flex flex-col md:px-6 lg:px-8 xl:px-10 md:py-4 bg-background overflow-y-auto max-w-full">
-            <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom)+50px)]">
+            <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom)+50px)]"> {/* Adjusted padding for fixed banner */}
               {children}
             </div>
           </main>
