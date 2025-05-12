@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.firoj.neonshopping', // Your app's bundle ID
   appName: 'Neon Shopping',      // Your app's name
   webDir: 'out',                  // Folder containing your Next.js static export
-  bundledWebRuntime: false,       // Recommended for Next.js
+  // bundledWebRuntime: false, // This option is deprecated and removed
   // Server configuration is optional for local development
   // server: {
   //   url: 'http://192.168.0.103:3000', // Example: Your local IP if testing on device
