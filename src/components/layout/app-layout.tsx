@@ -1,3 +1,4 @@
+// src/components/layout/app-layout.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
@@ -21,20 +22,19 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
-  Menu as MenuIcon,
   ShoppingCart,
   LayoutDashboard,
   History,
   Settings,
   Info,
   Mail,
-  ShieldCheck as PolicyIcon,
-  FileText as ArticleIcon,
+  ShieldCheck as PolicyIcon, // Renamed for clarity
+  FileText as ArticleIcon,  // Renamed for clarity
   Star,
-  AppWindow as AppsIcon,
-  Palette, 
+  AppWindow as AppsIcon,    // Use AppWindow as AppsIcon
+  Menu as MenuIcon,         // Renamed Menu to avoid conflict
   X,
-  LogOut
+  DollarSign, // Added for Currency
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -42,8 +42,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context';
 import ClientOnly from '@/components/client-only';
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useClientOnly } from '@/hooks/use-client-only';
-// Removed AuthProvider and useAuth imports as authentication is simplified
+import { useClientOnly } from '@/hooks/use-client-only'; // Import the custom hook
 
 
 // --- Mobile Header Component ---
@@ -100,20 +99,6 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
   const pathname = usePathname();
   const router = useRouter();
   const appContext = useAppContext();
-  // const { logout, isAuthenticated } = useAuth(); // Simplified: removed direct useAuth here
-
-  const handleLogout = async () => {
-    // For local storage based auth, just clear the relevant items and redirect
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('app_user_id_vLocal_anon_v4'); // Or your actual auth token key
-      localStorage.removeItem('neonShoppingState_vLocal_anon_v4'); // Clear app state too
-    }
-    // Dispatch actions to reset context states if necessary
-    appContext.dispatch({ type: 'SET_USER_ID', payload: null }); // Reset AppContext's user
-    // No need for API call to logout in local-only version
-    if (onLinkClick) onLinkClick();
-    router.push('/auth'); // Redirect to auth page after logout
-  };
   
   const handleLinkClick = useCallback(async (href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     if (e) e.preventDefault(); 
@@ -127,7 +112,6 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },
-    // { href: '/themes', label: 'Themes', icon: Palette }, // Themes option removed
   ];
 
   const secondaryMenuItems = [
@@ -137,7 +121,6 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/terms', label: 'Terms of Service', icon: ArticleIcon },
     { href: '/rate', label: 'Rate App', icon: Star },
     { href: '/more-apps', label: 'More Apps', icon: AppsIcon },
-    // { href: '/premium', label: 'Unlock Premium', icon: Gem }, // Premium option removed
   ];
 
 
@@ -148,13 +131,13 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
             "transition-colors h-4 w-4 shrink-0", 
             pathname === item.href 
                 ? "text-primary" 
-                : "text-sidebar-foreground group-hover/menu-item:text-foreground" 
+                : "text-sidebar-foreground group-hover/menu-item:text-primary"  // Changed hover color to primary (cyan)
         )} />
         <span className={cn(
             "transition-colors text-sm", 
             pathname === item.href 
                 ? "text-primary" 
-                : "text-sidebar-foreground group-hover/menu-item:text-foreground"
+                : "text-sidebar-foreground group-hover/menu-item:text-primary" // Changed hover color to primary (cyan)
         )}>{item.label}</span>
       </>
     );
@@ -163,10 +146,10 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       asChild: true,
       isActive: pathname === item.href,
       className: cn(
-        "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out sidebar-menu-item-custom-glow p-0",
+        "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out p-0", // Removed custom glow, hover relies on text/icon color
         pathname === item.href 
           ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30" 
-          : "hover:bg-primary/20 hover:border-primary/40", 
+          : "hover:bg-primary/10 hover:border-primary/30", // Hover effect with primary (cyan) background
       ),
     };
 
@@ -210,16 +193,9 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           {secondaryMenuItems.map(item => renderMenuItem(item))}
         </SidebarMenu>
       </SidebarContent>
-       {/* Logout Button in SidebarFooter */}
+       {/* Logout Button in SidebarFooter - REMOVED */}
         <SidebarFooter className="p-2 border-t border-sidebar-border shrink-0">
-            <SidebarMenuButton
-              variant="default" 
-              className="w-full justify-start bg-destructive/20 text-destructive-foreground/80 hover:bg-destructive/40 hover:text-destructive-foreground sidebar-menu-item-custom-glow"
-              onClick={handleLogout} 
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Log Out
-            </SidebarMenuButton>
+            {/* Logout button removed */}
         </SidebarFooter>
     </Fragment>
   );
@@ -231,35 +207,24 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
   const appContext = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
-  // const { isAuthenticated, isLoading: authLoading } = useAuth(); // Simplified
   const isClientMounted = useClientOnly(); 
   
-  // Simplified loading state: AppContext loading is primary
-  const isLoading = appContext.isLoading; 
+  const isLoading = appContext.isLoading || !isClientMounted;
 
-  useEffect(() => {
-    if (isClientMounted && !isLoading) {
-      // Handle redirection for users based on list status
-      const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
-      
-      // For local storage mode, userId from AppContext determines if a "session" exists
-      const isEffectivelyAuthenticated = !!appContext.state.userId; 
-
-      if (!isEffectivelyAuthenticated && pathname !== '/auth') {
-        // If no user ID (not "logged in" in local storage terms) and not on auth page, redirect to auth
-        console.log("AppLayoutContent: No user ID, redirecting to /auth");
-        router.replace('/auth');
-      } else if (isEffectivelyAuthenticated && !hasLists && pathname !== '/list/create-first' && pathname !== '/auth') {
-        // If "logged in" but no lists, and not on create-first or auth, redirect to create-first
-        console.log("AppLayoutContent: User ID exists, no lists, redirecting to /list/create-first");
-        router.replace('/list/create-first');
-      } else if (isEffectivelyAuthenticated && hasLists && (pathname === '/list/create-first' || pathname === '/auth')) {
-         // If "logged in", has lists, but on create-first or auth, redirect to main list page
-        console.log("AppLayoutContent: User ID exists, has lists, on create-first/auth, redirecting to /list");
-        router.replace('/list');
-      }
-    }
-  }, [isClientMounted, isLoading, appContext.state.userId, appContext.state.lists, pathname, router]);
+  // --- Redirect Logic ---
+   useEffect(() => {
+     if (isClientMounted && !isLoading) {
+       const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+       
+       if (!hasLists && pathname !== '/list/create-first') {
+         console.log("AppLayoutContent: No lists, redirecting to /list/create-first");
+         router.replace('/list/create-first');
+       } else if (hasLists && pathname === '/list/create-first') {
+         console.log("AppLayoutContent: Lists exist, on create-first, redirecting to /list");
+         router.replace('/list');
+       }
+     }
+   }, [isClientMounted, isLoading, appContext.state.lists, pathname, router]);
 
 
   if (!isClientMounted || isLoading) {
@@ -270,10 +235,11 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
     );
   }
   
-  // If on auth or create-first page, just render children
-  if (pathname === '/auth' || (appContext.state.userId && appContext.state.lists.length === 0 && pathname === '/list/create-first')) {
+  // If on create-first page and no lists, render children (the create-first page itself)
+  if (pathname === '/list/create-first' && (!appContext.state.lists || appContext.state.lists.length === 0)) {
     return <>{children}</>;
   }
+
 
   return (
      <Fragment>
@@ -300,4 +266,3 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     </TooltipProvider>
   );
 };
-
