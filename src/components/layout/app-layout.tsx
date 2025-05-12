@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
@@ -20,7 +19,6 @@ import {
   SidebarFooter,
   SidebarInset,
   SidebarSeparator,
-  SidebarSheetContent
 } from '@/components/ui/sidebar';
 import {
   Menu as MenuIcon,
@@ -31,12 +29,12 @@ import {
   Info,
   Mail,
   ShieldCheck as PolicyIcon,
-  FileText as ArticleIcon,
+  FileText as ArticleIcon, // Renamed from Article
   Star,
-  AppWindow as AppsIcon,
+  AppWindow as AppsIcon, // Corrected AppsIcon
   Palette, 
   X,
-  LogOut
+  // LogOut // Removed LogOut as it's being deleted
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
@@ -71,9 +69,9 @@ const MobileHeader: React.FC = () => {
              <span className="sr-only">Toggle Sidebar</span>
            </Button>
         </SheetTrigger>
-         <SidebarSheetContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground">
+         <SidebarContent side="left" className="w-[280px] sm:w-[300px] p-0 flex flex-col bg-sidebar text-sidebar-foreground"> {/* Use SidebarContent from ui/sidebar which is SheetContent */}
             <MainMenuContent onLinkClick={() => setIsOpen(false)} isMobile={true} />
-        </SidebarSheetContent>
+        </SidebarContent>
       </Sheet>
       
       {/* Centered App Name/Logo */}
@@ -100,15 +98,10 @@ interface MainMenuContentProps {
 const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile = false }) => {
   const pathname = usePathname();
   const router = useRouter();
-  // const { logout } = useAuth(); // Removed Auth
   const appContext = useAppContext();
 
-  const handleLogout = () => {
-    // logout(); // Removed Auth
-    appContext.dispatch({ type: 'RESET_STATE' }); // Reset app state, which now handles user ID
-    if (onLinkClick) onLinkClick();
-    router.push('/'); // Redirect to home, which will then redirect to /auth if not authenticated
-  };
+  // Logout function removed as the button is being removed
+  // const handleLogout = () => { ... };
   
   const handleLinkClick = useCallback(async (href: string, e?: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
     if (e) e.preventDefault(); 
@@ -122,7 +115,7 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
     { href: '/stats', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },
-    { href: '/themes', label: 'Themes', icon: Palette },
+    { href: '/themes', label: 'Themes', icon: Palette }, 
   ];
 
   const secondaryMenuItems = [
@@ -138,8 +131,18 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
   const renderMenuItem = (item: typeof mainNavItems[0] | typeof secondaryMenuItems[0]) => {
     const linkContent = (
       <>
-        <item.icon className={cn("transition-colors h-4 w-4 shrink-0", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")} />
-        <span className={cn("transition-colors text-sm", pathname === item.href ? "text-primary" : "text-sidebar-foreground group-hover/menu-item:text-white")}>{item.label}</span>
+        <item.icon className={cn(
+            "transition-colors h-4 w-4 shrink-0", 
+            pathname === item.href 
+                ? "text-primary" 
+                : "text-sidebar-foreground group-hover/menu-item:text-cyan-300" // Cyan text on hover
+        )} />
+        <span className={cn(
+            "transition-colors text-sm", 
+            pathname === item.href 
+                ? "text-primary" 
+                : "text-sidebar-foreground group-hover/menu-item:text-cyan-300" // Cyan text on hover
+        )}>{item.label}</span>
       </>
     );
 
@@ -147,10 +150,10 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
       asChild: true,
       isActive: pathname === item.href,
       className: cn(
-        "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out sidebar-menu-item-custom-glow p-0", // Added new custom glow class, removed glow-border-inner
+        "group/menu-item w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out sidebar-menu-item-custom-glow p-0",
         pathname === item.href 
           ? "bg-primary/20 text-primary border-primary/50 shadow-neon hover:bg-primary/30" 
-          : "hover:bg-primary/10 hover:border-primary/30", // Removed hover:shadow-neon
+          : "hover:bg-primary/20 hover:border-primary/40", // More intense cyan bg, adjusted border
       ),
     };
 
@@ -187,22 +190,14 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
           <ClientOnly><span>Neon Shopping</span></ClientOnly>
         </Link>
       </SidebarHeader>
-      <SidebarContent className="p-2 flex-grow flex flex-col">
+      <SidebarContent className="p-2 flex-grow flex flex-col"> {/* Ensure content can grow */}
         <SidebarMenu className="flex-grow space-y-1.5 overflow-y-auto">
           {mainNavItems.map(item => renderMenuItem(item))}
           <SidebarSeparator className="my-2" />
           {secondaryMenuItems.map(item => renderMenuItem(item))}
         </SidebarMenu>
       </SidebarContent>
-       <SidebarFooter className="p-2 border-t border-sidebar-border">
-            <SidebarMenuButton
-              className="w-full justify-start rounded-md border border-transparent transition-all duration-200 ease-in-out sidebar-menu-item-custom-glow p-2 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
-              onClick={handleLogout} // Use the new handleLogout
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Log Out
-            </SidebarMenuButton>
-        </SidebarFooter>
+      {/* SidebarFooter with Logout button has been removed */}
     </Fragment>
   );
 };
@@ -211,28 +206,26 @@ const MainMenuContent: React.FC<MainMenuContentProps> = ({ onLinkClick, isMobile
 // --- Main App Layout Content ---
 const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const appContext = useAppContext();
-  // const authState = useAuth(); // Removed Auth
   const router = useRouter();
   const pathname = usePathname();
 
-  const isClientMounted = useClientOnly(); 
   const isLoading = appContext.isLoading; 
+  const isClientMounted = useClientOnly(); 
   
-  // Determine if on an auth-related page to avoid redirects while there
-  const isOnAuthPage = pathname === '/auth';
+  const CREATE_FIRST_LIST_ROUTE = '/list/create-first';
+  const AUTH_ROUTE = '/auth';
 
   useEffect(() => {
-    if (isClientMounted && !isLoading && !isOnAuthPage) {
-      const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
-      if (!hasLists && pathname !== '/list/create-first') {
-        console.log("AppLayoutContent: No lists and not on create-first, redirecting to /list/create-first");
-        router.replace('/list/create-first');
-      } else if (hasLists && pathname === '/list/create-first') {
-        console.log("AppLayoutContent: Has lists and on create-first, redirecting to /list");
-        router.replace('/list');
-      }
+    if (isClientMounted && !isLoading) {
+        // This logic is for non-authenticated users (local storage mode)
+        const hasLists = Array.isArray(appContext.state.lists) && appContext.state.lists.length > 0;
+        if (!hasLists && pathname !== CREATE_FIRST_LIST_ROUTE && pathname !== AUTH_ROUTE) {
+            router.replace(CREATE_FIRST_LIST_ROUTE);
+        } else if (hasLists && pathname === CREATE_FIRST_LIST_ROUTE) {
+            router.replace('/list');
+        }
     }
-  }, [isClientMounted, isLoading, appContext.state.lists, pathname, router, isOnAuthPage]);
+}, [isClientMounted, isLoading, appContext.state.lists, pathname, router]);
 
 
   if (!isClientMounted || isLoading) {
@@ -242,12 +235,12 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
       </div>
     );
   }
-
-  // If on auth page, or if create-first should be shown based on logic above, render children directly
-  if (isOnAuthPage || (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname === '/list/create-first')) {
+  
+  // Handle redirection for users without lists or guide to auth page
+  if (pathname === AUTH_ROUTE || (Array.isArray(appContext.state.lists) && appContext.state.lists.length === 0 && pathname === CREATE_FIRST_LIST_ROUTE)) {
     return <>{children}</>;
   }
-  
+
 
   return (
      <Fragment>
@@ -257,7 +250,8 @@ const AppLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children })
        </Sidebar>
         <SidebarInset>
          <main className="flex-1 flex flex-col md:px-6 lg:px-8 xl:px-10 md:py-4 bg-background overflow-y-auto max-w-full">
-            <div className="flex-grow pb-[calc(1rem+env(safe-area-inset-bottom)+50px)]"> {/* Adjusted padding for fixed banner */}
+            {/* Ensure enough padding at the bottom for the Add Item FAB and potentially the Ad Banner */}
+            <div className="flex-grow pb-[calc(env(safe-area-inset-bottom)+6rem)]">
               {children}
             </div>
           </main>
